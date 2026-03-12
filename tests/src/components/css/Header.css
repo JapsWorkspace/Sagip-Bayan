@@ -1,0 +1,60 @@
+/* ===== Slim header with tunable logo size ===== */
+.app-header {
+  --logo-size: 120px;           /* ← ADJUST HERE (e.g., 28px, 32px, 36px) */
+  height: 56px;                /* header height; raise to 60 if needed */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 16px;
+  background: #30415d;
+  color: #fff;
+  box-sizing: border-box;
+  padding-left: 170px;
+  padding-right: 170px;
+}
+
+/* left cluster */
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+/* fixed box controls the visible footprint */
+.logo-wrap {
+  width: var(--logo-size);
+  height: var(--logo-size);
+  flex: 0 0 var(--logo-size);
+  overflow: hidden;
+  border-radius: 4px; /* optional */
+}
+
+/* ensure the image fills the wrapper */
+.logo-wrap > img.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;   /* use 'cover' if you want it tighter */
+}
+
+/* 🔧 If an old rule is capping the logo, this wins */
+.app-header .header-left .logo-wrap > img.logo {
+  max-width: var(--logo-size) !important;
+  max-height: var(--logo-size) !important;
+}
+
+/* right cluster unchanged */
+.header-right { position: relative; display: flex; align-items: center; }
+.user-menu { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; transition: background .2s; }
+.user-menu:hover { background: rgba(255,255,255,.1); }
+.triangle { font-size: 10px; }
+
+.dropdown {
+  position: absolute; right: 0; top: 110%;
+  background: #fff; color: #111;
+  min-width: 180px; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 8px 20px rgba(0,0,0,.15); border: 1px solid #e5e7eb; z-index: 1000;
+}
+.dropdown button { width: 100%; padding: 10px 14px; border: 0; background: none; text-align: left; cursor: pointer; font-size: 14px; color: #333; }
+.dropdown button:hover { background: #f1f5f9; }

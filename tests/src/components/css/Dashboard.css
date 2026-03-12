@@ -1,0 +1,492 @@
+/* ================= GLOBAL ================= */
+
+html {
+  scroll-behavior: smooth;
+}
+
+html, body, #root {
+  min-height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.dashboard {
+  min-height: 100vh;
+  background-color: #f4f6f9;
+  font-family: "Segoe UI", sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+  background-color: #162f6b;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.logo-img {
+  width: 120px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.header-search {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  outline: none;
+  width: 260px;
+  font-size: 14px;
+}
+
+.nav-links a {
+  margin-left: 20px;
+  color: white;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav-links a:hover {
+  color: #ffc107;
+}
+
+/* ================= HERO ================= */
+
+.hero {
+  height: 520px;
+  background-size: cover;
+  background-position: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero-overlay {
+  background: rgba(0,0,0,0.45);
+  padding: 40px 60px;
+  border-radius: 14px;
+  text-align: center;
+  color: white;
+}
+
+.hero-overlay h1 {
+  font-size: 36px;
+  margin-bottom: 15px;
+}
+
+.hero-overlay p {
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.hero-btn {
+  padding: 12px 28px;
+  border: none;
+  background-color: #ffc107;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* ================= WEATHER ================= */
+
+.weather-section {
+  padding: 60px 80px;
+  background-color: #ffffff;
+}
+
+.weather-header {
+  background-color: #162f6b;
+  padding: 12px;
+  text-align: center;
+  margin-bottom: 25px;
+}
+
+.weather-header h2 {
+  color: #ffc107;
+  font-size: 14px;
+  letter-spacing: 1px;
+}
+
+.weather-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.weather-image {
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.weather-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.weather-text {
+  background-color: #f4f6f9;
+  padding: 30px;
+  border-radius: 12px;
+}
+
+.weather-text h4 {
+  color: #162f6b;
+}
+
+.weather-tag {
+  color: #1b5cff;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.weather-issued {
+  font-size: 12px;
+  color: #777;
+  margin: 10px 0 15px;
+}
+
+.weather-temp {
+  margin-top: 15px;
+}
+
+/* ================= CARDS ================= */
+
+.cards-container {
+  padding: 60px 80px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+}
+
+.card {
+  background: white;
+  padding: 35px 25px;
+  border-radius: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: 0.3s;
+  box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+}
+
+.card:hover {
+  transform: translateY(-8px);
+}
+
+.card-icon {
+  font-size: 42px;
+  color: #162f6b;
+  margin-bottom: 15px;
+}
+
+/* ================= MAP ================= */
+
+.map-section {
+  padding: 60px 80px;
+  background: white;
+}
+
+.map-container {
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.map-placeholder {
+  height: 350px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e9edf5;
+  font-weight: 600;
+}
+
+/* ================= NEWS ================= */
+
+.news-section {
+  padding: 60px 80px;
+  background-color: #f4f6f9;
+}
+
+.news-title {
+  text-align: center;
+  font-size: 28px;
+  margin-bottom: 40px;
+  color: #162f6b;
+}
+
+.news-banners {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+.news-banner-card {
+  background: #1e3a64;
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.news-banner-head {
+  background: #335279;
+  padding: 10px;
+  text-align: center;
+}
+
+.news-banner-head-text {
+  color: #ffcf33;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.news-banner-image {
+  width: 100%;
+  height: 420px;
+  object-fit: cover;
+}
+
+.news-banner-body {
+  padding: 18px;
+  color: white;
+}
+
+.news-banner-title {
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.news-banner-date {
+  font-size: 13px;
+  margin-bottom: 6px;
+}
+
+.news-banner-excerpt {
+  font-size: 14px;
+}
+
+/* ================= HOTLINES ================= */
+
+.hotline-section {
+  padding: 40px 0;
+  background: white;
+}
+
+.hotline-bar {
+  background-color: #162f6b;
+  padding: 12px;
+  text-align: center;
+}
+
+.hotline-bar h2 {
+  color: #ffc107;
+}
+
+.hotline-list {
+  border: 1px solid #d1d5db;
+  border-top: none;
+}
+
+.hotline-row {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  padding: 16px 24px;
+  background: #f3f4f6;
+  align-items: center;
+}
+
+.hotline-row.alt {
+  background: #e5e7eb;
+}
+
+.hotline-col.left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+.hotline-col.right {
+  justify-self: end;
+  font-weight: 800;
+  font-size: 20px;
+}
+
+.hotline-col.right a {
+  color: #0f172a;
+  text-decoration: none;
+}
+
+.hotline-col.right a:hover {
+  text-decoration: underline;
+}
+
+/* ================= ADDRESS ================= */
+
+.hotline-addresses {
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
+  border-top: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.address-block {
+  padding: 22px 24px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 18px;
+  align-items: center;
+}
+
+.address-logo {
+  width: 80px;
+}
+
+.address-content h4 {
+  color: #162f6b;
+  margin: 0 0 6px 0;
+}
+
+.address-content p {
+  margin: 2px 0;
+}
+
+/* ================= FOOTER ================= */
+
+.dashboard-footer {
+  background: #1b335f;
+  color: white;
+  padding: 24px;
+  text-align: center;
+}
+
+.footer-icons {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 22px;
+  margin-bottom: 10px;
+}
+
+.footer-icons a {
+  color: white;
+}
+
+/* ================= RESPONSIVE ================= */
+
+@media (max-width: 1200px) {
+
+.weather-section,
+.cards-container,
+.map-section,
+.news-section {
+  padding: 50px 40px;
+}
+
+.news-banner-image {
+  height: 360px;
+}
+
+}
+
+@media (max-width: 992px) {
+
+.weather-content {
+  grid-template-columns: 1fr;
+}
+
+.news-banners {
+  grid-template-columns: 1fr;
+}
+
+.cards-container {
+  grid-template-columns: repeat(auto-fit,minmax(220px,1fr));
+}
+
+.hero {
+  height: 420px;
+}
+
+}
+
+@media (max-width: 768px) {
+
+/* HEADER STACK */
+.dashboard-header {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.header-search {
+  width: 100%;
+}
+
+.hero {
+  height: 360px;
+}
+
+.hero-overlay {
+  padding: 24px;
+}
+
+.hero-overlay h1 {
+  font-size: 24px;
+}
+
+.weather-section,
+.cards-container,
+.map-section,
+.news-section {
+  padding: 40px 20px;
+}
+
+.hotline-row {
+  grid-template-columns: 1fr;
+}
+
+.hotline-col.right {
+  justify-self: start;
+}
+
+.hotline-addresses {
+  grid-template-columns: 1fr;
+}
+
+}
+
+@media (max-width: 480px) {
+
+.logo-img {
+  width: 95px;
+}
+
+.hero-overlay h1 {
+  font-size: 20px;
+}
+
+.card-icon {
+  font-size: 34px;
+}
+
+.news-title {
+  font-size: 22px;
+}
+
+.news-banner-image {
+  height: 240px;
+}
+
+}
