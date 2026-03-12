@@ -1,0 +1,239 @@
+/* ======= Width knobs ======= */
+:root {
+  --panel-w: 480px;     /* wider default */
+  --panel-w-lg: 560px;  /* extra wide on large screens */
+  --header-h: 64px;     /* adjust if your header height differs */
+}
+
+/* Layout wrapper: split map | panel */
+.evac-page {
+  display: grid;
+  grid-template-columns: 1fr var(--panel-w);
+  min-height: calc(100vh - var(--header-h));
+  background: #f2f5fb;
+}
+
+/* When collapsed, remove the panel track so map fills fully */
+.evac-page.collapsed {
+  grid-template-columns: 1fr 0px;
+}
+
+/* Bigger panel on large screens */
+@media (min-width: 1400px) {
+  .evac-page {
+    grid-template-columns: 1fr var(--panel-w-lg);
+  }
+}
+
+/* MAP */
+.evac-map {
+  position: relative; /* for reveal button */
+  height: 100%;
+  min-height: 520px;
+  border-right: 1px solid #e2e8f0;
+}
+.evac-map > * {
+  height: 100%;
+  width: 100%;
+  display: block;
+}
+
+/* Panel */
+.evac-panel {
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  padding: 14px 16px;
+  display: grid;
+  grid-template-rows: auto auto minmax(120px, 1fr) auto auto auto auto auto auto;
+  gap: 10px;
+  overflow: auto;
+  position: relative;
+  transition: transform .25s ease;
+}
+
+/* Close chevron in panel */
+.panel-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  height: 28px;
+  width: 28px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #0f172a;
+  cursor: pointer;
+}
+.panel-close:hover { background: #f3f4f6; }
+
+/* When collapsed on desktop, slide panel off to the right. 
+   (Grid track is removed too via .evac-page.collapsed) */
+.evac-page.collapsed .evac-panel {
+  transform: translateX(100%);
+  pointer-events: none;
+}
+
+/* Reveal button shown on map when panel closed */
+.evac-reveal {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  height: 36px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.95);
+  color: #0f172a;
+  font-weight: 800;
+  padding: 0 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.evac-reveal:hover { background: #fff; }
+
+/* ---------- Brand / Title ---------- */
+.evac-brand { display: flex; align-items: center; gap: 8px; }
+.evac-brand-title { color: #1f2937; font-weight: 800; font-size: 16px; }
+
+/* ---------- Search ---------- */
+.evac-search input {
+  width: 100%;
+  height: 38px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0 10px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  color: #111827;
+}
+.evac-search input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ---------- List ---------- */
+.evac-list {
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 8px;
+  overflow: auto;
+}
+.evac-list-item {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  color: #0f172a;
+  cursor: pointer;
+}
+.evac-list-item:hover { background: #eef2f7; }
+.evac-list-item.selected { background: #e6f0ff; box-shadow: inset 0 0 0 1px #c7ddff; }
+.evac-list-item input[type="radio"] { margin: 0; }
+.evac-list-name { font-weight: 700; font-size: 14px; }
+.evac-list-loc { color: #64748b; font-size: 12px; }
+.evac-dot { width: 10px; height: 10px; border-radius: 50%; }
+.dot-green { background: #16a34a; }
+.dot-orange { background: #f59e0b; }
+.dot-red { background: #ef4444; }
+.evac-empty { text-align: center; color: #64748b; padding: 14px 0; font-size: 13px; }
+
+/* ---------- Legend ---------- */
+.evac-legend {
+  display: grid;
+  grid-template-columns: auto 16px auto 16px auto 16px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  color: #0f172a;
+  font-size: 12px;
+}
+.legend-title { color: #0f172a; }
+.legend-dot { width: 14px; height: 14px; border-radius: 50%; }
+.evac-legend .dot-green { background: #16a34a; }
+.evac-legend .dot-orange { background: #f59e0b; }
+.evac-legend .dot-red { background: #ef4444; }
+
+/* ---------- Capacity stepper (visual) ---------- */
+.evac-capacity { display: grid; grid-template-columns: 34px 1fr 34px; gap: 8px; }
+.cap-btn {
+  height: 38px; border-radius: 8px; border: 1px solid #cbd5e1;
+  background: #fff; color: #0f172a; font-size: 20px; font-weight: 700; cursor: pointer;
+}
+.cap-btn:hover { background: #f3f4f6; }
+.cap-input { height: 38px; border: 1px solid #cbd5e1; border-radius: 8px; padding: 0 10px; font-size: 14px; }
+
+/* ---------- Status selector ---------- */
+.evac-status { display: grid; gap: 6px; }
+.status-label { font-weight: 800; font-size: 13px; color: #1f2937; }
+.status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.status-pill {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
+  border-radius: 16px; border: 1px solid #cbd5e1; cursor: pointer; user-select: none;
+}
+.status-pill input[type="radio"] { accent-color: #2563eb; }
+.pill-text { font-size: 13px; }
+
+/* ---------- Selected & Notes ---------- */
+.evac-selected label, .evac-notes label {
+  display: block; font-size: 12px; font-weight: 700; color: #1f2937; margin-bottom: 6px;
+}
+.evac-selected input, .evac-notes textarea {
+  width: 100%; border: 1px solid #cbd5e1; border-radius: 8px; padding: 8px 10px; font-size: 14px; outline: none;
+}
+.evac-selected input:focus, .evac-notes textarea:focus {
+  border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
+
+/* ---------- Action buttons ---------- */
+.evac-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { height: 40px; border-radius: 8px; border: 1px solid transparent; font-weight: 800; letter-spacing: 0.2px; cursor: pointer; }
+.btn-back { background: #1f3a5f; color: #fff; }
+.btn-back:hover { background: #173152; }
+.btn-update { background: #2a71bf; color: #fff; }
+.btn-update:hover { background: #2463aa; }
+.btn[disabled] { opacity: 0.6; cursor: not-allowed; }
+
+/* ---------- Utilities ---------- */
+.evac-utils { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 2px; }
+.link-btn { border: none; background: transparent; color: #2a71bf; font-weight: 700; cursor: pointer; }
+.link-btn:hover { text-decoration: underline; }
+.link-btn.danger { color: #d64545; }
+
+/* ---------- History ---------- */
+.evac-history { border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 6px; }
+.history-title { font-weight: 800; font-size: 13px; color: #1f2937; margin-bottom: 8px; }
+.history-list { display: grid; gap: 8px; max-height: 180px; overflow: auto; }
+.history-item { background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 8px; padding: 8px; }
+.history-main { display: flex; gap: 6px; align-items: baseline; font-weight: 700; color: #111827; }
+.history-sub { display: flex; justify-content: space-between; color: #64748b; font-size: 12px; }
+
+/* ---------- Mobile: off-canvas panel ---------- */
+@media (max-width: 900px) {
+  .evac-page, .evac-page.collapsed {
+    grid-template-columns: 1fr; /* map occupies full width */
+  }
+
+  .evac-panel {
+    position: fixed;
+    top: var(--header-h);
+    right: 0;
+    height: calc(100vh - var(--header-h));
+    width: min(92vw, var(--panel-w)); /* off-canvas width on mobile */
+    box-shadow: -12px 0 30px rgba(0,0,0,0.18);
+    transform: translateX(0);
+    z-index: 50;
+  }
+  .evac-page.collapsed .evac-panel {
+    transform: translateX(100%); /* slide out on collapse */
+    pointer-events: none;
+  }
+
+  /* Reveal button stays accessible */
+  .evac-reveal {
+    top: 12px;
+    right: 12px;
+  }
+}
