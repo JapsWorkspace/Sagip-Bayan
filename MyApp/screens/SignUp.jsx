@@ -1,16 +1,17 @@
+// screens/SignUp.jsx
 import { useState } from "react";
 import {
   TextInput,
   View,
   Text,
   Image,
-  StyleSheet,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
   SafeAreaView,
 } from "react-native";
 import axios from "axios";
+import styles, { COLORS } from "../Designs/SignUp"; // ← design-only file (ensure folder name is 'Designs')
 
 export default function SignUp({ navigation }) {
   const [username, setUsername] = useState("");
@@ -155,45 +156,78 @@ export default function SignUp({ navigation }) {
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Background */}
-        <View style={styles.backgroundWrapper}>
-          <Image
-            source={require("../assets/bg.png")}
-            style={styles.backgroundImage}
-          />
-        </View>
-
         {/* Content */}
         <View style={styles.contentWrapper}>
+          {/* Logo (sagipbayanlogo.png) */}
           <Image
-            source={require("../assets/logo.png")}
+            source={require("../assets/sagipbayanlogo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
 
           <View style={styles.formWrapper}>
-            <TextInput style={styles.input} placeholder="First Name" placeholderTextColor="#ffffffaa" value={fName} onChangeText={handleFName} />
+            <TextInput
+              style={styles.input}
+              placeholder="First Name"
+              placeholderTextColor="#706f6faa"
+              value={fName}
+              onChangeText={handleFName}
+            />
             {fNameError ? <Text style={styles.error}>{fNameError}</Text> : null}
 
-            <TextInput style={styles.input} placeholder="Last Name" placeholderTextColor="#ffffffaa" value={lName} onChangeText={handleLName} />
+            <TextInput
+              style={styles.input}
+              placeholder="Last Name"
+              placeholderTextColor="#706f6faa"
+              value={lName}
+              onChangeText={handleLName}
+            />
             {lNameError ? <Text style={styles.error}>{lNameError}</Text> : null}
 
-            <TextInput style={styles.input} placeholder="Username" placeholderTextColor="#ffffffaa" value={username} onChangeText={handleUsername} />
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#706f6faa"
+              value={username}
+              onChangeText={handleUsername}
+            />
             {usernameError ? <Text style={styles.error}>{usernameError}</Text> : null}
 
-            <TextInput style={styles.input} placeholder="Password" placeholderTextColor="#ffffffaa" secureTextEntry value={password} onChangeText={handlePassword} />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#706f6faa"
+              secureTextEntry
+              value={password}
+              onChangeText={handlePassword}
+            />
             {passwordError ? <Text style={styles.error}>{passwordError}</Text> : null}
 
-            <TextInput style={styles.input} placeholder="Confirm Password" placeholderTextColor="#ffffffaa" secureTextEntry value={confirmPassword} onChangeText={handleConfirmPassword} />
-            {confirmPasswordError ? <Text style={styles.error}>{confirmPasswordError}</Text> : null}
+            <TextInput
+              style={styles.input}
+              placeholder="Confirm Password"
+              placeholderTextColor="#706f6faa"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={handleConfirmPassword}
+            />
+            {confirmPasswordError ? (
+              <Text style={styles.error}>{confirmPasswordError}</Text>
+            ) : null}
 
-            <TextInput style={styles.input} placeholder="Email" placeholderTextColor="#ffffffaa" value={email} onChangeText={handleEmail} />
+            <TextInput
+              style={styles.input}
+              placeholder="Email"
+              placeholderTextColor="#706f6faa"
+              value={email}
+              onChangeText={handleEmail}
+            />
             {emailError ? <Text style={styles.error}>{emailError}</Text> : null}
 
             <TextInput
               style={styles.input}
               placeholder="Birthdate (YYYY-MM-DD)"
-              placeholderTextColor="#ffffffaa"
+              placeholderTextColor="#706f6faa"
               value={date}
               onChangeText={setDate}
               {...Platform.select({ web: { type: "date" }, default: {} })}
@@ -212,34 +246,3 @@ export default function SignUp({ navigation }) {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: "#000" },
-  backgroundWrapper: { ...StyleSheet.absoluteFillObject },
-  backgroundImage: { width: "100%", height: "100%", transform: [{ scale: 1.65 }] },
-  contentWrapper: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 20 },
-  logo: { width: "70%", maxWidth: 220, aspectRatio: 220 / 120, marginBottom: 16 },
-  formWrapper: { width: "100%", maxWidth: 420 },
-  input: {
-    width: "100%",
-    height: 35,
-    borderWidth: 1,
-    borderColor: "#ffffffaa",
-    borderRadius: 5,
-    paddingHorizontal: 16,
-    marginBottom: 6,
-    color: "#fff",
-    fontSize: 14,
-  },
-  button: {
-    width: "100%",
-    backgroundColor: "#fff",
-    borderRadius: 5,
-    paddingVertical: 8,
-    marginTop: 6,
-    alignItems: "center",
-  },
-  buttonText: { color: "#1F3961", fontWeight: "bold", fontSize: 16 },
-  error: { color: "red", fontSize: 12, marginBottom: 4 },
-  link: { color: "#fff", marginTop: 10, textAlign: "center", fontSize: 14 },
-});

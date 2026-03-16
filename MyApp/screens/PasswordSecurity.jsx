@@ -1,9 +1,9 @@
+// screens/PasswordSecurity.jsx
 import React, { useContext, useState } from "react";
 import {
   TextInput,
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   Platform,
   KeyboardAvoidingView,
@@ -12,6 +12,9 @@ import {
 import axios from "axios";
 import NewBottomNav from "./NewBottomNav";
 import { UserContext } from "./UserContext";
+
+// ✅ import the separated design (green + yellow)
+import styles, { COLORS } from "../Designs/PasswordSecurity";
 
 export default function PasswordSecurity({ navigation }) {
   const { user, setUser } = useContext(UserContext);
@@ -23,6 +26,7 @@ export default function PasswordSecurity({ navigation }) {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(user?.twoFactorEnabled || false);
 
+  // --- keep your original validation logic ---
   const handleNewPassword = (text) => {
     setNewPassword(text);
     if (text.length === 0) setNewPasswordError("Password is required");
@@ -45,7 +49,7 @@ export default function PasswordSecurity({ navigation }) {
 
   const updatePassword = () => {
     if (currentPassword !== user.password) {
-      console.log(user.password, currentPassword)
+      console.log(user.password, currentPassword);
       console.log("Error: Current password is incorrect.");
       return;
     }
@@ -62,7 +66,7 @@ export default function PasswordSecurity({ navigation }) {
       return;
     }
 
-    console.log(user)
+    console.log(user);
     axios
       .put(`http://localhost:8000/user/update/${user.id}`, { password: newPassword })
       .then(() => {
@@ -92,18 +96,23 @@ export default function PasswordSecurity({ navigation }) {
       keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
     >
       <View style={styles.phone}>
-        {/* Title at top-left */}
-        <Text style={styles.header}>Password & Security</Text>
+        {/* ---------- Header w/ back (same as Profile) ---------- */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <View style={styles.backGlyph} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Password & Security</Text>
+        </View>
         <Text style={styles.subText}>
           Manage your password and enable two‑factor authentication for extra protection.
         </Text>
 
-        {/* Inputs pushed lower */}
+        {/* ---------- Form ---------- */}
         <View style={styles.formWrapper}>
           <TextInput
             style={styles.input}
             placeholder="Current Password"
-            placeholderTextColor="#1F3961"
+            placeholderTextColor={COLORS.placeholder}
             secureTextEntry
             value={currentPassword}
             onChangeText={setCurrentPassword}
@@ -112,7 +121,7 @@ export default function PasswordSecurity({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="New Password"
-            placeholderTextColor="#1F3961"
+            placeholderTextColor={COLORS.placeholder}
             secureTextEntry
             value={newPassword}
             onChangeText={handleNewPassword}
@@ -122,7 +131,7 @@ export default function PasswordSecurity({ navigation }) {
           <TextInput
             style={styles.input}
             placeholder="Confirm Password"
-            placeholderTextColor="#1F3961"
+            placeholderTextColor={COLORS.placeholder}
             secureTextEntry
             value={confirmPassword}
             onChangeText={handleConfirmPassword}
@@ -136,135 +145,20 @@ export default function PasswordSecurity({ navigation }) {
               Add an extra layer of security by requiring a verification code when signing in.
             </Text>
             <Switch value={twoFactorEnabled} onValueChange={toggle2FA} />
-            <Text style={styles.status}>
-              {twoFactorEnabled ? "Enabled" : "Disabled"}
-            </Text>
+            <Text style={styles.status}>{twoFactorEnabled ? "Enabled" : "Disabled"}</Text>
           </View>
 
-          {/* Button BELOW 2FA, lowered more */}
+          {/* Save */}
           <TouchableOpacity style={styles.button} onPress={updatePassword}>
             <Text style={styles.buttonText}>Save Settings</Text>
           </TouchableOpacity>
         </View>
 
-       {/* Bottom Nav */}
-<View style={styles.bottomNavWrapper}>
-  <NewBottomNav navigation={navigation} />
-</View>
-
+        {/* ---------- Bottom Nav ---------- */}
+        <View style={styles.bottomNavWrapper}>
+          <NewBottomNav navigation={navigation} onCenterPress={() => navigation.navigate("MainCenter")} />
+        </View>
       </View>
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  webFrame: {
-    flex: 1,
-    alignItems: "center",
-    backgroundColor: Platform.OS === "web" ? "#000" : "#fff",
-  },
-  phone: {
-    flex: 1,
-    width: "100%",
-    maxWidth: 390,
-    backgroundColor: "#fff",
-    position: "relative",
-    paddingHorizontal: 20,
-    paddingTop: 30,
-  },
-  header: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#1F3961",
-    marginBottom: 4,
-    textAlign: "left", // top-left alignment
-  },
-  subText: {
-    fontSize: 14,
-    color: "#555",
-    marginBottom: 10,
-    textAlign: "left",
-    width: "100%",
-  },
-  formWrapper: {
-    marginTop: 10, // pushes inputs/buttons lower
-    alignItems: "center",
-  },
-  input: {
-    width: "90%",
-    maxWidth: 320,
-    height: 40,
-    borderWidth: 1,
-    borderColor: "#1F3961",
-    borderRadius: 5,
-    paddingHorizontal: 12,
-    marginVertical: 6, // reduced margins
-    color: "#1F3961",
-    backgroundColor: "transparent",
-    fontSize: 16,
-    textAlign: "left",
-  },
-  button: {
-    width: "90%",
-    maxWidth: 320,
-    backgroundColor: "#1F3961",
-    borderRadius: 5,
-    paddingVertical: 10,
-    marginTop: 50, // lowered more below 2FA
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "bold",
-    fontSize: 16,
-    textAlign: "center",
-  },
-  error: {
-    color: "red",
-    marginTop: -2,
-    marginBottom: 6,
-    textAlign: "left",
-    width: "90%",
-    maxWidth: 320,
-    fontSize: 13,
-  },
-  twoFAWrapper: {
-    marginTop: 60,
-    alignItems: "flex-start", // aligned left like header
-    width: "90%",
-    maxWidth: 320,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1F3961",
-    marginBottom: 4,
-    textAlign: "left", // aligned left
-  },
-  subInfo: {
-    fontSize: 13,
-    color: "#555",
-    marginBottom: 10,
-    textAlign: "left",
-    width: "100%",
-  },
-  status: {
-    marginTop: 4,
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1F3961",
-    textAlign: "left",
-  },
-  bottomNavWrapper: {
-  position: "absolute",
-  left: 0,
-  right: 0,
-  bottom: Platform.OS === "ios" ? 40 : 1, // iOS safe area or Android padding
-  // optional: add a little background so nav buttons are visible
-  backgroundColor: "transparent",
-  alignItems: "center",
-  justifyContent: "center",
-}
-
-});
