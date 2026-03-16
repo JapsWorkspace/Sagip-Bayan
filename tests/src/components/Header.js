@@ -1,18 +1,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './css/Header.css';
-import Logo from '../assets/images/pasiglogowhite.png';
+import JaenLogo from '../assets/images/jaenlogo.png';
 
 const Header = () => {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const rightRef = useRef(null);
 
+  // Just use the stored role
+  const role = localStorage.getItem('role') || 'User';
+
   const handleLogout = async () => {
     try {
       await fetch('http://localhost:8000/api/auth/logout', {
         method: 'POST',
-        credentials: 'include'
+        credentials: 'include',
       });
       localStorage.clear();
       navigate('/login');
@@ -39,13 +42,18 @@ const Header = () => {
 
   return (
     <header className="app-header">
-     <div className="header-left">
-  <div className="logo-wrap">
-    <img src={Logo} alt="Pasig Logo" className="logo" />
-  </div>
-  {/* optional text */}
-</div>
+      {/* LEFT */}
+      <div className="header-left">
+        <div className="logo-wrap" aria-hidden="true">
+          <img src={JaenLogo} alt="Jaen Logo" className="logo" />
+        </div>
+        <div className="brand-text">
+          <div className="brand-name">JAEN, NUEVA ECIJA</div>
+          <div className="brand-sub">MDRRMO</div>
+        </div>
+      </div>
 
+      {/* RIGHT */}
       <div className="header-right" ref={rightRef}>
         <div
           className="user-menu"
@@ -55,8 +63,8 @@ const Header = () => {
           aria-haspopup="menu"
           aria-expanded={open}
         >
-          Welcome, <strong>User</strong>
-          <span className="triangle">▾</span>
+          Welcome, <strong>{role}</strong>
+          <span className="triangle" aria-hidden>▾</span>
         </div>
 
         {open && (

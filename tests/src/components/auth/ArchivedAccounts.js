@@ -1,126 +1,208 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../Header';
-import '../css/ArchivedAccounts.css';
+import '../css/ArchivedAccounts.css';       // keep your original styles if needed
+import '../css/ArchivedAccounts.css';   // NEW: add the TIO layout CSS below
 
 export default function ArchivedAccounts() {
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
-  const [archived, setArchived] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [archived, setArchived] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const storedRole = localStorage.getItem('role')
-    if (!storedRole) {
-      navigate('/')
-    }
-  }, [navigate])
+  // measure header height so the table region fits the viewport perfectly
+  const appRef = useRef(null);
 
   useEffect(() => {
-    fetchArchivedAccounts()
-  }, [])
+    const storedRole = localStorage.getItem('role');
+    if (!storedRole) navigate('/');
+  }, [navigate]);
+
+  useEffect(() => {
+    fetchArchivedAccounts();
+  }, []);
+
+  useEffect(() => {
+    // set --app-header-h dynamically from actual header height
+    const syncHeaderHeight = () => {
+      const headerEl = document.querySelector('.app-header');
+      const h = headerEl ? headerEl.getBoundingClientRect().height : 0;
+      if (appRef.current) {
+        appRef.current.style.setProperty('--app-header-h', `${Math.round(h)}px`);
+      }
+    };
+    syncHeaderHeight();
+    // update on resize or when fonts load
+    window.addEventListener('resize', syncHeaderHeight);
+    const ro = new ResizeObserver(syncHeaderHeight);
+    const headerEl = document.querySelector('.app-header');
+    if (headerEl) ro.observe(headerEl);
+    return () => {
+      window.removeEventListener('resize', syncHeaderHeight);
+      ro.disconnect();
+    };
+  }, []);
 
   const fetchArchivedAccounts = async () => {
     try {
       const res = await fetch('http://localhost:8000/api/auth/archived', {
         credentials: 'include'
-      })
-
-      const data = await res.json()
-      setArchived(data)
+      });
+      const data = await res.json();
+      setArchived(Array.isArray(data) ? data : []);
     } catch (err) {
-      console.error(err)
-      alert('Failed to fetch archived accounts')
+      console.error(err);
+      alert('Failed to fetch archived accounts');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const restoreAccount = async id => {
-    if (!window.confirm('Restore this account?')) return
+  const restoreAccount = async (id) => {
+    if (!window.confirm('Restore this account?')) return;
 
     try {
-      const res = await fetch(
-        `http://localhost:8000/api/auth/restore/${id}`,
-        {
-          method: 'PUT',
-          credentials: 'include'
-        }
-      )
+      const res = await fetch(`http://localhost:8000/api/auth/restore/${id}`, {
+        method: 'PUT',
+        credentials: 'include'
+      });
 
       if (res.ok) {
-        alert('Account restored successfully')
-        setArchived(prev => prev.filter(a => a._id !== id))
+        alert('Account restored successfully');
+        setArchived(prev => prev.filter(a => a._id !== id));
       } else {
-        alert('Failed to restore account')
+        alert('Failed to restore account');
       }
     } catch (err) {
-      console.error(err)
-      alert('Error restoring account')
+      console.error(err);
+      alert('Error restoring account');
     }
-  }
+  };
 
   return (
-    <div className="archived-accounts">
+    <div className="tio-app" ref={appRef}>
       <Header />
 
-      <div className="aa-toolbar">
-        <h2 className="aa-title">Archived Accounts</h2>
-        <button
-          className="aa-back"
-          onClick={() => navigate(-1)}
-        >
-          Back
-        </button>
+      {/* Toolbar */}
+      <div className="tio-toolbar" style={{ height: 'var(--tio-toolbar-h)' }}>
+        <div className="tio-toolbar-left">
+          <h2 className="tio-title">Archived Accounts</h2>
+          <span className="tio-meta">
+            {loading ? 'Loading…' : `${archived.length} record${archived.length === 1 ? '' : 's'}`}
+          </span>
+        </div>
+        <div className="tio-toolbar-right">
+          {/* You can add filters later; for now Back + optional date/search skeletons */}
+          {/* <input className="tio-input" placeholder="Search" /> */}
+          {/* <input className="tio-input" type="date" /> */}
+          <button
+            className="tio-btn"
+            onClick={() => navigate(-1)}
+            title="Back"
+          >
+            ← Back
+          </button>
+        </div>
       </div>
 
-      <div className="aa-content">
+      {/* Main area (no page scroll) */}
+      <main className="tio-main">
+        <div className="tio-table-region">
+          {/* Scrollable table wrapper */}
+          <div className="tio-table-wrap">
+            <table className="tio-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '18ch' }}>Username</th>
+                  <th style={{ width: '26ch' }}>Email</th>
+                  <th style={{ width: '14ch' }}>Phone</th>
+                  <th>Address</th>
+                  <th style={{ width: '12ch' }}>Role</th>
+                  <th style={{ width: '12ch' }}></th>
+                </tr>
+              </thead>
 
-        {loading && (
-          <div className="aa-loading">
-            Loading archived accounts...
+              {/* Probe row ensures column widths are computed nicely before content */}
+              <tbody className="tio-probe-row">
+                <tr>
+                  <td>username_example</td>
+                  <td>name@example.com</td>
+                  <td>09123456789</td>
+                  <td>Barangay San Nicolas, Jaen</td>
+                  <td>DRRMO</td>
+                  <td></td>
+                </tr>
+              </tbody>
+
+              <tbody>
+                {loading && (
+                  <tr className="tio-empty-row">
+                    <td colSpan={6}>
+                      <div className="tio-empty-inline">
+                        <span className="tio-empty-emoji">⏳</span>
+                        <div className="tio-empty-text">
+                          <strong>Loading archived accounts…</strong>
+                          <span className="tio-muted">Please wait</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {!loading && archived.length === 0 && (
+                  <tr className="tio-empty-row">
+                    <td colSpan={6}>
+                      <div className="tio-empty-inline">
+                        <span className="tio-empty-emoji">📂</span>
+                        <div className="tio-empty-text">
+                          <strong>No Archived Accounts</strong>
+                          <span className="tio-muted">
+                            Accounts that are archived will appear here.
+                          </span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+
+                {!loading && archived.length > 0 && archived.map(acc => (
+                  <tr key={acc._id}>
+                    <td title={acc.username ?? ''}>{acc.username}</td>
+                    <td title={acc.email ?? ''} style={{ color: '#0b4dbb', fontWeight: 700, cursor: 'pointer' }}>
+                      {acc.email}
+                    </td>
+                    <td title={acc.phoneNumber ?? ''}>{acc.phoneNumber}</td>
+                    <td title={acc.address ?? ''}>{acc.address}</td>
+                    <td title={acc.role ?? ''}>{acc.role}</td>
+                    <td>
+                      <button
+                        className="tio-btn"
+                        style={{
+                          background: '#2e7d32',
+                          color: '#fff',
+                          borderColor: '#2e7d32',
+                          fontWeight: 800
+                        }}
+                        onClick={() => restoreAccount(acc._id)}
+                      >
+                        Restore
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
 
-        {!loading && archived.length === 0 && (
-          <div className="aa-empty">
-            <div className="aa-empty-title">
-              No Archived Accounts
-            </div>
-
-            <div className="aa-empty-sub">
-              Accounts that are archived will appear here.
-            </div>
+          {/* Pagination row (non-scrolling, always visible) */}
+          <div className="tio-pagination">
+            {/* Hook these up later as needed */}
+            <button className="tio-btn" disabled>Prev</button>
+            <span className="tio-page">Page 1</span>
+            <button className="tio-btn" disabled>Next</button>
           </div>
-        )}
-
-        {!loading && archived.length > 0 &&
-          archived.map(acc => (
-            <div key={acc._id} className="aa-card">
-
-              <strong>
-                {acc.username} ({acc.role})
-              </strong>
-
-              <p>Email: {acc.email}</p>
-              <p>Phone: {acc.phoneNumber}</p>
-              <p>Address: {acc.address}</p>
-
-              <div className="aa-actions">
-                <button
-                  className="aa-btn aa-btn-restore"
-                  onClick={() => restoreAccount(acc._id)}
-                >
-                  Restore Account
-                </button>
-              </div>
-
-            </div>
-          ))
-        }
-
-      </div>
-
+        </div>
+      </main>
     </div>
-  )
+  );
 }

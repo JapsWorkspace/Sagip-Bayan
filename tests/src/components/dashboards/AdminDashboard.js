@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Header from '../Header';
-import '../css/AdminDashboard.css'; // <-- make sure this path is correct
+import '../css/AdminDashboard.css';
 import DashboardCard from '../../components/DashboardCard';
-import '../css/DashboardCard.css'
+import '../css/DashboardCard.css';
+
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
@@ -15,73 +16,64 @@ export default function AdminDashboard() {
     }
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.clear();
-    navigate('/');
-  };
-
   return (
     <div>
-      {/* Top header (your existing component) */}
       <Header />
 
-      {/* Page body */}
       <div className="admin-wrapper">
         <div className="admin-container">
           <h2 className="admin-title">Admin Dashboard</h2>
 
-
-          {/* Cards grid */}
+          {/* Cards Grid */}
           <section className="cards-grid">
             <DashboardCard
-              className="card-surface"
               title="Register Account"
-              description="Register accounts for Barangay and DRRMO."
+              desc="Register accounts for Barangay and DRRMO."
               onClick={() => navigate('/admin/register')}
+              icon="user-add"
             />
 
             <DashboardCard
-              className="card-surface"
               title="Edit Accounts"
-              description="View and manage existing user accounts."
+              desc="View and manage existing user accounts."
               onClick={() => navigate('/admin/edit-accounts')}
+              icon="settings"
             />
 
             <DashboardCard
-              className="card-surface"
               title="Audit Trail"
-              description="View logs of relief requests and actions taken."
+              desc="View logs of relief requests and actions taken."
               onClick={() => navigate('/admin/audit-trail')}
+              icon="clipboard"
             />
 
             <DashboardCard
-              className="card-surface"
               title="Archived Accounts"
-              description="View and manage archived user accounts."
+              desc="View and manage archived accounts."
               onClick={() => navigate('/admin/archived-accounts')}
+              icon="archive"
             />
 
             <DashboardCard
-              className="card-surface"
               title="Evacuation Management"
-              description="View and manage evacuation places."
+              desc="View and manage evacuation sites."
               onClick={() => navigate('/evacuation')}
+              icon="location"
             />
 
             <DashboardCard
-              className="card-surface"
-              title="Time in and Time out"
-              description="Manage time in and time out for administrative accounts."
+              title="Time-in / Time-out"
+              desc="Manage attendance for admin accounts."
               onClick={() => navigate('/admin/time-in-time-out')}
+              icon="clock"
             />
 
             <DashboardCard
-              className="card-surface"
               title="Admin Logs"
-              description="View admin activity logs."
+              desc="View administrative activity logs."
               onClick={() => navigate('/admin/logs')}
+              icon="shield"
             />
-            
           </section>
         </div>
       </div>

@@ -4,12 +4,15 @@ import '../components/css/DashboardCard.css';
 
 function DashboardCard({
   title,
-  description,
+  description,     // canonical prop
+  desc,            // alias used in AdminDashboard.jsx
   onClick,
   disabled = false,
   className = '',
   ariaLabel
 }) {
+  const message = typeof description !== 'undefined' ? description : desc;
+
   const handleKeyDown = (e) => {
     if (disabled) return;
     if (e.key === 'Enter' || e.key === ' ') {
@@ -29,8 +32,7 @@ function DashboardCard({
       onKeyDown={handleKeyDown}
     >
       <h3 className="card-title">{title}</h3>
-      <p className="card-desc">{description}</p>
-
+      {message && <p className="card-desc">{message}</p>}
       {disabled && <small className="card-hint">Awaiting delivery</small>}
     </article>
   );

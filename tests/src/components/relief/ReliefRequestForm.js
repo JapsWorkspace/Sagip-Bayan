@@ -2,35 +2,44 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardCard from '../../components/DashboardCard';
 import Header from '../Header';
+import '../css/ReliefRequestForm.css';
 
 export default function ReliefRequestForm() {
   const navigate = useNavigate();
+
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     if (!storedRole) {
       navigate('/'); // redirect to login
     }
   }, [navigate]);
+
+  // Use real ampersands so React renders correctly
   const categories = [
-    { key: 'food', label: 'Food & Water' },
-    { key: 'hygiene', label: 'Hygiene & Sanitation' },
-    { key: 'clothing', label: 'Clothes & Warmth' },
+    { key: 'food',      label: 'Food & Water' },
+    { key: 'hygiene',   label: 'Hygiene & Sanitation' },
+    { key: 'clothing',  label: 'Clothes & Warmth' },
     { key: 'furniture', label: 'Furniture' },
-    { key: 'medicine', label: 'Medical & Safety' }
+    { key: 'medicine',  label: 'Medical & Safety' }
   ];
 
   const peopleRanges = ['10–20', '20–50', '50–100', '100–300'];
+  const urgencyLevels = [
+    { key: 'low',       label: 'Low' },
+    { key: 'moderate',  label: 'Moderate' },
+    { key: 'severe',    label: 'Severe' },
+  ];
 
   const [reliefReq, setReliefReq] = useState({});
   const [activeCategory, setActiveCategory] = useState(null);
   const [peopleRange, setPeopleRange] = useState('');
+  const [urgency, setUrgency] = useState('');  // ✅ NEW
 
   async function fetchMyRequests() {
     try {
-      const res = await fetch(
-        'http://localhost:8000/api/barangays/me',
-        { credentials: 'include' }
-      );
+      const res = await fetch('http://localhost:8000/api/barangays/me', {
+        credentials: 'include'
+      });
       if (!res.ok) throw new Error('Failed to load requests');
       const data = await res.json();
       setReliefReq(data.reliefReq || {});
@@ -42,7 +51,6 @@ export default function ReliefRequestForm() {
   // 🔁 Real-time polling
   useEffect(() => {
     fetchMyRequests();
-
     const interval = setInterval(fetchMyRequests, 5000);
     return () => clearInterval(interval);
   }, []);
@@ -52,7 +60,10 @@ export default function ReliefRequestForm() {
   }
 
   async function confirmRequest() {
-    if (!activeCategory || !peopleRange) return;
+    if (!activeCategory || !peopleRange || !urgency) {
+      alert('Please select a category, people range, and urgency.');
+      return;
+    }
 
     const key = activeCategory.key;
 
@@ -62,21 +73,29 @@ export default function ReliefRequestForm() {
     }
 
     try {
-      const res = await fetch(
-        'http://localhost:8000/api/barangays/relief-request',
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({ categoryKey: key, peopleRange })
-        }
-      );
+      const body = {
+        categoryKey: key,
+        peopleRange,
+        urgency,            // ✅ include urgency so AuditTrail can show it
+        // If your backend expects "severity" instead of "urgency", replace line above with:
+        // severity: urgency,
+      };
+
+      const res = await fetch('http://localhost:8000/api/barangays/relief-request', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
 
       if (!res.ok) throw new Error('Failed to submit request');
 
-      fetchMyRequests(); // 🔄 sync immediately
+      // Reset selections and refresh
+      await fetchMyRequests();
       setActiveCategory(null);
       setPeopleRange('');
+      setUrgency('');
+      alert('Relief request submitted.');
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -84,48 +103,107 @@ export default function ReliefRequestForm() {
   }
 
   return (
-    <div>
-      <Header/>
-      <h2>Relief Request</h2>
-
-      <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap' }}>
-        {categories.map(category => {
-          const locked = isLocked(category.key);
-          return (
-            <DashboardCard
-              key={category.key}
-              title={category.label}
-              description={locked ? 'Pending / In Progress' : 'Request relief'}
-              onClick={() => !locked && setActiveCategory(category)}
-            />
-          );
-        })}
-      </div>
-
-      {activeCategory && (
-        <div style={{ marginTop: 30 }}>
-          <h3>{activeCategory.label}</h3>
-
-          {peopleRanges.map(range => (
-            <label key={range} style={{ display: 'block' }}>
-              <input
-                type="radio"
-                checked={peopleRange === range}
-                onChange={() => setPeopleRange(range)}
-              />
-              {range} people
-            </label>
-          ))}
-
-          <button disabled={!peopleRange} onClick={confirmRequest}>
-            Confirm Request
-          </button>
+    <div className="rrf-app">
+      <Header />
+      <div className="rrf-page">
+        {/* Toolbar */}
+        <div className="rrf-toolbar">
+          <h2 className="rrf-title">Relief Request</h2>
+          <div className="rrf-toolbar-right">
+            <button className="rrf-btn" onClick={() => navigate('/barangay/dashboard')}>
+              ← Back to Dashboard
+            </button>
+          </div>
         </div>
-      )}
 
-      <button style={{ marginTop: 40 }} onClick={() => navigate('/barangay/dashboard')}>
-        Go Back to Dashboard
-      </button>
+        {/* Content */}
+        <main className="rrf-main">
+          {/* Category grid */}
+          <section className="rrf-section">
+            <h3 className="rrf-section-title">Choose a Category</h3>
+            <div className="rrf-grid">
+              {categories.map((category) => {
+                const locked = isLocked(category.key);
+                return (
+                  <div key={category.key} className="rrf-card-wrap">
+                    <DashboardCard
+                      title={category.label}
+                      description={locked ? 'Pending / In Progress' : 'Request relief'}
+                      onClick={() => !locked && setActiveCategory(category)}
+                      className={locked ? 'rrf-locked' : ''}
+                    />
+                    {locked && <div className="rrf-badge">Locked</div>}
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+
+          {/* Selections */}
+          {activeCategory && (
+            <section className="rrf-section">
+              <h3 className="rrf-section-title">{activeCategory.label}</h3>
+
+              {/* People Range */}
+              <div className="rrf-fieldset">
+                <div className="rrf-label">Affected People / Families</div>
+                <div className="rrf-radio-group">
+                  {peopleRanges.map((range) => (
+                    <label key={range} className="rrf-radio">
+                      <input
+                        type="radio"
+                        name="peopleRange"
+                        checked={peopleRange === range}
+                        onChange={() => setPeopleRange(range)}
+                      />
+                      <span>{range} people</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Urgency (NEW) */}
+              <div className="rrf-fieldset">
+                <div className="rrf-label">Urgency</div>
+                <div className="rrf-radio-group">
+                  {urgencyLevels.map((u) => (
+                    <label key={u.key} className="rrf-radio">
+                      <input
+                        type="radio"
+                        name="urgency"
+                        checked={urgency === u.key}
+                        onChange={() => setUrgency(u.key)}
+                      />
+                      <span>{u.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Confirm */}
+              <div className="rrf-actions">
+                <button
+                  className="rrf-btn"
+                  onClick={() => {
+                    setActiveCategory(null);
+                    setPeopleRange('');
+                    setUrgency('');
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="rrf-btn rrf-primary"
+                  disabled={!peopleRange || !urgency}
+                  onClick={confirmRequest}
+                >
+                  Confirm Request
+                </button>
+              </div>
+            </section>
+          )}
+        </main>
+      </div>
     </div>
   );
 }
