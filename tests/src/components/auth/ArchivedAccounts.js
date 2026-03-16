@@ -92,9 +92,6 @@ export default function ArchivedAccounts() {
           </span>
         </div>
         <div className="tio-toolbar-right">
-          {/* You can add filters later; for now Back + optional date/search skeletons */}
-          {/* <input className="tio-input" placeholder="Search" /> */}
-          {/* <input className="tio-input" type="date" /> */}
           <button
             className="tio-btn"
             onClick={() => navigate(-1)}
@@ -108,7 +105,6 @@ export default function ArchivedAccounts() {
       {/* Main area (no page scroll) */}
       <main className="tio-main">
         <div className="tio-table-region">
-          {/* Scrollable table wrapper */}
           <div className="tio-table-wrap">
             <table className="tio-table">
               <thead>
@@ -122,9 +118,10 @@ export default function ArchivedAccounts() {
                 </tr>
               </thead>
 
-              {/* Probe row ensures column widths are computed nicely before content */}
-              <tbody className="tio-probe-row">
-                <tr>
+              {/* SINGLE tbody now contains probe + dynamic rows */}
+              <tbody>
+                {/* Probe row */}
+                <tr className="tio-probe-row">
                   <td>username_example</td>
                   <td>name@example.com</td>
                   <td>09123456789</td>
@@ -132,9 +129,7 @@ export default function ArchivedAccounts() {
                   <td>DRRMO</td>
                   <td></td>
                 </tr>
-              </tbody>
 
-              <tbody>
                 {loading && (
                   <tr className="tio-empty-row">
                     <td colSpan={6}>
@@ -194,9 +189,8 @@ export default function ArchivedAccounts() {
             </table>
           </div>
 
-          {/* Pagination row (non-scrolling, always visible) */}
+          {/* Pagination row */}
           <div className="tio-pagination">
-            {/* Hook these up later as needed */}
             <button className="tio-btn" disabled>Prev</button>
             <span className="tio-page">Page 1</span>
             <button className="tio-btn" disabled>Next</button>
