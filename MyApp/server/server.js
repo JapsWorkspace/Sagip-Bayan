@@ -9,18 +9,18 @@ const fs = require('fs');
 
 dotenv.config();
 
-const userRoutes = require('../routes/userRoutes');
-const incidentRoutes = require('../routes/incidentRoutes');
-const historyRoutes = require('../routes/historyRoutes');
-const evacRoutes = require('../routes/EvacRoutes');
-const authRoutes = require('../routes/authRoutes');
-const barangayRoutes = require('../routes/barangayRoutes');
-const drrmoRoutes = require('../routes/drrmoRoutes');
-const reliefTrackingRoutes = require('../routes/reliefTrackingRoutes');
-const auditRoutes = require('../routes/auditRoutes');
-const guidelineRoutes = require("../routes/GuidelineRoutes");
-const connectionRoutes = require("../routes/connectionRoutes");
-const timeInOutRoutes = require('../routes/timeInOutRoutes');
+const userRoutes = require('./routes/userRoutes');
+const incidentRoutes = require('./routes/incidentRoutes');
+const historyRoutes = require('./routes/historyRoutes');
+const evacRoutes = require('./routes/EvacRoutes');
+const authRoutes = require('./routes/authRoutes');
+const barangayRoutes = require('./routes/barangayRoutes');
+const drrmoRoutes = require('./routes/drrmoRoutes');
+const reliefTrackingRoutes = require('./routes/reliefTrackingRoutes');
+const auditRoutes = require('./routes/auditRoutes');
+const guidelineRoutes = require("./routes/GuidelineRoutes");
+const connectionRoutes = require("./routes/connectionRoutes");
+const timeInOutRoutes = require("./routes/timeInOutRoutes");
 
 const app = express();
 
