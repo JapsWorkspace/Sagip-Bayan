@@ -117,13 +117,12 @@ mongoose.connect(process.env.MONGO_URI)
 // Serve React frontend (production)
 // --------------------
 if (process.env.NODE_ENV === "production") {
-  // __dirname = MyApp/server
   const buildPath = path.join(__dirname, "..", "tests", "build");
   app.use(express.static(buildPath));
 
-  app.get("/*", (req, res) => {
+  app.use((req, res) => {
   res.sendFile(path.join(buildPath, "index.html"));
-  });
+});
 }
 
 // --------------------
