@@ -1,10 +1,10 @@
+// screens/Guidelines.jsx
 import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   FlatList,
   ActivityIndicator,
-  StyleSheet,
   TouchableOpacity,
   Image,
   Linking,
@@ -12,7 +12,10 @@ import {
 } from "react-native";
 import axios from "axios";
 
-export default function GuidelinesListScreen() {
+// ✅ import the separated design
+import styles, { COLORS } from "../Designs/Guidelines";
+
+export default function GuidelinesListScreen({ navigation }) {
   const [guidelines, setGuidelines] = useState([]);
   const [filteredGuidelines, setFilteredGuidelines] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -34,13 +37,8 @@ export default function GuidelinesListScreen() {
   const fetchGuidelines = async () => {
     try {
       setLoading(true);
-
       let url = BASE_URL;
-
-      if (selectedCategory !== "all") {
-        url = `${BASE_URL}?category=${selectedCategory}`;
-      }
-
+      if (selectedCategory !== "all") url = `${BASE_URL}?category=${selectedCategory}`;
       const response = await axios.get(url);
       setGuidelines(response.data);
       setFilteredGuidelines(response.data);
@@ -53,24 +51,16 @@ export default function GuidelinesListScreen() {
 
   const handleSearch = (text) => {
     setSearchText(text);
-
     if (text.trim() === "") {
       setFilteredGuidelines(guidelines);
       setSuggestions([]);
       return;
     }
-
     const filtered = guidelines.filter((item) =>
-      item.title.toLowerCase().includes(text.toLowerCase())
+      (item.title || "").toLowerCase().includes(text.toLowerCase())
     );
-
     setFilteredGuidelines(filtered);
-
-    // Auto-complete suggestions (top 5)
-    const autoSuggestions = filtered
-      .map((item) => item.title)
-      .slice(0, 5);
-
+    const autoSuggestions = filtered.map((item) => item.title).slice(0, 5);
     setSuggestions(autoSuggestions);
   };
 
@@ -83,28 +73,33 @@ export default function GuidelinesListScreen() {
     <View style={styles.card}>
       <Text style={styles.title}>{item.title}</Text>
 
-      <Text>Category: {item.category}</Text>
-      <Text>Status: {item.status}</Text>
-      <Text>Priority: {item.priorityLevel}</Text>
+      {/* meta */}
+      <View style={styles.metaRow}>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaText}>Category: {item.category}</Text>
+        </View>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaText}>Status: {item.status}</Text>
+        </View>
+        <View style={styles.metaPill}>
+          <Text style={styles.metaText}>Priority: {item.priorityLevel}</Text>
+        </View>
+      </View>
 
-      <Text style={{ marginTop: 5 }}>{item.description}</Text>
+      {!!item.description && <Text style={styles.desc}>{item.description}</Text>}
 
       {item.attachments?.length > 0 && (
         <View style={{ marginTop: 10 }}>
-          <Text style={{ fontWeight: "bold" }}>Attachments:</Text>
-
+          <Text style={styles.attachHeader}>Attachments:</Text>
           {item.attachments.map((file, index) =>
-            file.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i) ? (
+            /\.(jpg|jpeg|png|gif)$/i.test(file.fileUrl) ? (
               <Image
                 key={index}
                 source={{ uri: file.fileUrl }}
-                style={{ width: 120, height: 120, marginTop: 5 }}
+                style={{ width: 120, height: 120, marginTop: 6, borderRadius: 8 }}
               />
             ) : (
-              <TouchableOpacity
-                key={index}
-                onPress={() => Linking.openURL(file.fileUrl)}
-              >
+              <TouchableOpacity key={index} onPress={() => Linking.openURL(file.fileUrl)}>
                 <Text style={styles.link}>{file.fileName}</Text>
               </TouchableOpacity>
             )
@@ -120,123 +115,65 @@ export default function GuidelinesListScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Guidelines</Text>
-
-      {/* 🔎 SEARCH BAR */}
-      <TextInput
-        style={styles.searchInput}
-        placeholder="Search by title..."
-        value={searchText}
-        onChangeText={handleSearch}
-      />
-
-      {/* 🔥 AUTO-COMPLETE DROPDOWN */}
-      {suggestions.length > 0 && (
-        <View style={styles.suggestionsContainer}>
-          {suggestions.map((title, index) => (
-            <TouchableOpacity
-              key={index}
-              onPress={() => selectSuggestion(title)}
-              style={styles.suggestionItem}
-            >
-              <Text>{title}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-      )}
-
-      {/* CATEGORY FILTER */}
-      <View style={styles.filterContainer}>
-        {categories.map((cat) => (
-          <TouchableOpacity
-            key={cat}
-            style={[
-              styles.filterButton,
-              selectedCategory === cat && styles.selectedFilter,
-            ]}
-            onPress={() => setSelectedCategory(cat)}
-          >
-            <Text
-              style={{
-                color: selectedCategory === cat ? "#fff" : "#000",
-              }}
-            >
-              {cat.toUpperCase()}
-            </Text>
+      <View style={styles.phone}>
+        {/* ---------- Header with Back ---------- */}
+        <View style={styles.headerRow}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <View style={styles.backGlyph} />
           </TouchableOpacity>
-        ))}
-      </View>
+          <Text style={styles.headerTitle}>Guidelines</Text>
+        </View>
 
-      <FlatList
-        data={filteredGuidelines}
-        keyExtractor={(item) => item._id}
-        renderItem={renderItem}
-        contentContainerStyle={{ paddingBottom: 50 }}
-      />
+        {/* ---------- Search ---------- */}
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Search by title..."
+          value={searchText}
+          onChangeText={handleSearch}
+          placeholderTextColor={COLORS.placeholder}
+        />
+
+        {/* Suggestions */}
+        {suggestions.length > 0 && (
+          <View style={styles.suggestionsContainer}>
+            {suggestions.map((title, index) => (
+              <TouchableOpacity
+                key={index}
+                onPress={() => selectSuggestion(title)}
+                style={styles.suggestionItem}
+              >
+                <Text>{title}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* ---------- Category chips ---------- */}
+        <View style={styles.filterContainer}>
+          {categories.map((cat) => {
+            const active = selectedCategory === cat;
+            return (
+              <TouchableOpacity
+                key={cat}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => setSelectedCategory(cat)}
+              >
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {cat.toUpperCase()}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {/* ---------- List ---------- */}
+        <FlatList
+          data={filteredGuidelines}
+          keyExtractor={(item) => item._id}
+          renderItem={renderItem}
+          contentContainerStyle={{ paddingBottom: 24 }}
+        />
+      </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 15,
-  },
-  header: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-  searchInput: {
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 5,
-  },
-  suggestionsContainer: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#ccc",
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  suggestionItem: {
-    padding: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#eee",
-  },
-  filterContainer: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: 15,
-  },
-  filterButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#ccc",
-    marginRight: 8,
-    marginBottom: 8,
-  },
-  selectedFilter: {
-    backgroundColor: "#007bff",
-    borderColor: "#007bff",
-  },
-  card: {
-    backgroundColor: "#f2f2f2",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: "bold",
-  },
-  link: {
-    color: "#007bff",
-    textDecorationLine: "underline",
-    marginTop: 5,
-  },
-});
