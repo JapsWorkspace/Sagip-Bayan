@@ -1,19 +1,35 @@
-/* ===== Slim header with tunable logo size ===== */
+/* ========= Theme tokens (align with Dashboard.css) ========= */
+:root {
+  --header-green: #062e17;   /* dark matcha */
+  --brand-yellow: #F4C20D;   /* gold */
+  --ink: #0B1D19;
+
+  --shadow-1: 0 6px 16px rgba(0,0,0,.08);
+}
+
+/* ========= Header (matched to Dashboard header) ========= */
 .app-header {
-  --logo-size: 120px;           /* ← ADJUST HERE (e.g., 28px, 32px, 36px) */
-  height: 56px;                /* header height; raise to 60 if needed */
+  /* height similar to dashboard; adjust if you make header taller in Dashboard */
+  --logo-size: 44px;
+
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 16px;
-  background: #30415d;
-  color: #fff;
+
+  height: 64px;                 /* matches Dashboard’s visual rhythm */
+  padding: 0 28px;              /* same horizontal padding */
   box-sizing: border-box;
-  padding-left: 170px;
-  padding-right: 170px;
+
+  background: var(--header-green);
+  color: #fff;
+  box-shadow: var(--shadow-1);
 }
 
-/* left cluster */
+/* left cluster matches dashboard brand-left */
 .header-left {
   display: flex;
   align-items: center;
@@ -21,7 +37,6 @@
   min-width: 0;
 }
 
-/* fixed box controls the visible footprint */
 .logo-wrap {
   width: var(--logo-size);
   height: var(--logo-size);
@@ -30,31 +45,60 @@
   border-radius: 4px; /* optional */
 }
 
-/* ensure the image fills the wrapper */
 .logo-wrap > img.logo {
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;   /* use 'cover' if you want it tighter */
+  object-fit: contain;          /* keep logo legible */
 }
 
-/* 🔧 If an old rule is capping the logo, this wins */
-.app-header .header-left .logo-wrap > img.logo {
-  max-width: var(--logo-size) !important;
-  max-height: var(--logo-size) !important;
-}
+/* Brand text (same as Dashboard header) */
+.brand-text { display: flex; flex-direction: column; line-height: 1.05; }
+.brand-name { color: #fff; font-weight: 900; letter-spacing: .4px; font-size: 16px; }
+.brand-sub  { color: var(--brand-yellow); font-weight: 900; font-size: 12px; letter-spacing: .6px; }
 
-/* right cluster unchanged */
+/* right cluster */
 .header-right { position: relative; display: flex; align-items: center; }
-.user-menu { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 6px; transition: background .2s; }
-.user-menu:hover { background: rgba(255,255,255,.1); }
-.triangle { font-size: 10px; }
 
-.dropdown {
-  position: absolute; right: 0; top: 110%;
-  background: #fff; color: #111;
-  min-width: 180px; border-radius: 8px; overflow: hidden;
-  box-shadow: 0 8px 20px rgba(0,0,0,.15); border: 1px solid #e5e7eb; z-index: 1000;
+.user-menu {
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: background .2s ease;
+  font-weight: 700;
 }
-.dropdown button { width: 100%; padding: 10px 14px; border: 0; background: none; text-align: left; cursor: pointer; font-size: 14px; color: #333; }
+.user-menu:hover { background: rgba(255,255,255,.10); }
+.triangle { font-size: 10px; opacity: .9; }
+
+/* dropdown */
+.dropdown {
+  position: absolute; right: 0; top: calc(100% + 8px);
+  background: #fff; color: #111;
+  min-width: 200px; border-radius: 10px; overflow: hidden;
+  box-shadow: 0 12px 24px rgba(0,0,0,.20); border: 1px solid #e5e7eb; z-index: 1000;
+}
+.dropdown button {
+  width: 100%; padding: 12px 14px; border: 0; background: none; 
+  text-align: left; cursor: pointer; font-size: 14px; color: #333;
+}
 .dropdown button:hover { background: #f1f5f9; }
+.dropdown .logout-btn { color: #7a1414; font-weight: 800; }
+
+/* ========= Responsiveness ========= */
+@media (max-width: 768px) {
+  .app-header { padding: 0 16px; height: 60px; }
+  .app-header { --logo-size: 40px; }
+  .brand-name { font-size: 15px; }
+  .brand-sub { font-size: 11px; }
+}
+
+@media (max-width: 480px) {
+  .app-header { padding: 0 12px; height: 58px; }
+  .app-header { --logo-size: 36px; }
+  .brand-name { font-size: 14px; }
+  .brand-sub { font-size: 10px; }
+}

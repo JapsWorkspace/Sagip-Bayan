@@ -9,39 +9,37 @@ import {
   useMap,
 } from "react-leaflet";
 import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
-const PASIG_CENTER = [14.5764, 121.0851];
+const PASIG_CENTER = [15.3382, 120.9056];
 
-// Colored icons
+/* ---------------- Icons (unchanged) ---------------- */
 
 const blueIcon = new L.Icon({
   iconUrl: "https://maps.google.com/mapfiles/ms/icons/blue-dot.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
 const greenIcon = new L.Icon({
   iconUrl: "https://maps.google.com/mapfiles/ms/icons/green-dot.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
 const orangeIcon = new L.Icon({
   iconUrl: "https://maps.google.com/mapfiles/ms/icons/orange-dot.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
 const redIcon = new L.Icon({
   iconUrl: "https://maps.google.com/mapfiles/ms/icons/red-dot.png",
   iconSize: [32, 32],
   iconAnchor: [16, 32],
-  popupAnchor: [0, -32],
 });
 
+/* Keep your existing updater (center/zoom when position/zoom changes) */
 function MapUpdater({ position, zoom }) {
   const map = useMap();
   useEffect(() => {
@@ -50,7 +48,7 @@ function MapUpdater({ position, zoom }) {
   return null;
 }
 
-// Map click handler
+/* Keep your existing click handler for Add Place pick */
 function MapClickHandler({ setPosition, setPlaceName, onSelectLocation }) {
   useMapEvents({
     click(e) {
@@ -63,18 +61,17 @@ function MapClickHandler({ setPosition, setPlaceName, onSelectLocation }) {
         })
         .then((res) => {
           let short = "Unknown Location";
-          if (res.data.name) {
-            short = res.data.name;
-          } else if (res.data.address) {
-            const addr = res.data.address;
+          if (res.data.name) short = res.data.name;
+          else if (res.data.address) {
+            const a = res.data.address;
             const street =
-              addr.road ||
-              addr.pedestrian ||
-              addr.suburb ||
-              addr.village ||
+              a.road ||
+              a.pedestrian ||
+              a.suburb ||
+              a.village ||
               "Unknown Street";
             const city =
-              addr.city || addr.town || addr.village || addr.county || "Unknown City";
+              a.city || a.town || a.village || a.county || "Unknown City";
             short = `${street}, ${city}`;
           }
 
@@ -90,6 +87,53 @@ function MapClickHandler({ setPosition, setPlaceName, onSelectLocation }) {
   return null;
 }
 
+/* Bridge: listen for window.dispatchEvent(new CustomEvent('emap:flyTo', {detail:{lat,lng,zoom}})) */
+function MapBusBridge() {
+  const map = useMap();
+  useEffect(() => {
+    const handler = (e) => {
+      const { lat, lng, zoom = 17 } = e.detail || {};
+      if (typeof lat === "number" && typeof lng === "number") {
+        map.flyTo([lat, lng], zoom, { duration: 0.6 });
+      }
+    };
+    window.addEventListener("emap:flyTo", handler);
+    return () => window.removeEventListener("emap:flyTo", handler);
+  }, [map]);
+  return null;
+}
+
+/* A small helper so a marker can make the map fly to itself on click */
+function FlyToOnClickMarker({ place, icon, onSelectLocation }) {
+  const map = useMap();
+  const lat = Number(place.latitude);
+  const lng = Number(place.longitude);
+
+  return (
+    <Marker
+      position={[lat, lng]}
+      icon={icon}
+      eventHandlers={{
+        click: () => {
+          map.flyTo([lat, lng], 17, { duration: 0.6 });
+          onSelectLocation?.(place.location || "Unknown Location", lat, lng);
+        },
+      }}
+    >
+      <Popup>
+        <strong>{place.name}</strong>
+        <br />
+        {place.location}
+        <br />
+        Capacity: {place.capacity}
+        <br />
+        Status: {place.capacityStatus}
+      </Popup>
+    </Marker>
+  );
+}
+
+/* =================== MAP COMPONENT (unchanged props) =================== */
 const Map = ({ onSelectLocation, places = [] }) => {
   const [position, setPosition] = useState(PASIG_CENTER);
   const [zoom, setZoom] = useState(13);
@@ -101,46 +145,42 @@ const Map = ({ onSelectLocation, places = [] }) => {
       zoom={zoom}
       style={{ height: "100%", width: "100%" }}
     >
+      <MapBusBridge />
+
       <MapUpdater position={position} zoom={zoom} />
+
       <MapClickHandler
         setPosition={setPosition}
         setPlaceName={setPlaceName}
         onSelectLocation={onSelectLocation}
       />
+
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution="&copy; OpenStreetMap contributors"
+        attribution="© OpenStreetMap contributors"
       />
 
-      {/* Clicked location */}
+      {/* Clicked pin for Add Place picking */}
       <Marker position={position} icon={blueIcon}>
         <Popup>{placeName}</Popup>
       </Marker>
 
-      {/* Existing evacuation places */}
+      {/* Evacuation centers */}
       {places.map((place) => {
         if (place.latitude === undefined || place.longitude === undefined)
           return null;
 
-        // Marker icon based on capacityStatus
-        let icon = greenIcon; // default available
+        let icon = greenIcon;
         if (place.capacityStatus === "limited") icon = orangeIcon;
         else if (place.capacityStatus === "full") icon = redIcon;
 
         return (
-          <Marker key={place._id} position={[place.latitude, place.longitude]} icon={icon}>
-            <Popup>
-              <strong>{place.name}</strong>
-              <br />
-              {place.location}
-              <br />
-              Capacity: {place.capacity}
-              <br />
-              Status: {place.capacityStatus}
-              <br />
-              Lat: {place.latitude.toFixed(6)}, Lng: {place.longitude.toFixed(6)}
-            </Popup>
-          </Marker>
+          <FlyToOnClickMarker
+            key={place._id}
+            place={place}
+            icon={icon}
+            onSelectLocation={onSelectLocation}
+          />
         );
       })}
     </MapContainer>

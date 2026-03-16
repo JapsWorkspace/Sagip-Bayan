@@ -48,6 +48,14 @@ const EManagement = () => {
 
   const nameRef = useRef(null);
 
+  /* ====== Slider state & History search (ADDED) ====== */
+  const [panelView, setPanelView] = useState("main"); // 'main' | 'history'
+  const [historyQuery, setHistoryQuery] = useState("");
+
+  /* ====== History sorting (ADDED) ====== */
+  const [historySortBy, setHistorySortBy] = useState("date"); // 'date' | 'action' | 'place'
+  const [historySortDir, setHistorySortDir] = useState("desc"); // 'asc' | 'desc'
+
   /* ================= DERIVED ================= */
   const selectedPlace = useMemo(
     () => places.find((p) => p._id === selectedId) || null,
@@ -70,17 +78,42 @@ const EManagement = () => {
     setCapacityDisplay(Number(selectedPlace.capacity) || 0);
   }, [selectedPlace]);
 
-  // ESC behavior for modal and pick mode
+  /* ============== NEW: ZOOM to selected place (panel click) ============== */
+  useEffect(() => {
+    if (!selectedPlace) return;
+    const lat = Number(selectedPlace.latitude);
+    const lng = Number(selectedPlace.longitude);
+    if (Number.isNaN(lat) || Number.isNaN(lng)) return;
+
+    // Broadcast to the map; MapBusBridge will flyTo(...)
+    window.dispatchEvent(
+      new CustomEvent("emap:flyTo", {
+        detail: { lat, lng, zoom: 17 },
+      })
+    );
+  }, [selectedPlace]);
+
+  /* ================= GLOBAL KEYS ================= */
   useEffect(() => {
     const onKey = (e) => {
+      const tag =
+        (e.target && e.target.tagName) || document.activeElement?.tagName;
+      const isField =
+        tag === "INPUT" ||
+        tag === "TEXTAREA" ||
+        tag === "SELECT" ||
+        e.target?.isContentEditable;
+      if (isField) return;
+
       if (e.key === "Escape") {
         if (showAddForm) setShowAddForm(false);
         if (pickMode) setPickMode(false);
+        if (panelView === "history") setShowHistory(false); // close history on ESC
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showAddForm, pickMode]);
+  }, [showAddForm, pickMode, panelView]);
 
   useEffect(() => {
     if (showAddForm && nameRef.current) {
@@ -88,6 +121,17 @@ const EManagement = () => {
       return () => clearTimeout(t);
     }
   }, [showAddForm]);
+
+  /* ===== Sync slider with your existing showHistory toggle (ADDED) ===== */
+  useEffect(() => {
+    if (showHistory) {
+      fetchHistory();
+      setHistoryQuery("");
+      setPanelView("history");
+    } else {
+      setPanelView("main");
+    }
+  }, [showHistory]);
 
   /* ================= API ================= */
   const fetchPlaces = () => {
@@ -115,7 +159,7 @@ const EManagement = () => {
   };
 
   /* ================= FORM ================= */
-  const sanitizeText = (value) => value.replace(/<[^>]*>?/gm, "").trim();
+  const sanitizeText = (value) => value.replace(/<[^>]*>?/gm, "");
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
@@ -208,386 +252,543 @@ const EManagement = () => {
       .finally(() => setLoading(false));
   };
 
-  /* ================= MODAL ================= */
-  const AddPlaceModal = () => {
-    if (!showAddForm) return null;
-    return createPortal(
-      <div
-        className="evac-modal"
-        style={{
-          position: "fixed",
-          inset: 0,
-          background: "rgba(15,23,42,0.4)",
-          display: "grid",
-          placeItems: "center",
-          zIndex: 1000,
-        }}
-      >
-        <div
-          className="evac-modal-card"
-          style={{
-            width: "min(560px, 92vw)",
-            maxHeight: "min(84vh, 800px)",
-            overflow: "hidden",
-            background: "#ffffff",
-            borderRadius: 12,
-            border: "1px solid #e5e7eb",
-            padding: 12,
-            boxShadow: "0 14px 40px rgba(0,0,0,0.18)",
-          }}
-        >
-          <div
-            className="modal-header"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              padding: "6px 2px 10px 2px",
-              borderBottom: "1px solid #e5e7eb",
-            }}
-          >
-            <div
-              className="modal-title"
-              style={{ fontSize: 16, fontWeight: 800, color: "#1f2937" }}
-            >
-              Add Evacuation Place
-            </div>
-            <button
-              onClick={() => setShowAddForm(false)}
-              style={{
-                border: "none",
-                background: "transparent",
-                fontSize: 18,
-                cursor: "pointer",
-              }}
-            >
-              ✕
-            </button>
-          </div>
+  /* ===== Filter + Sort the history (ADDED) ===== */
+  const historySorted = useMemo(() => {
+    const q = historyQuery.trim().toLowerCase();
+    const filtered = history.filter((h) => {
+      if (!q) return true;
+      return (
+        String(h.action ?? "").toLowerCase().includes(q) ||
+        String(h.placeName ?? "").toLowerCase().includes(q) ||
+        String(h.details ?? "").toLowerCase().includes(q)
+      );
+    });
 
-          <div
-            className="modal-body"
-            style={{
-              display: "grid",
-              gap: 12,
-              paddingTop: 12,
-              maxHeight: "calc(84vh - 120px)",
-              overflowY: "auto",
-            }}
-          >
-            <div>
-              <label>Place Name</label>
-              <textarea
-                ref={nameRef}
-                name="name"
-                rows={2}
-                value={formData.name}
-                onChange={handleFieldChange}
-              />
-            </div>
-            <div>
-              <label>Location</label>
-              <textarea
-                name="location"
-                rows={2}
-                value={formData.location}
-                onChange={handleFieldChange}
-              />
-            </div>
-            <div>
-              <label>Capacity</label>
-              <input
-                name="capacity"
-                type="number"
-                value={formData.capacity}
-                onChange={handleFieldChange}
-              />
-            </div>
-            <div>
-              <label>Latitude / Longitude</label>
-              <input
-                type="text"
-                readOnly
-                value={
-                  formData.latitude !== null && formData.longitude !== null
-                    ? `${Number(formData.latitude).toFixed(6)}, ${Number(
-                        formData.longitude
-                      ).toFixed(6)}`
-                    : ""
-                }
-                placeholder="Click on the map to set coordinates"
-              />
-            </div>
-          </div>
+    const cmp = (a, b) => {
+      let vA, vB, result = 0;
+      if (historySortBy === "date") {
+        vA = new Date(a.createdAt).getTime() || 0;
+        vB = new Date(b.createdAt).getTime() || 0;
+        result = vA - vB;
+      } else if (historySortBy === "action") {
+        vA = String(a.action ?? "");
+        vB = String(b.action ?? "");
+        result = vA.localeCompare(vB, undefined, { sensitivity: "base" });
+      } else {
+        // 'place'
+        vA = String(a.placeName ?? "");
+        vB = String(b.placeName ?? "");
+        result = vA.localeCompare(vB, undefined, { sensitivity: "base" });
+      }
+      return historySortDir === "asc" ? result : -result;
+    };
 
-          <div
-            className="modal-actions"
-            style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
-          >
-            <button className="btn btn-back" onClick={() => setShowAddForm(false)}>
-              Cancel
-            </button>
-            <button
-              className="btn btn-update"
-              onClick={handleSubmitAdd}
-              disabled={loading}
-            >
-              {loading ? "Submitting..." : "Save Place"}
-            </button>
-          </div>
-        </div>
-      </div>,
-      document.body
-    );
-  };
-
-  /* ================= SIDEBAR ================= */
-  const EvacSidebar = React.memo(() => (
-    <aside className="evac-panel">
-      {/* FULL SIDEBAR REMAINS INTACT */}
-      <div className="evac-brand">
-        <img
-          src="/logo-pasig.svg"
-          alt="Pasig"
-          className="evac-brand-logo"
-          onError={(e) => (e.currentTarget.style.display = "none")}
-        />
-        <div className="evac-brand-title">Evacuation Center Management</div>
-      </div>
-
-      <div className="evac-search">
-        <input
-          type="text"
-          placeholder="Search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-      </div>
-
-      <div className="evac-list">
-        {filteredPlaces.length === 0 ? (
-          <div className="evac-empty">No places found.</div>
-        ) : (
-          filteredPlaces.map((p) => (
-            <label
-              key={p._id}
-              className={`evac-list-item ${selectedId === p._id ? "selected" : ""}`}
-            >
-              <input
-                type="radio"
-                name="selectedPlace"
-                checked={selectedId === p._id}
-                onChange={() => setSelectedId(p._id)}
-              />
-              <span className="evac-list-name">{p.name}</span>
-              <span className="evac-list-loc">{p.location}</span>
-              <span
-                className={`evac-dot ${
-                  (p.capacityStatus || "available") === "available"
-                    ? "dot-green"
-                    : (p.capacityStatus || "available") === "limited"
-                    ? "dot-orange"
-                    : "dot-red"
-                }`}
-              />
-            </label>
-          ))
-        )}
-      </div>
-
-      <div className="evac-legend">
-        <span className="legend-title">Available</span>
-        <span className="legend-dot dot-green" />
-        <span className="legend-title">Limited</span>
-        <span className="legend-dot dot-orange" />
-        <span className="legend-title">Full</span>
-        <span className="legend-dot dot-red" />
-      </div>
-
-      <div className="evac-capacity">
-        <button
-          className="cap-btn"
-          onClick={() =>
-            setCapacityDisplay((n) => Math.max(0, (Number(n) || 0) - 1))
-          }
-        >
-          −
-        </button>
-        <input
-          className="cap-input"
-          type="number"
-          value={capacityDisplay}
-          onChange={(e) => setCapacityDisplay(e.target.value)}
-        />
-        <button
-          className="cap-btn"
-          onClick={() => setCapacityDisplay((n) => (Number(n) || 0) + 1)}
-        >
-          +
-        </button>
-      </div>
-
-      <div className="evac-status">
-        <label className="status-label">Status</label>
-        <div className="status-row">
-          {["available", "limited", "full"].map((s) => (
-            <label key={s} className="status-pill">
-              <input
-                type="radio"
-                name="statusChoice"
-                checked={statusChoice === s}
-                onChange={() => setStatusChoice(s)}
-              />
-              <span className="pill-text">
-                {s.charAt(0).toUpperCase() + s.slice(1)}
-              </span>
-            </label>
-          ))}
-        </div>
-      </div>
-
-      <div className="evac-selected">
-        <label>Selected Place</label>
-        <input
-          readOnly
-          value={
-            selectedPlace
-              ? `${selectedPlace.name} — ${selectedPlace.location}`
-              : ""
-          }
-          placeholder="(none)"
-        />
-      </div>
-
-      <div className="evac-notes">
-        <label>Extra notes</label>
-        <textarea
-          rows={3}
-          placeholder="Add notes (local only)"
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
-
-      <div className="evac-actions">
-        <button className="btn btn-back" onClick={() => navigate(-1)}>
-          BACK
-        </button>
-        <button
-          className="btn btn-update"
-          disabled={!selectedId}
-          onClick={async () => {
-            if (!selectedId) {
-              alert("Select a place first");
-              return;
-            }
-            await updateStatus(selectedId, statusChoice);
-          }}
-        >
-          UPDATE
-        </button>
-      </div>
-
-      <div className="evac-utils">
-        <button className="link-btn" onClick={handleStartPick}>
-          + Add Place
-        </button>
-        <button
-          className="link-btn"
-          onClick={() => {
-            setShowHistory((v) => !v);
-            fetchHistory();
-          }}
-        >
-          {showHistory ? "Hide History" : "Show History"}
-        </button>
-        {selectedPlace && (
-          <button
-            className="link-btn danger"
-            onClick={() => deletePlace(selectedPlace._id)}
-          >
-            Delete Selected
-          </button>
-        )}
-      </div>
-
-      {showHistory && history.length > 0 && (
-        <div className="evac-history">
-          <div className="history-title">History</div>
-          <div className="history-list">
-            {history.map((h) => (
-              <div className="history-item" key={h._id}>
-                <div className="history-main">
-                  <span className="history-action">{h.action}</span>
-                  <span className="history-place">• {h.placeName}</span>
-                </div>
-                <div className="history-sub">
-                  <span className="history-details">{h.details}</span>
-                  <span className="history-date">
-                    {new Date(h.createdAt).toLocaleString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </aside>
-  ));
+    return filtered.slice().sort(cmp);
+  }, [history, historyQuery, historySortBy, historySortDir]);
 
   /* ================= RENDER ================= */
   return (
     <>
       <Header />
 
-      <div className="evac-page">
-        <div
-          className="evac-map"
-          style={{ cursor: pickMode ? "crosshair" : "default", position: "relative" }}
-        >
-          <Map onSelectLocation={handleMapSelectLocation} places={places} />
-
-          {pickMode && (
-            <div
-              style={{
-                position: "absolute",
-                top: 16,
-                right: 16,
-                background: "rgba(255,255,255,0.95)",
-                border: "1px solid #cbd5e1",
-                borderRadius: 8,
-                padding: "10px 12px",
-                boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                zIndex: 10,
-                pointerEvents: "none",
-              }}
+      {/* Lock the entire screen area (under header). Page doesn't scroll. */}
+      <div className="evac-screen-lock">
+        {/* Toolbar with Back + Refresh only */}
+        <div className="evac-toolbar">
+          <div className="evac-toolbar-left">
+            <strong>Evacuation Center Management</strong>
+          </div>
+          <div className="evac-toolbar-right">
+            <button
+              className="tbtn"
+              onClick={() => navigate(-1)}
+              title="Back"
             >
-              <span style={{ fontWeight: 700 }}>Click on the map to set location…</span>
-              <button
-                onClick={() => setPickMode(false)}
-                style={{
-                  border: "1px solid #cbd5e1",
-                  background: "#fff",
-                  borderRadius: 6,
-                  height: 30,
-                  padding: "0 10px",
-                  cursor: "pointer",
-                  pointerEvents: "auto",
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          )}
+              ← Back
+            </button>
+            <button
+              className="tbtn"
+              onClick={fetchPlaces}
+              title="Refresh list"
+            >
+              ↻ Refresh
+            </button>
+          </div>
         </div>
 
-        <EvacSidebar />
+        {/* Split canvas: map (no scroll) | panel (only scrollable area) */}
+        <div className="evac-page">
+          {/* Map */}
+          <div
+            className="evac-map"
+            style={{ cursor: pickMode ? "crosshair" : "default", position: "relative" }}
+          >
+            <Map onSelectLocation={handleMapSelectLocation} places={places} />
+
+            {pickMode && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: 16,
+                  right: 16,
+                  background: "rgba(255,255,255,0.95)",
+                  border: "1px solid #cbd5e1",
+                  borderRadius: 8,
+                  padding: "10px 12px",
+                  boxShadow: "0 2px 12px rgba(0,0,0,0.08)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  zIndex: 10,
+                  pointerEvents: "none",
+                }}
+              >
+                <span style={{ fontWeight: 700 }}>
+                  Click on the map to set location…
+                </span>
+                <button
+                  onClick={() => setPickMode(false)}
+                  style={{
+                    border: "1px solid #cbd5e1",
+                    background: "#fff",
+                    borderRadius: 6,
+                    height: 30,
+                    padding: "0 10px",
+                    cursor: "pointer",
+                    pointerEvents: "auto",
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* ===== Right Panel (slider; views own the scroll) ===== */}
+          <aside className={`evac-panel ${panelView === "history" ? "history-open" : ""}`}>
+            <div className="panel-views">
+              {/* ===== MAIN VIEW (original content kept) ===== */}
+              <section className="view-main">
+                {/* Brand */}
+                <div className="evac-brand">
+                  <img
+                    src="/logo-pasig.svg"
+                    alt="Pasig"
+                    className="evac-brand-logo"
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                  <div className="evac-brand-title">Evacuation Center Management</div>
+                </div>
+
+                {/* Search */}
+                <div className="evac-search">
+                  <input
+                    type="text"
+                    placeholder="Search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* List (scrolls; doesn’t eat the whole panel) */}
+                <div className="evac-list">
+                  {filteredPlaces.length === 0 ? (
+                    <div className="evac-empty">No places found.</div>
+                  ) : (
+                    filteredPlaces.map((p) => (
+                      <label
+                        key={p._id}
+                        className={`evac-list-item ${selectedId === p._id ? "selected" : ""}`}
+                      >
+                        <input
+                          type="radio"
+                          name="selectedPlace"
+                          checked={selectedId === p._id}
+                          onChange={() => setSelectedId(p._id)}
+                        />
+                        <span className="evac-list-name">{p.name}</span>
+                        <span className="evac-list-loc">{p.location}</span>
+                        <span
+                          className={`evac-dot ${
+                            (p.capacityStatus || "available") === "available"
+                              ? "dot-green"
+                              : (p.capacityStatus || "available") === "limited"
+                              ? "dot-orange"
+                              : "dot-red"
+                          }`}
+                        />
+                      </label>
+                    ))
+                  )}
+                </div>
+
+                {/* Capacity stepper */}
+                <div className="evac-capacity">
+                  <button
+                    className="cap-btn"
+                    onClick={() =>
+                      setCapacityDisplay((n) => Math.max(0, (Number(n) || 0) - 1))
+                    }
+                  >
+                    −
+                  </button>
+                  <input
+                    className="cap-input"
+                    type="number"
+                    value={capacityDisplay}
+                    onChange={(e) => setCapacityDisplay(e.target.value)}
+                    autoComplete="off"
+                  />
+                  <button
+                    className="cap-btn"
+                    onClick={() => setCapacityDisplay((n) => (Number(n) || 0) + 1)}
+                  >
+                    +
+                  </button>
+                </div>
+
+                {/* Status selector */}
+                <div className="evac-status">
+                  <label className="status-label">Status</label>
+                  <div className="status-row">
+                    {["available", "limited", "full"].map((s) => (
+                      <label key={s} className="status-pill">
+                        <input
+                          type="radio"
+                          name="statusChoice"
+                          checked={statusChoice === s}
+                          onChange={() => setStatusChoice(s)}
+                        />
+                        <span className="pill-text">
+                          {s.charAt(0).toUpperCase() + s.slice(1)}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Selected & Notes */}
+                <div className="evac-selected">
+                  <label>Selected Place</label>
+                  <input
+                    readOnly
+                    value={
+                      selectedPlace
+                        ? `${selectedPlace.name} — ${selectedPlace.location}`
+                        : ""
+                    }
+                    placeholder="(none)"
+                  />
+                </div>
+
+                <div className="evac-notes">
+                  <label>Extra notes</label>
+                  <textarea
+                    rows={3}
+                    placeholder="Add notes (local only)"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="evac-actions">
+                  <button className="btn btn-back" onClick={() => navigate(-1)}>
+                    BACK
+                  </button>
+                  <button
+                    className="btn btn-update"
+                    disabled={!selectedId}
+                    onClick={async () => {
+                      if (!selectedId) {
+                        alert("Select a place first");
+                        return;
+                      }
+                      await updateStatus(selectedId, statusChoice);
+                    }}
+                  >
+                    UPDATE
+                  </button>
+                </div>
+
+                {/* Utilities — Add Place & History (UNCHANGED) */}
+                <div className="evac-utils">
+                  <button className="link-btn" onClick={handleStartPick}>
+                    + Add Place
+                  </button>
+                  <button
+                    className="link-btn"
+                    onClick={() => {
+                      setShowHistory((v) => !v);
+                      fetchHistory();
+                    }}
+                  >
+                    {showHistory ? "Hide History" : "Show History"}
+                  </button>
+
+                  {selectedPlace && (
+                    <button
+                      className="link-btn danger"
+                      onClick={() => deletePlace(selectedPlace._id)}
+                    >
+                      Delete Selected
+                    </button>
+                  )}
+                </div>
+
+                {/* Your original inline History block (kept) */}
+                {showHistory && history.length > 0 && (
+                  <div className="evac-history">
+                    <div className="history-title">History</div>
+                    <div className="history-list">
+                      {history.map((h) => (
+                        <div className="history-item" key={h._id}>
+                          <div className="history-main">
+                            <span className="history-action">{h.action}</span>
+                            <span className="history-place">• {h.placeName}</span>
+                          </div>
+                          <div className="history-sub">
+                            <span className="history-details">{h.details}</span>
+                            <span className="history-date">
+                              {new Date(h.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </section>
+
+              {/* ===== HISTORY VIEW (slides in) ===== */}
+              <section className="view-history">
+                <div className="history-toolbar">
+                  <button className="tbtn tbtn-light" onClick={() => setShowHistory(false)}>
+                    ← Back
+                  </button>
+
+                  <div className="history-search">
+                    <input
+                      type="text"
+                      placeholder="Search history (action, place, details)…"
+                      value={historyQuery}
+                      onChange={(e) => setHistoryQuery(e.target.value)}
+                    />
+                  </div>
+
+                  {/* ADDED: Sort controls */}
+                  <div className="history-sort">
+                    <label>Sort by:</label>
+                    <select
+                      value={historySortBy}
+                      onChange={(e) => setHistorySortBy(e.target.value)}
+                    >
+                      <option value="date">Date</option>
+                      <option value="action">Action</option>
+                      <option value="place">Place</option>
+                    </select>
+                    <button
+                      type="button"
+                      className="sort-dir"
+                      title={`Toggle ${historySortDir === "asc" ? "descending" : "ascending"}`}
+                      onClick={() =>
+                        setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"))
+                      }
+                    >
+                      {historySortDir === "asc" ? "↑" : "↓"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Scrollable list area (won't occupy entire panel) */}
+                <div className="history-body">
+                  <div className="evac-history-panel">
+                    {historySorted.map((h) => (
+                      <div className="history-card" key={h._id}>
+                        <div className="h-row">
+                          <strong className="h-action">{h.action}</strong>
+                          <span className="h-place">• {h.placeName}</span>
+                        </div>
+                        <div className="h-sub">{h.details}</div>
+                        <div className="h-date">
+                          {h.createdAt ? new Date(h.createdAt).toLocaleString() : "-"}
+                        </div>
+                      </div>
+                    ))}
+
+                    {history.length === 0 && (
+                      <div className="evac-empty">No history yet.</div>
+                    )}
+                  </div>
+                </div>
+              </section>
+            </div>
+          </aside>
+        </div>
       </div>
 
-      <AddPlaceModal />
+      {/* Modal kept; uses existing submit handler */}
+      {showAddForm &&
+        createPortal(
+          <div
+            className="evac-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Add Evacuation Place"
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.4)",
+              display: "grid",
+              placeItems: "center",
+              zIndex: 1000,
+            }}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              if (e.key !== "Escape") e.stopPropagation();
+            }}
+          >
+            <div
+              className="evac-modal-card"
+              style={{
+                width: "min(560px, 92vw)",
+                maxHeight: "min(84vh, 800px)",
+                overflow: "hidden",
+                background: "#ffffff",
+                borderRadius: 12,
+                border: "1px solid #e5e7eb",
+                padding: 12,
+                boxShadow: "0 14px 40px rgba(0,0,0,0.18)",
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") {
+                  e.stopPropagation();
+                  setShowAddForm(false);
+                }
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="modal-header"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "6px 2px 10px 2px",
+                  borderBottom: "1px solid #e5e7eb",
+                }}
+              >
+                <div
+                  className="modal-title"
+                  style={{ fontSize: 16, fontWeight: 800, color: "#1f2937" }}
+                >
+                  Add Evacuation Place
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAddForm(false)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    fontSize: 18,
+                    cursor: "pointer",
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <form
+                noValidate
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleSubmitAdd();
+                }}
+                className="modal-form"
+                style={{
+                  display: "grid",
+                  gap: 12,
+                  paddingTop: 12,
+                  maxHeight: "calc(84vh - 120px)",
+                  overflowY: "auto",
+                }}
+                onKeyDown={(e) => {
+                  if (e.key !== "Escape") e.stopPropagation();
+                }}
+              >
+                <div className="modal-body" style={{ display: "grid", gap: 12 }}>
+                  <div>
+                    <label>Place Name</label>
+                    <textarea
+                      ref={nameRef}
+                      name="name"
+                      rows={2}
+                      value={formData.name}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label>Location</label>
+                    <textarea
+                      name="location"
+                      rows={2}
+                      value={formData.location}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div>
+                    <label>Capacity</label>
+                    <input
+                      name="capacity"
+                      type="number"
+                      value={formData.capacity}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                  </div>
+                  <div>
+                    <label>Latitude / Longitude</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={
+                        formData.latitude !== null &&
+                        formData.longitude !== null
+                          ? `${Number(formData.latitude).toFixed(6)}, ${Number(
+                              formData.longitude
+                            ).toFixed(6)}`
+                          : ""
+                      }
+                      placeholder="Click on the map to set coordinates"
+                    />
+                  </div>
+                </div>
+
+                <div
+                  className="modal-actions"
+                  style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+                >
+                  <button
+                    type="button"
+                    className="btn btn-back"
+                    onClick={() => setShowAddForm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="btn btn-update" disabled={loading}>
+                    {loading ? "Submitting..." : "Save Place"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 };
