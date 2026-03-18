@@ -33,6 +33,8 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   const countdownRef = useRef(null);
 
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+
   useEffect(() => {
     const lockInfo = JSON.parse(localStorage.getItem('adminLock')) || {};
     if (lockInfo.expiresAt && lockInfo.expiresAt > Date.now()) {
@@ -60,55 +62,65 @@ export default function Login() {
   }, []);
 
   const handleLogin = async () => {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) return alert('Please fill all fields');
-    if (role === 'admin' && isLocked) return;
+  const trimmedEmail = email.trim();
+  const trimmedPassword = password.trim();
+  if (!trimmedEmail || !trimmedPassword) return alert('Please fill all fields');
+  if (role === 'admin' && isLocked) return;
 
-    const payload = { email: trimmedEmail, password: trimmedPassword };
+  const payload = { email: trimmedEmail, password: trimmedPassword };
 
+  try {
+    const res = await fetch(`${BASE_URL}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    // DEBUG: log raw response
+    console.log("Login response status:", res.status, res.statusText);
+
+    let data;
     try {
-      const res = await fetch('http://localhost:8000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        if (role === 'admin') {
-          const attempts = adminAttempts + 1;
-          setAdminAttempts(attempts);
-
-          if (attempts >= MAX_ATTEMPTS) {
-            const expiresAt = Date.now() + LOCK_DURATION;
-            setIsLocked(true);
-            setLockMessage(`Too many failed attempts. Try again in:`);
-            setCountdown(Math.ceil(LOCK_DURATION / 1000));
-            localStorage.setItem('adminLock', JSON.stringify({ attempts: MAX_ATTEMPTS, expiresAt }));
-          } else {
-            alert(`Login failed. Attempts left: ${MAX_ATTEMPTS - attempts}`);
-          }
-        } else {
-          alert(data.message || 'Login failed');
-        }
-        return;
-      }
-
-      setUser(data);
-      localStorage.setItem('role', data.role);
-
-      if (data.role === 'admin') navigate('/admin/dashboard');
-      else if (data.role === 'drrmo') navigate('/drrmo/dashboard');
-      else navigate('/barangay/dashboard');
-
-    } catch (err) {
-      console.error("Login fetch error:", err);
-      alert("Login failed. Check server or network.");
+      data = await res.json();
+      console.log("Login response body:", data);
+    } catch (jsonErr) {
+      console.error("Failed to parse JSON:", jsonErr);
+      data = { message: "Invalid JSON response from server" };
     }
-  };
+
+    if (!res.ok) {
+      if (role === 'admin') {
+        const attempts = adminAttempts + 1;
+        setAdminAttempts(attempts);
+
+        if (attempts >= MAX_ATTEMPTS) {
+          const expiresAt = Date.now() + LOCK_DURATION;
+          setIsLocked(true);
+          setLockMessage(`Too many failed attempts. Try again in:`);
+          setCountdown(Math.ceil(LOCK_DURATION / 1000));
+          localStorage.setItem('adminLock', JSON.stringify({ attempts: MAX_ATTEMPTS, expiresAt }));
+        } else {
+          alert(`Login failed. Attempts left: ${MAX_ATTEMPTS - attempts}`);
+        }
+      } else {
+        alert(data.message || 'Login failed');
+      }
+      return;
+    }
+
+    setUser(data);
+    localStorage.setItem('role', data.role);
+
+    if (data.role === 'admin') navigate('/admin/dashboard');
+    else if (data.role === 'drrmo') navigate('/drrmo/dashboard');
+    else navigate('/barangay/dashboard');
+
+  } catch (err) {
+    console.error("Login fetch error:", err);
+    alert("Login failed. Check server or network.");
+  }
+};
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 4000);
