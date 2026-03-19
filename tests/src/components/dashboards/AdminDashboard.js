@@ -6,15 +6,6 @@ import DashboardCard from '../../components/DashboardCard';
 import '../css/DashboardCard.css';
 
 export default function AdminDashboard() {
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    const storedRole = localStorage.getItem('role');
-    if (!storedRole) {
-      console.log('No role found → redirecting to login');
-      navigate('/');
-    }
-  }, [navigate]);
 
   return (
     <div>

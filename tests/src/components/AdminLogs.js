@@ -28,12 +28,13 @@ export default function AdminLogs() {
       default: return '';
     }
   };
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
 
   const fetchWindow = async (uiPage) => {
     const reqId = ++latestReqId.current;
     setLoading(true);
     try {
-      const res = await axios.get(`http://localhost:8000/api/auth/admin/logs`, { withCredentials: true });
+      const res = await axios.get(`${BASE_URL}/api/auth/admin/logs`, { withCredentials: true });
       if (reqId !== latestReqId.current) return;
 
       const arr = Array.isArray(res.data) ? res.data.slice(0, PAGE_SIZE) : [];

@@ -9,6 +9,8 @@ const POLL_MS = 5000;
    Formatters / Mappers
    ========================= */
 
+const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+
 /** Requested Goods: supports string, array<string>, array<object>, or object map */
 function formatRequestedGoods(row) {
   const src =
@@ -127,7 +129,7 @@ export default function AuditTrail() {
   // Fetch + poll
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/audit', { credentials: 'include' });
+      const res = await fetch(`${BASE_URL}/api/audit`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to fetch audit');
       const data = await res.json();
       const arr = Array.isArray(data) ? data : [];
@@ -171,7 +173,7 @@ export default function AuditTrail() {
   const approve = async (id) => {
     setSubmitting(true);
     try {
-      // await fetch(`http://localhost:8000/api/audit/approve/${id}`, { method: 'PUT', credentials: 'include' });
+      await fetch(`${BASE_URL}/api/audit/approve/${id}`, { method: 'PUT', credentials: 'include' });
       console.log('approve', id);
       alert('Approved');
       setSelected(null);
@@ -187,7 +189,7 @@ export default function AuditTrail() {
   const decline = async (id) => {
     setSubmitting(true);
     try {
-      // await fetch(`http://localhost:8000/api/audit/decline/${id}`, { method: 'PUT', credentials: 'include' });
+      await fetch(`${BASE_URL}/api/audit/decline/${id}`, { method: 'PUT', credentials: 'include' });
       console.log('decline', id);
       alert('Declined');
       setSelected(null);
