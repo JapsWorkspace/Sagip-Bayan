@@ -4,12 +4,15 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 const session = require('express-session');
 const dotenv = require('dotenv');
-const fetch = require('node-fetch');
+const fetch = require('node-fetch'); // keep this if you use fetch
 const path = require('path');
 const fs = require('fs');
 
 dotenv.config();
 
+// --------------------
+// Routes
+// --------------------
 const userRoutes = require('./routes/userRoutes');
 const incidentRoutes = require('./routes/incidentRoutes');
 const historyRoutes = require('./routes/historyRoutes');
@@ -26,7 +29,6 @@ const editRoutes = require('./routes/editRoutes');
 
 const app = express();
 
-
 // --------------------
 // Ensure uploads folders exist
 // --------------------
@@ -36,16 +38,14 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 const guidelinesDir = path.join(uploadDir, "guidelines");
 if (!fs.existsSync(guidelinesDir)) fs.mkdirSync(guidelinesDir, { recursive: true });
 
-
 // --------------------
 // Body parsers
 // --------------------
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 // --------------------
-// CORS (FIXED)
+// CORS
 // --------------------
 const FRONTEND_URLS = [
   'http://localhost:3000',
@@ -64,31 +64,30 @@ app.use(cors({
   credentials: true
 }));
 
-
 // --------------------
-// Session (FIXED)
+// Session
 // --------------------
 app.use(session({
   secret: process.env.SESSION_SECRET || 'supersecretkey',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: true,          // REQUIRED for Render (HTTPS)
+    secure: true,          // REQUIRED for Render HTTPS
     httpOnly: true,
     sameSite: 'none',      // REQUIRED for cross-origin cookies
     maxAge: 1000 * 60 * 60 * 24
   }
 }));
 
-
 // --------------------
-// DEBUG (MUST BE BEFORE ROUTES)
+// DEBUG middleware
 // --------------------
 app.use((req, res, next) => {
-  console.log("REQUEST:", req.method, req.url);
+  console.log("REQUEST HIT:", req.method, req.url, req.session);
   next();
 });
 
+// Debug route
 app.get("/api/debug-express", (req, res) => {
   console.log("SESSION DEBUG:", req.session);
   res.json({
@@ -97,13 +96,11 @@ app.get("/api/debug-express", (req, res) => {
   });
 });
 
-
 // --------------------
 // Serve uploads
 // --------------------
 app.use("/uploads", express.static(uploadDir));
 app.use("/uploads/guidelines", express.static(guidelinesDir));
-
 
 // --------------------
 // API Routes
@@ -122,34 +119,28 @@ app.use("/connection", connectionRoutes);
 app.use('/api/timeinout', timeInOutRoutes);
 app.use('/api/edit', editRoutes);
 
-
-// --------------------
 // Test route
-// --------------------
 app.get("/api/tryserver", (req, res) => {
   res.json({ message: "Server is working!" });
 });
 
+// Root
 app.get("/", (req, res) => {
   res.send("ROOT WORKING");
 });
 
-
 // --------------------
-// React frontend (FIXED ORDER)
+// React frontend fallback
 // --------------------
 if (process.env.NODE_ENV === "production") {
   const buildPath = path.join(__dirname, "..", "tests", "build");
-
   app.use(express.static(buildPath));
 
-  // IMPORTANT: only catch NON-API routes
-  app.get("*", (req, res, next) => {
-    if (req.path.startsWith("/api")) return next(); // don't touch API
+  // Only catch non-API routes for React
+  app.get(/^\/(?!api).*/, (req, res) => {
     res.sendFile(path.join(buildPath, "index.html"));
   });
 }
-
 
 // --------------------
 // MongoDB
@@ -157,7 +148,6 @@ if (process.env.NODE_ENV === "production") {
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Atlas connected"))
   .catch(err => console.error("MongoDB connection error:", err));
-
 
 // --------------------
 // Start server
