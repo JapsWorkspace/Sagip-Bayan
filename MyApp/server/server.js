@@ -28,6 +28,7 @@ const timeInOutRoutes = require('./routes/timeInOutRoutes');
 const editRoutes = require('./routes/editRoutes');
 
 const app = express();
+app.set('trust proxy', 1);
 
 // --------------------
 // Ensure uploads folders exist
