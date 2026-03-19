@@ -4,6 +4,7 @@ const Barangay = require('../models/Barangay.js');
 const ArchivedAccount = require('../models/ArchivedAccount.js');
 const TimeLog = require('../models/TimeLog');
 const AdminLog = require('../models/AdminLog');
+const UserStaff = require('../models/UserStaff.js');
 
 /* INIT ADMIN */
 const initAdmin = async (req, res) => {
@@ -159,7 +160,7 @@ const login = async (req, res) => {
 
     const { email, password } = req.body;
 
-    let account = await User.findOne({ email });
+    let account = await UserStaff.findOne({ email });
     let role = account ? account.role : null;
     let barangayName = null;
 
@@ -188,24 +189,29 @@ const login = async (req, res) => {
     req.session.username = account.username;
 
 
-    await TimeLog.create({
+   req.session.save(async (err) => {
+  if (err) {
+    return res.status(500).json({ message: "Session save failed" });
+  }
 
-      user: account._id,
-      userModel: role === 'barangay' ? 'Barangay' : 'UserStaff',
-      username: account.username,
-      role,
-      barangay: barangayName,
-      timeIn: new Date(),
-      timeOut: null
-    });
+  await TimeLog.create({
+    user: account._id,
+    userModel: role === 'barangay' ? 'Barangay' : 'UserStaff',
+    username: account.username,
+    role,
+    barangay: barangayName,
+    timeIn: new Date(),
+    timeOut: null
+  });
 
-    res.json({
-      username: account.username,
-      email: account.email,
-      role,
-      verified: account.verified,
-      ...(role === 'barangay' && { barangay: barangayName })
-    });
+  res.json({
+    username: account.username,
+    email: account.email,
+    role,
+    verified: account.verified,
+    ...(role === 'barangay' && { barangay: barangayName })
+  });
+});
 
   } catch (err) {
 

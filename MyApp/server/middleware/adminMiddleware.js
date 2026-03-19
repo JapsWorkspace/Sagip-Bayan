@@ -6,6 +6,7 @@ const requireLogin = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
+  console.log("SESSION IN MIDDLEWARE:", req.session);
   if (!req.session || req.session.role !== "admin") {
     return res.status(403).json({ message: "Admin access required" });
   }
