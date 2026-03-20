@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema({
   password: String,
   email: { type: String, unique: true },
   dateOfBirth: Date,
+  phone: String,
+  address: String,
 
     connections: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -29,7 +31,6 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null
   },
-
 
   isVerified: {
     type: Boolean,

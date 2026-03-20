@@ -1,5 +1,5 @@
 // screens/IncidentReportingScreen.jsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useContext } from "react";
 import {
   View,
   Text,
@@ -18,6 +18,9 @@ import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import NewBottomNav from "./NewBottomNav";
 
+import { UserContext } from "./UserContext";
+
+
 // ✅ import the separated design file
 import styles, { METRICS } from "../Designs/IncidentReporting";
 
@@ -27,6 +30,7 @@ if (Platform.OS === "web") {
 }
 
 export default function IncidentReportScreen({ navigation }) {
+  const { user, setUser } = useContext(UserContext);
   const [incidentReports, setIncidentReports] = useState({
     type: "",
     level: "",
@@ -34,8 +38,13 @@ export default function IncidentReportScreen({ navigation }) {
     latitude: null,
     longitude: null,
     description: "",
+    usernames: user.username || "",
+    phone: user.phone || ""
   });
   const [image, setImage] = useState(null); // single image
+
+  console.log("User in IncidentReportScreen:", user); // Debugging line
+  
 
   // ------------------- IMAGE PICKER -------------------
   const pickImage = async (event) => {
@@ -71,7 +80,7 @@ export default function IncidentReportScreen({ navigation }) {
 
   // ------------------- SUBMIT REPORT -------------------
   const submitReport = async () => {
-    const { type, level, location, latitude, longitude, description } =
+    const { type, level, location, latitude, longitude, description, usernames, phone } =
       incidentReports;
 
     if (!latitude || !longitude) {
@@ -87,6 +96,8 @@ export default function IncidentReportScreen({ navigation }) {
       formData.append("location", location);
       formData.append("latitude", latitude);
       formData.append("longitude", longitude);
+      formData.append("usernames", usernames || ""); // send username from context
+      formData.append("phone", phone || ""); // send user ID as contact
 
       if (image) {
         if (Platform.OS === "web") {
@@ -100,8 +111,8 @@ export default function IncidentReportScreen({ navigation }) {
         }
       }
 
-      await axios.post("http://localhost:8000/incident/register", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
+      await axios.post("http://localhost:8000/incident/register", formData,  {
+        headers: { "Content-Type": "multipart/form-data" }, 
       });
 
       alert("Incident submitted successfully!");
@@ -113,6 +124,9 @@ export default function IncidentReportScreen({ navigation }) {
         latitude: null,
         longitude: null,
         description: "",
+        usernames: "",
+        phone: "",
+
       });
       setImage(null);
     } catch (error) {
@@ -216,11 +230,11 @@ export default function IncidentReportScreen({ navigation }) {
                 bounces
                 showsVerticalScrollIndicator={false}
               >
-                <Image
+                {/* <Image
                   source={require("../assets/sagipbayanlogo.png")}
                   style={styles.logo}
                   resizeMode="contain"
-                />
+                /> */}
 
                 <Text style={styles.title}>Incident Tagging</Text>
 

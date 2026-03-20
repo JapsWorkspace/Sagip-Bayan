@@ -62,6 +62,13 @@ export default function AdminDashboard() {
             />
 
             <DashboardCard
+              title="Incident Reports"
+              desc="View and manage the reported incidents."
+              onClick={() => navigate('/admin')}
+              icon="location"
+            />
+
+            <DashboardCard
               title="Time-in / Time-out"
               desc="Manage attendance for admin accounts."
               onClick={() => navigate('/admin/time-in-time-out')}
@@ -74,6 +81,7 @@ export default function AdminDashboard() {
               onClick={() => navigate('/admin/logs')}
               icon="shield"
             />
+
           </section>
         </div>
       </div>

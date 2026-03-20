@@ -9,9 +9,11 @@ import {
   Platform,
   KeyboardAvoidingView,
   SafeAreaView,
+  ScrollView,                // <-- add this
 } from "react-native";
 import axios from "axios";
 import styles, { COLORS } from "../Designs/SignUp"; // ← design-only file (ensure folder name is 'Designs')
+import { Picker } from '@react-native-picker/picker';
 
 export default function SignUp({ navigation }) {
   const [username, setUsername] = useState("");
@@ -21,6 +23,8 @@ export default function SignUp({ navigation }) {
   const [fName, setFName] = useState("");
   const [lName, setLName] = useState("");
   const [date, setDate] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
 
   const [usernameError, setUsernameError] = useState("");
   const [passwordError, setPasswordError] = useState("");
@@ -28,6 +32,8 @@ export default function SignUp({ navigation }) {
   const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [fNameError, setFNameError] = useState("");
   const [lNameError, setLNameError] = useState("");
+  const [phoneError, setPhoneError] = useState("");
+  const [addressError, setAddressError] = useState("");
 
   const sanitizeInput = (text, allowSpaces = false) => {
     const pattern = allowSpaces ? /[^a-zA-Z0-9 ]/g : /[^a-zA-Z0-9]/g;
@@ -41,7 +47,8 @@ export default function SignUp({ navigation }) {
       emailError ||
       confirmPasswordError ||
       fNameError ||
-      lNameError
+      lNameError ||
+      phoneError
     ) {
       return;
     }
@@ -53,6 +60,8 @@ export default function SignUp({ navigation }) {
       email,
       password,
       birthdate: date,
+      phone,
+      address
     };
 
     axios
@@ -150,17 +159,40 @@ export default function SignUp({ navigation }) {
     else setLNameError("");
   };
 
+  const handlePhone = (text) => {
+    const sanitized = sanitizeInput(text, true);
+    setPhone(sanitized);
+
+    if (!sanitized) setPhoneError("Phone number required");
+    else if (!/^\d{10,11}$/.test(sanitized))
+      setPhoneError("Invalid phone number");
+    else setPhoneError("");
+  };
+
+  const handleAddress = (text) => {
+    const sanitized = sanitizeInput(text, true);
+    setAddress(sanitized);
+
+    if (!sanitized) setAddressError("Address required");
+    else if (!/^\d{10,11}$/.test(sanitized))
+      setAddressError("");
+    else setAddressError("");
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Content */}
-        <View style={styles.contentWrapper}>
-          {/* Logo (sagipbayanlogo.png) */}
+        {/* Content (TOP-ALIGNED via ScrollView) */}
+        <ScrollView
+          contentContainerStyle={{ ...styles.contentWrapper, flexGrow: 1 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Logo */}
           <Image
-            source={require("../assets/sagipbayanlogo.png")}
+            source={require("../stores/assets/sagipbayanlogo.png")}
             style={styles.logo}
             resizeMode="contain"
           />
@@ -233,6 +265,24 @@ export default function SignUp({ navigation }) {
               {...Platform.select({ web: { type: "date" }, default: {} })}
             />
 
+            <TextInput
+              style={styles.input}
+              placeholder="Phone Number"
+              placeholderTextColor="#706f6faa"
+              value={phone}
+              onChangeText={handlePhone}
+            />
+            {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
+
+            <TextInput
+              style={styles.input}
+              placeholder="Address"
+              placeholderTextColor="#706f6faa"
+              value={address}
+              onChangeText={handleAddress}
+            />
+            {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
+
             <TouchableOpacity style={styles.button} onPress={handleCreateUser}>
               <Text style={styles.buttonText}>SIGN UP</Text>
             </TouchableOpacity>
@@ -241,7 +291,7 @@ export default function SignUp({ navigation }) {
               Already have an account? LOGIN
             </Text>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

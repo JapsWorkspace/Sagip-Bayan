@@ -30,11 +30,26 @@ function DRRMODashboard() {
           description="Review, validate, and approve relief requests from barangays."
           onClick={() => navigate('/drrmo/relief-lists')}
         />
+        
+        <DashboardCard
+          title="Evacuation Management"
+          desc="View and manage evacuation sites."
+          onClick={() => navigate('/evacuation')}
+          icon="location"
+        />
 
         <DashboardCard
-          title="Messages"
-          description="Communicate with barangays and send announcements."
-          onClick={() => navigate('/drrmo/messages')}
+          title="Incident Reports"
+          desc="View and manage the reported incidents."
+          onClick={() => navigate('/admin')}
+          icon="location"
+        />
+
+        <DashboardCard
+          title="Guidelines"
+          desc="Create and manage disaster preparedness guidelines."
+          onClick={() => navigate('/idk')}
+          icon="location"
         />
 
         <DashboardCard

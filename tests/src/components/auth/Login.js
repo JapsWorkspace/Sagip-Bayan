@@ -34,6 +34,7 @@ export default function Login() {
   const countdownRef = useRef(null);
 
   const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+  const local = "http://localhost:8000";
 
   useEffect(() => {
     const lockInfo = JSON.parse(localStorage.getItem('adminLock')) || {};
@@ -69,8 +70,10 @@ export default function Login() {
 
   const payload = { email: trimmedEmail, password: trimmedPassword };
 
+  console.log("Attempting login with:", payload);
+
   try {
-    const res = await fetch(`${BASE_URL}/api/auth/login`, {
+    const res = await fetch(`${local}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -188,7 +191,7 @@ export default function Login() {
 
           {/* Form */}
           <div className="form-container">
-            <div className="field">
+            {/* <div className="field">
               <label className="field-label">Role</label>
               <div className="select-wrap">
                 <select value={role} onChange={e => setRole(e.target.value)}>
@@ -197,7 +200,7 @@ export default function Login() {
                   <option value="admin">Admin</option>
                 </select>
               </div>
-            </div>
+            </div> */}
 
             <div className="field">
               <label className="field-label">Email</label>

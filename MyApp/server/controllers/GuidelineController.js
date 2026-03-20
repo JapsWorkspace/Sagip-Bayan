@@ -23,6 +23,15 @@ const createGuideline = async (req, res) => {
 
 // ✅ Get all guidelines
 const getGuidelines = async (req, res) => {
+
+
+  try {
+      const users = await PostingGuideline.find(); // get ALL documents
+      console.log(users);
+    } catch (error) {
+      console.error(error);
+    }
+
   try {
     const { status, category } = req.query;
     const filter = {};

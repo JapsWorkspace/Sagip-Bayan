@@ -16,6 +16,16 @@ const incidentSchema = new mongoose.Schema(
       default: () => new Date(Date.now() + 24 * 60 * 60 * 1000),
       index: { expires: 0 },
     },
+
+    usernames: { 
+        type: String, 
+        ref: "User" 
+      },
+
+     phone: { 
+        type: String, 
+        ref: "User" 
+      }
   },
   { timestamps: true }
 );

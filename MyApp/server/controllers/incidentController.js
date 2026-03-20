@@ -36,9 +36,13 @@ const registerIncident = async (req, res) => {
       latitude: req.body.latitude ? Number(req.body.latitude) : null,
       longitude: req.body.longitude ? Number(req.body.longitude) : null,
       image: imageData, // 👈 stores the single image
+      usernames: req.body.usernames || null,
+      phone: req.body.phone || null
     });
 
     const incident = await newIncident.save();
+
+    console.log("Incident registered:", incident);
 
     // Save to history
     await history.create({

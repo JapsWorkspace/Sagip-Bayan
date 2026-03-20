@@ -15,7 +15,8 @@ export default function Register() {
   }, [navigate]);
 
   // ---------- FORM STATE ----------
-  const [role, setRole] = useState('barangay');
+  const [role, setRole] = useState('drrmo');
+
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [barangay, setBarangay] = useState('');
@@ -25,6 +26,8 @@ export default function Register() {
   const [hotline, setHotline] = useState('');
   const [address, setAddress] = useState('');
   const [errors, setErrors] = useState({});
+
+  const [touched, setTouched] = useState({});
 
   const barangays = Array.from({ length: 25 }, (_, i) => `Brgy ${i + 1}`);
 
@@ -51,32 +54,41 @@ export default function Register() {
 
   // ---------- REAL-TIME VALIDATION ----------
   useEffect(() => {
-    const nextErrors = {};
+  const nextErrors = {};
 
-    if (!username) nextErrors.username = 'Username is required';
+  if (touched.username && !username)
+    nextErrors.username = 'Username is required';
 
+  if (touched.email) {
     const emailError = validateEmail(email);
     if (emailError) nextErrors.email = emailError;
+  }
 
-    if (!phoneNumber) nextErrors.phoneNumber = 'Phone number is required';
+  if (touched.phoneNumber) {
+    if (!phoneNumber)
+      nextErrors.phoneNumber = 'Phone number is required';
     else {
       const phoneErr = validatePhone(phoneNumber);
       if (phoneErr) nextErrors.phoneNumber = phoneErr;
     }
+  }
 
-    if (!address) nextErrors.address = 'Address is required';
+  if (touched.address && !address)
+    nextErrors.address = 'Address is required';
 
+  if (touched.password) {
     const pwError = validatePassword(password);
     if (pwError) nextErrors.password = pwError;
+  }
 
-    if (password !== confirmPassword)
-      nextErrors.confirmPassword = 'Passwords do not match';
+  if (touched.confirmPassword && password !== confirmPassword)
+    nextErrors.confirmPassword = 'Passwords do not match';
 
-    if (role === 'barangay' && !barangay)
-      nextErrors.barangay = 'Please select a barangay';
+  if (role === 'barangay' && touched.barangay && !barangay)
+    nextErrors.barangay = 'Please select a barangay';
 
-    setErrors(nextErrors);
-  }, [username, email, barangay, password, confirmPassword, phoneNumber, address, role]);
+  setErrors(nextErrors);
+}, [username, email, barangay, password, confirmPassword, phoneNumber, address, role, touched]);
 
   // Helper to compute fresh errors at submit time
   function computeErrors() {
@@ -178,7 +190,7 @@ export default function Register() {
                   handleRegister();
                 }}
               >
-                {/* Role selection */}
+                {/* Role selection
                 <div className="section">
                   <div className="section-head">
                     <div className="section-title">Account Role</div>
@@ -198,7 +210,7 @@ export default function Register() {
                       ))}
                     </div>
                   </div>
-                </div>
+                </div> */}
 
                 <hr className="divider" />
 
@@ -214,7 +226,12 @@ export default function Register() {
                         className={`input ${errors.username ? 'invalid' : ''}`}
                         placeholder="Username"
                         value={username}
-                        onChange={e => setUsername(e.target.value)}
+                         onChange={e => {
+    setUsername(e.target.value);
+    setTouched(prev => ({ ...prev, username: true }));
+  }}
+
+                        
                       />
                       {errors.username && <span className="error">{errors.username}</span>}
                     </div>
@@ -258,7 +275,10 @@ export default function Register() {
                         className={`input ${errors.email ? 'invalid' : ''}`}
                         placeholder="Email"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                         onChange={e => {
+    setEmail(e.target.value);
+    setTouched(prev => ({ ...prev, email: true }));
+  }}
                       />
                       {errors.email && <span className="error">{errors.email}</span>}
                     </div>
@@ -277,7 +297,10 @@ export default function Register() {
                         className={`input ${errors.phoneNumber ? 'invalid' : ''}`}
                         placeholder="Phone Number"
                         value={phoneNumber}
-                        onChange={e => setPhoneNumber(e.target.value)}
+                         onChange={e => {
+    setPhoneNumber(e.target.value);
+    setTouched(prev => ({ ...prev, phoneNumber: true }));
+  }}
                       />
                       {errors.phoneNumber && <span className="error">{errors.phoneNumber}</span>}
                     </div>
@@ -296,7 +319,10 @@ export default function Register() {
                         className="input"
                         placeholder="Hotline (optional)"
                         value={hotline}
-                        onChange={e => setHotline(e.target.value)}
+                         onChange={e => {
+    setHotline(e.target.value);
+    setTouched(prev => ({ ...prev, hotline: true }));
+  }}
                       />
                     </div>
                   </div>
@@ -315,6 +341,7 @@ export default function Register() {
                         placeholder="Address"
                         value={address}
                         onChange={e => setAddress(e.target.value)}
+                        onBlur={() => setTouched(prev => ({ ...prev, address: true }))}
                       />
                       {errors.address && <span className="error">{errors.address}</span>}
                     </div>
@@ -334,7 +361,10 @@ export default function Register() {
                         className={`input ${errors.password ? 'invalid' : ''}`}
                         placeholder="Password"
                         value={password}
-                        onChange={e => setPassword(e.target.value)}
+                         onChange={e => {
+    setPassword(e.target.value);
+    setTouched(prev => ({ ...prev, password: true }));
+  }}
                       />
                       {errors.password && <span className="error">{errors.password}</span>}
                     </div>
@@ -354,7 +384,10 @@ export default function Register() {
                         className={`input ${errors.confirmPassword ? 'invalid' : ''}`}
                         placeholder="Confirm Password"
                         value={confirmPassword}
-                        onChange={e => setConfirmPassword(e.target.value)}
+                         onChange={e => {
+    setConfirmPassword(e.target.value);
+    setTouched(prev => ({ ...prev, confirmPassword: true }));
+  }}
                       />
                       {errors.confirmPassword && (
                         <span className="error">{errors.confirmPassword}</span>
