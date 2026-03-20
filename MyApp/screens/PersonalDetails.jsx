@@ -18,27 +18,37 @@ import styles, { COLORS } from "../Designs/PersonalDetails";
 export default function PersonalDetails({ navigation }) {
   const { user, setUser } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
+  const [phone, setPhone] = useState(user?.phone || "");
   const [error, setError] = useState("");
 
   if (!user) return <Text>No user logged in</Text>;
 
   // --- keep your function unchanged (only UI moved to new styles) ---
   const saveUsername = () => {
+    console.log(user);
     setError(""); // reset previous error
     if (!username.trim()) {
       setError("Username cannot be empty.");
       return;
     }
 
+    if (!phone.trim()) {
+      setError("Phone number cannot be empty.");
+      return;
+    }
+
     axios
-      .put(`http://localhost:8000/user/update/${user._id}`, { username })
+      .put(`http://localhost:8000/user/update/${user.id}`, { username, phone })
       .then(() => {
         setUser({ ...user, username });
-        console.log("Username updated successfully");
+        setUser({ ...user,  phone });
+        
+        console.log("Username and phone number updated successfully");
       })
       .catch((error) => {
+        console.log(user.id);
         console.error(error);
-        setError("Failed to update username.");
+        setError("Failed to update username or phone number.");
       });
   };
 
@@ -110,6 +120,20 @@ export default function PersonalDetails({ navigation }) {
             value={user.email}
             editable={false}
             placeholder="Email"
+            placeholderTextColor={COLORS.placeholder}
+          />
+
+          <Text style={styles.label}>Phone Number</Text>
+          <Text style={styles.helper}>This is the phone number linked to your account.</Text>
+          <TextInput
+            style={styles.input}
+            value={phone}
+             onChangeText={(text) => {
+              setPhone(text);
+              if (error) setError(""); // clear error when typing
+            }}
+            editable={true}
+            placeholder="Phone Number"
             placeholderTextColor={COLORS.placeholder}
           />
 

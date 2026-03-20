@@ -131,6 +131,7 @@ const loginUser = async (req, res) => {
  const updateUser = async (req, res) => {
   try {
     const updateData = { ...req.body };
+    console.log("Update data received:", updateData);
 
     // If password is being updated, hash it first
     if (req.body.password) {

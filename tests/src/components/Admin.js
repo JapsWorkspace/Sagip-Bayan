@@ -24,6 +24,7 @@ const PASIG_BOUNDS = {
 };
 
 export default function Admin() {
+  const [selectedIncident, setSelectedIncident] = useState(null);
   const navigate = useNavigate();
   const [incidents, setIncidents] = useState([]);
   const [statusMap, setStatusMap] = useState({});
@@ -115,6 +116,12 @@ export default function Admin() {
                 key={incident._id}
                 position={[incident.latitude, incident.longitude]}
                 icon={incidentIcon}
+                
+                eventHandlers={{
+    click: () => {
+      setSelectedIncident(incident);
+    }
+  }}
               >
                 <Tooltip direction="top" offset={[0, -10]} opacity={1}>
                   <div>
@@ -167,6 +174,22 @@ export default function Admin() {
           ))}
         </tbody>
       </table>
+
+      {selectedIncident && (
+  <div className="modal">
+    <h2>{selectedIncident.type}</h2>
+    <p>Status: {selectedIncident.status}</p>
+    <p>Severity: {selectedIncident.level}</p>
+    <p>{selectedIncident.location}</p>
+    <p>{selectedIncident.description}</p>
+    <p> Username: {selectedIncident.usernames}</p>
+    <p> Phone: {selectedIncident.phone}</p>
+
+    <button onClick={() => setSelectedIncident(null)}>
+      Close
+    </button>
+  </div>
+)}
     </div>
   );
 }

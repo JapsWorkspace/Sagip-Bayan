@@ -37,7 +37,11 @@ if (!fs.existsSync(guidelinesDir)) fs.mkdirSync(guidelinesDir, { recursive: true
 // CORS
 // --------------------
 app.use(cors({
-  origin: ['https://sagipbayan.com'], // frontend URL
+  origin: [
+    'https://sagipbayan.com',
+    'http://localhost:3000',
+    'http://localhost:8081'
+  ],
   credentials: true,
 }));
 
@@ -130,3 +134,12 @@ if (process.env.NODE_ENV === "production") {
 // --------------------
 const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+
+
+mongoose.connection.once("open", async () => {
+  console.log("Connected DB:", mongoose.connection.name);
+
+  const collections = await mongoose.connection.db.listCollections().toArray();
+  console.log("Collections in DB:", collections.map(c => c.name));
+});

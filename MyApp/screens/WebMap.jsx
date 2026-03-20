@@ -3,7 +3,7 @@ import "leaflet/dist/leaflet.css";
 import axios from "axios";
 import { useState, useEffect } from "react";
 import L from "leaflet";
-import incidentImage from "../assets/incident-icon.png";
+import incidentImage from "../stores/assets/incident-icon.png";
 
 // Custom icon
 const incidentIcon = new L.Icon({

@@ -7,11 +7,11 @@ import { getKeys, setNextKey, syncWithRoute } from "../stores/bottomNavState";
 
 // Tabs (center "+" opens MainCenter/panel)
 const TABS = [
-  { key: "Connection",     label: "Connection",  icon: require("../assets/connection.png") },
-  { key: "IncidentReport", label: "Report",      icon: require("../assets/report.png") },
+  { key: "Connection",     label: "Connection",  icon: require("../stores/assets/connection.png") },
+  { key: "IncidentReport", label: "Report",      icon: require("../stores/assets/report.png") },
   { key: "MainCenter",     label: "Add",         icon: null }, // center "+" drawn in code
-  { key: "Virtual",        label: "Virtual",     icon: require("../assets/vr.png") },
-  { key: "History",        label: "History",     icon: require("../assets/history.png") },
+  { key: "Virtual",        label: "Virtual",     icon: require("../stores/assets/vr.png") },
+  { key: "History",        label: "History",     icon: require("../stores/assets/history.png") },
 ];
 
 /** Lightweight "+" drawn in code (no asset needed). */

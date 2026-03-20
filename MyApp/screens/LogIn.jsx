@@ -52,6 +52,7 @@ export default function LogIn({ navigation }) {
             username: data.user.username,
             password: password,
             email: data.user.email,
+            phone: data.user.phone,
           });
 
           console.log(user);
@@ -87,7 +88,7 @@ export default function LogIn({ navigation }) {
           <View style={styles.contentWrapper}>
             {/* Replace with your real logo asset */}
             <Image
-              source={require("../assets/sagipbayanlogo.png")}
+              source={require("../stores/assets/sagipbayanlogo.png")}
               style={styles.logo}
               resizeMode="contain"
             />
