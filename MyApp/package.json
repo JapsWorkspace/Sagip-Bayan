@@ -31,7 +31,7 @@
     "react-leaflet": "^5.0.0",
     "react-native": "0.81.5",
     "react-native-advanced-input-mask": "^1.4.6",
-    "react-native-maps": "^1.20.1",
+    "react-native-maps": "1.20.1",
     "react-native-mask-text": "^0.15.0",
     "react-native-paper": "^5.15.0",
     "react-native-paper-dates": "^0.22.57",

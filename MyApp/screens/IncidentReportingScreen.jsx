@@ -15,22 +15,18 @@ import {
   ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
-import axios from "axios";
+import api from "../lib/api";
 import NewBottomNav from "./NewBottomNav";
-
 import { UserContext } from "./UserContext";
-
 
 // ✅ import the separated design file
 import styles, { METRICS } from "../Designs/IncidentReporting";
 
-let WebMap = null;
-if (Platform.OS === "web") {
-  WebMap = require("../screens/WebMap").default;
-}
+// ✅ Always import the map component (native RN Maps version)
+import WebMap from "./WebMap";
 
 export default function IncidentReportScreen({ navigation }) {
-  const { user, setUser } = useContext(UserContext);
+  const { user } = useContext(UserContext);
   const [incidentReports, setIncidentReports] = useState({
     type: "",
     level: "",
@@ -39,12 +35,21 @@ export default function IncidentReportScreen({ navigation }) {
     longitude: null,
     description: "",
     usernames: user.username || "",
-    phone: user.phone || ""
+    phone: user.phone || "",
   });
   const [image, setImage] = useState(null); // single image
 
-  console.log("User in IncidentReportScreen:", user); // Debugging line
-  
+  // Seed initial selection pin at Jaen
+  useEffect(() => {
+    if (incidentReports.latitude == null || incidentReports.longitude == null) {
+      setIncidentReports(prev => ({
+        ...prev,
+        location: prev.location || "Jaen, Nueva Ecija",
+        latitude: 15.33830,
+        longitude: 120.91410,
+      }));
+    }
+  }, []);
 
   // ------------------- IMAGE PICKER -------------------
   const pickImage = async (event) => {
@@ -96,8 +101,8 @@ export default function IncidentReportScreen({ navigation }) {
       formData.append("location", location);
       formData.append("latitude", latitude);
       formData.append("longitude", longitude);
-      formData.append("usernames", usernames || ""); // send username from context
-      formData.append("phone", phone || ""); // send user ID as contact
+      formData.append("usernames", usernames || "");
+      formData.append("phone", phone || "");
 
       if (image) {
         if (Platform.OS === "web") {
@@ -111,8 +116,8 @@ export default function IncidentReportScreen({ navigation }) {
         }
       }
 
-      await axios.post("http://localhost:8000/incident/register", formData,  {
-        headers: { "Content-Type": "multipart/form-data" }, 
+      await api.post("/incident/register", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       alert("Incident submitted successfully!");
@@ -126,7 +131,6 @@ export default function IncidentReportScreen({ navigation }) {
         description: "",
         usernames: "",
         phone: "",
-
       });
       setImage(null);
     } catch (error) {
@@ -135,33 +139,25 @@ export default function IncidentReportScreen({ navigation }) {
     }
   };
 
-  // ------------------- DRAGGABLE CARD (dynamic MAX_UP + full-height sheet) -------------------
-  // Collapsed anchor from design (centerWrapper.top points at METRICS.panelTop)
+  /* ------------------- DRAGGABLE CARD (full-height sheet) ------------------- */
   const panelTop = styles.centerWrapper.top || METRICS.panelTop;
 
-  // Device height & status bar (Android). For iOS, we keep a small margin at the very top.
   const { height: WIN_H } = Dimensions.get("window");
   const ANDROID_SB = StatusBar?.currentHeight || 0;
 
-  // Margin to leave under the system bar when fully open
   const TOP_MARGIN = Platform.OS === "ios" ? 12 : 8;
 
-  // How far up (negative translateY) to get near the top for ANY phone
-  const MAX_UP = -Math.max(0, (panelTop - ANDROID_SB - TOP_MARGIN));
+  const MAX_UP = -Math.max(0, panelTop - ANDROID_SB - TOP_MARGIN);
   const MAX_DOWN = 0;
   const START_Y = 0;
 
-  // 👉 Make the white sheet tall enough to cover the screen at full open:
-  // When fully open, the sheet's Visual top becomes (panelTop + MAX_UP) ≈ TOP_MARGIN.
-  // So we need minHeight ≈ WIN_H - (panelTop + MAX_UP).
-  const FULL_OPEN_TOP = panelTop + MAX_UP;                      // ≈ TOP_MARGIN
-  const SHEET_MIN_HEIGHT = WIN_H - FULL_OPEN_TOP;               // fills to bottom
-  const EXTRA_BOTTOM_PAD = Platform.OS === "ios" ? 16 : 12;     // breathing room above bottom nav
+  const FULL_OPEN_TOP = panelTop + MAX_UP; // ≈ TOP_MARGIN
+  const SHEET_MIN_HEIGHT = WIN_H - FULL_OPEN_TOP;
+  const EXTRA_BOTTOM_PAD = Platform.OS === "ios" ? 16 : 12;
 
   const pan = useRef(new Animated.ValueXY({ x: 0, y: START_Y })).current;
   const startY = useRef(START_Y);
 
-  // Optional: snap feel
   const SNAP_THRESHOLD = 80;
 
   const panResponder = useRef(
@@ -195,21 +191,23 @@ export default function IncidentReportScreen({ navigation }) {
     <View style={styles.webFrame}>
       <View style={styles.phone}>
         {/* Map behind */}
-        <View style={styles.mapContainer}>
-          {Platform.OS === "web" && WebMap ? (
-            <WebMap
-              onSelect={(obj) => {
-                setIncidentReports((prev) => ({
-                  ...prev,
-                  location: obj.text,
-                  latitude: obj.lat,
-                  longitude: obj.lng,
-                }));
-              }}
-            />
-          ) : (
-            <View />
-          )}
+        <View style={[styles.mapContainer, { flex: 1 }]}>
+          <WebMap
+            selected={{
+              lat: incidentReports.latitude,
+              lng: incidentReports.longitude,
+              label: incidentReports.location,
+            }}
+            selectedLevel={incidentReports.level}  // used only if you want severity image elsewhere
+            onSelect={(obj) => {
+              setIncidentReports((prev) => ({
+                ...prev,
+                location: obj.text,
+                latitude: obj.lat,
+                longitude: obj.lng,
+              }));
+            }}
+          />
         </View>
 
         {/* ▶️ Draggable panel with full-height sheet */}
@@ -218,7 +216,6 @@ export default function IncidentReportScreen({ navigation }) {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
           >
-            {/* Make the sheet tall enough even when content is short */}
             <View style={[styles.card, { minHeight: SHEET_MIN_HEIGHT, paddingBottom: EXTRA_BOTTOM_PAD }]}>
               {/* Drag handle INSIDE the sheet */}
               <View {...panResponder.panHandlers} style={styles.dragHandle} />
@@ -230,12 +227,6 @@ export default function IncidentReportScreen({ navigation }) {
                 bounces
                 showsVerticalScrollIndicator={false}
               >
-                {/* <Image
-                  source={require("../assets/sagipbayanlogo.png")}
-                  style={styles.logo}
-                  resizeMode="contain"
-                /> */}
-
                 <Text style={styles.title}>Incident Tagging</Text>
 
                 <Text style={styles.label}>Incident Type</Text>

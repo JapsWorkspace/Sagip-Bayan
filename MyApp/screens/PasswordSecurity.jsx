@@ -9,7 +9,7 @@ import {
   KeyboardAvoidingView,
   Switch,
 } from "react-native";
-import axios from "axios";
+import api from "../lib/api";
 import NewBottomNav from "./NewBottomNav";
 import { UserContext } from "./UserContext";
 
@@ -67,8 +67,8 @@ export default function PasswordSecurity({ navigation }) {
     }
 
     console.log(user);
-    axios
-      .put(`http://localhost:8000/user/update/${user.id}`, { password: newPassword })
+    api
+      .put(`/user/update/${user.id}`, { password: newPassword })
       .then(() => {
         setUser({ ...user, password: newPassword });
         setCurrentPassword("");
@@ -81,8 +81,8 @@ export default function PasswordSecurity({ navigation }) {
 
   const toggle2FA = (value) => {
     setTwoFactorEnabled(value);
-    axios
-      .put(`http://localhost:8000/user/twofactor/${user._id}`, { enabled: value })
+    api
+      .put(`/user/twofactor/${user._id}`, { enabled: value })
       .then(() => setUser({ ...user, twoFactorEnabled: value }))
       .catch((err) => console.error(err));
   };

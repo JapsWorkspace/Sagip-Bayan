@@ -8,7 +8,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
-import axios from "axios";
+import api from "../lib/api";
 import { UserContext } from "./UserContext";
 import NewBottomNav from "./NewBottomNav";
 
@@ -37,8 +37,8 @@ export default function PersonalDetails({ navigation }) {
       return;
     }
 
-    axios
-      .put(`http://localhost:8000/user/update/${user.id}`, { username, phone })
+    api
+      .put(`/user/update/${user.id}`, { username, phone })
       .then(() => {
         setUser({ ...user, username });
         setUser({ ...user,  phone });

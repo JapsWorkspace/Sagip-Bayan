@@ -11,7 +11,7 @@ import {
   SafeAreaView,
   ScrollView,                // <-- add this
 } from "react-native";
-import axios from "axios";
+import api from "../lib/api";
 import styles, { COLORS } from "../Designs/SignUp"; // ← design-only file (ensure folder name is 'Designs')
 import { Picker } from '@react-native-picker/picker';
 
@@ -64,8 +64,8 @@ export default function SignUp({ navigation }) {
       address
     };
 
-    axios
-      .post("http://localhost:8000/user/register", userData)
+    api
+      .post("/user/register", userData)
       .then(() => {
         alert("Registration successful! Please verify your email.");
 
