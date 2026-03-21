@@ -11,7 +11,8 @@ import {
   SafeAreaView,
   ScrollView,
 } from "react-native";
-import axios from "axios";
+// ⬇️ use the shared axios instance that auto-picks the correct base URL
+import api from "../lib/api";
 import styles, { COLORS } from "../Designs/LogIn";  // ← use external design
 import { UserContext } from "./UserContext";
 
@@ -27,8 +28,9 @@ export default function LogIn({ navigation }) {
 
   const handleLogin = () => {
     setError("");
-    axios
-      .post("http://localhost:8000/user/login", { username, password })
+    api
+      // ⬇️ relative path; base URL comes from myapp/lib/api.js
+      .post("/user/login", { username, password })
       .then((res) => {
         const data = res.data;
 
@@ -38,8 +40,9 @@ export default function LogIn({ navigation }) {
             email: data.email,
           });
 
-          axios
-            .post("http://localhost:8000/user/send-otp", {
+          api
+            // ⬇️ relative path; base URL comes from myapp/lib/api.js
+            .post("/user/send-otp", {
               email: data.email,
             })
             .then(() => console.log("OTP sent"))

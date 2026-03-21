@@ -1,6 +1,7 @@
+// screens/SendOtp.jsx
 import { useState } from "react";
 import { TextInput, View, Text, Button } from "react-native";
-import axios from "axios";
+import api from "../lib/api";
 
 export default function SendOtp({ navigation }) {
   const [email, setEmail] = useState("");
@@ -32,17 +33,15 @@ export default function SendOtp({ navigation }) {
     setLoading(true);
     setMessage("");
 
-    axios
-      .post("http://localhost:8000/user/send-otp", { email })
+    api
+      .post("/user/send-otp", { email })
       .then((response) => {
         setMessage(response.data.message);
         console.log("OTP sent to:", email);
         navigation.navigate("VerifyOtp", { email });
       })
       .catch((error) => {
-        setMessage(
-          error.response?.data?.message || "Server error"
-        );
+        setMessage(error.response?.data?.message || "Server error");
       })
       .finally(() => {
         setLoading(false);

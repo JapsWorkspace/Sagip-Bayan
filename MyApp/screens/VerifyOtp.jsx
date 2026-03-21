@@ -1,6 +1,7 @@
+// screens/VerifyOtp.jsx
 import React, { useState, useRef, useContext, useEffect } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
-import axios from "axios";
+import api from "../lib/api";
 import { UserContext } from "./UserContext";
 
 export default function VerifyOtp({ route, navigation }) {
@@ -57,14 +58,14 @@ export default function VerifyOtp({ route, navigation }) {
       return;
     }
 
-    axios
-      .post("http://localhost:8000/user/verify-otp", { email, otp: enteredOtp })
+    api
+      .post("/user/verify-otp", { email, otp: enteredOtp })
       .then(() => {
         Alert.alert("Success", "OTP verified!");
 
         // Fetch user by email and set context
-        axios
-          .get("http://localhost:8000/user/users")
+        api
+          .get("/user/users")
           .then((res) => {
             const user = res.data.find((u) => u.email === email);
             if (user) {

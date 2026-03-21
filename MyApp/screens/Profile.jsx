@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
 } from "react-native";
 import { UserContext } from "./UserContext";
-import axios from "axios";
+import api from "../lib/api";
 import NewBottomNav from "./NewBottomNav";
 
 // ✅ import the separated design file
@@ -18,10 +18,10 @@ export default function Profile({ navigation }) {
   const { user, setUser } = useContext(UserContext);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // --- keep your function unchanged ---
+  // --- keep your function unchanged (only backend call is routed via api) ---
   const handleDeleteAccount = () => {
-    axios
-      .put(`http://localhost:8000/user/archive/${user._id}`)
+    api
+      .put(`/user/archive/${user._id}`)
       .then(() => {
         setUser({ ...user, isArchived: true });
         console.log("Account archived successfully. You can still log in for 6 months.");

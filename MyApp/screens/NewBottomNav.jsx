@@ -1,7 +1,8 @@
 // screens/NewBottomNav.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Pressable, Image, Text, Animated, Easing } from "react-native";
+import { View, Pressable, Image, Text, Animated, Easing, Platform } from "react-native";
 import { useRoute } from "@react-navigation/native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import styles, { COLORS, METRICS } from "../Designs/NewBottomNav";
 import { getKeys, setNextKey, syncWithRoute } from "../stores/bottomNavState";
 
@@ -11,12 +12,11 @@ const TABS = [
   { key: "IncidentReport", label: "Report",      icon: require("../stores/assets/report.png") },
   { key: "MainCenter",     label: "Add",         icon: null }, // center "+" drawn in code
   { key: "Virtual",        label: "Virtual",     icon: require("../stores/assets/vr.png") },
-  { key: "History",        label: "History",     icon: require("../stores/assets/history.png") },
+  { key: "Recent",         label: "Recent",      icon: require("../stores/assets/history.png") },
 ];
 
 /** Lightweight "+" drawn in code (no asset needed). */
 function PlusIcon({ color = COLORS.ACTIVE_TINT, size = 18, thickness = 3 }) {
-  const half = size / 2;
   return (
     <View style={{ width: size, height: size, alignItems: "center", justifyContent: "center" }}>
       <View style={{ position: "absolute", width: thickness, height: size, backgroundColor: color, borderRadius: thickness / 2 }} />
@@ -124,9 +124,28 @@ export default function NewBottomNav({ navigation, onCenterPress }) {
     navigation?.navigate?.(tab.key);
   };
 
+  /* -------- SAFE-AREA behavior: Android = above system nav / iOS = flush bottom -------- */
+  const insets = useSafeAreaInsets();
+  const EXTRA_ANDROID_PAD = 10; // cushion for devices that report 0 inset with 3-button nav
+  const bottomPad = Platform.select({
+    ios: 0, // iOS: no extra bottom padding (sit visually at the bottom)
+    android: Math.max(insets.bottom, EXTRA_ANDROID_PAD), // Android: lift above system nav
+    default: insets.bottom,
+  });
+
+  const edges = Platform.select({
+    ios: [],           // don't add bottom safe-area padding on iOS
+    android: ['bottom'],
+    default: ['bottom'],
+  });
+
   return (
-    <View style={styles.safe} pointerEvents="box-none">
-      <View style={styles.bar}>
+    <SafeAreaView
+      edges={edges}
+      pointerEvents="box-none"
+      style={[styles.safe, { paddingBottom: bottomPad }]}
+    >
+      <View style={styles.bar} pointerEvents="auto">
         <View style={styles.barBg} />
 
         <View style={styles.track} onLayout={(e) => setTrackWidth(e.nativeEvent.layout.width)}>
@@ -166,7 +185,6 @@ export default function NewBottomNav({ navigation, onCenterPress }) {
                       }}
                     />
                   ) : (
-                    // Center "+" (no asset dependency)
                     <PlusIcon color={isActive ? COLORS.ACTIVE_TINT : COLORS.INACTIVE_TINT} size={20} thickness={3} />
                   )}
                   <Text style={[styles.label, isActive && styles.labelActive]} numberOfLines={1}>
@@ -178,6 +196,6 @@ export default function NewBottomNav({ navigation, onCenterPress }) {
           })}
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
