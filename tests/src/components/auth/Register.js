@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../Header';
 import '../css/Register.css'; // keep your design
+import DashboardShell from '../layout/DashboardShell';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -31,7 +31,7 @@ export default function Register() {
 
   const barangays = Array.from({ length: 25 }, (_, i) => `Brgy ${i + 1}`);
 
-  // ---------- VALIDATORS (same functionality you shared) ----------
+  // ---------- VALIDATORS ----------
   function validatePassword(pw) {
     if (!pw) return 'Password is required';
     if (!/^[A-Z]/.test(pw)) return 'Password must start with a capital letter';
@@ -54,41 +54,41 @@ export default function Register() {
 
   // ---------- REAL-TIME VALIDATION ----------
   useEffect(() => {
-  const nextErrors = {};
+    const nextErrors = {};
 
-  if (touched.username && !username)
-    nextErrors.username = 'Username is required';
+    if (touched.username && !username)
+      nextErrors.username = 'Username is required';
 
-  if (touched.email) {
-    const emailError = validateEmail(email);
-    if (emailError) nextErrors.email = emailError;
-  }
-
-  if (touched.phoneNumber) {
-    if (!phoneNumber)
-      nextErrors.phoneNumber = 'Phone number is required';
-    else {
-      const phoneErr = validatePhone(phoneNumber);
-      if (phoneErr) nextErrors.phoneNumber = phoneErr;
+    if (touched.email) {
+      const emailError = validateEmail(email);
+      if (emailError) nextErrors.email = emailError;
     }
-  }
 
-  if (touched.address && !address)
-    nextErrors.address = 'Address is required';
+    if (touched.phoneNumber) {
+      if (!phoneNumber)
+        nextErrors.phoneNumber = 'Phone number is required';
+      else {
+        const phoneErr = validatePhone(phoneNumber);
+        if (phoneErr) nextErrors.phoneNumber = phoneErr;
+      }
+    }
 
-  if (touched.password) {
-    const pwError = validatePassword(password);
-    if (pwError) nextErrors.password = pwError;
-  }
+    if (touched.address && !address)
+      nextErrors.address = 'Address is required';
 
-  if (touched.confirmPassword && password !== confirmPassword)
-    nextErrors.confirmPassword = 'Passwords do not match';
+    if (touched.password) {
+      const pwError = validatePassword(password);
+      if (pwError) nextErrors.password = pwError;
+    }
 
-  if (role === 'barangay' && touched.barangay && !barangay)
-    nextErrors.barangay = 'Please select a barangay';
+    if (touched.confirmPassword && password !== confirmPassword)
+      nextErrors.confirmPassword = 'Passwords do not match';
 
-  setErrors(nextErrors);
-}, [username, email, barangay, password, confirmPassword, phoneNumber, address, role, touched]);
+    if (role === 'barangay' && touched.barangay && !barangay)
+      nextErrors.barangay = 'Please select a barangay';
+
+    setErrors(nextErrors);
+  }, [username, email, barangay, password, confirmPassword, phoneNumber, address, role, touched]);
 
   // Helper to compute fresh errors at submit time
   function computeErrors() {
@@ -145,35 +145,17 @@ export default function Register() {
       });
   }
 
-  // ---------- UI (unchanged design) ----------
+  // ---------- UI (same fields, no left panel, no white card) ----------
   return (
-    <div className="register-page">
-      {/* Blue top header you already have */}
-      <Header />
-
-      {/* App shell: left sidebar + right panel */}
-      <div className="shell">
-        {/* LEFT SIDEBAR (static UI; no functionality change) */}
-        <aside className="sidebar">
-          <div className="brand">
-            <div className="brand-text">
-              <div className="org">Create an account</div>
-              <div className="sub">Add Administrator</div>
-            </div>
-          </div>
-
-          <nav className="nav">
-            <button type="button" className="nav-item active">Create an account</button>
-            <button type="button" className="nav-item">Add Administrator</button>
-          </nav>
-        </aside>
-
-        {/* RIGHT CONTENT */}
-        <main className="content">
-          <section className="panel">
-            <header className="panel-header">
-              <h2>Create Admin account</h2>
-              <p className="panel-desc">
+    <DashboardShell>
+      <div className="register-page">
+        {/* Content area only; no left panel; no white card */}
+        <div className="shell" style={{ padding: 16, justifyContent: 'center' }}>
+          <main className="content" style={{ maxWidth: 1200, width: '100%' }}>
+            {/* Simple header */}
+            <header className="panel-header" style={{ border: 'none', padding: 0, marginBottom: 16 }}>
+              <h2 style={{ margin: '0 0 6px' }}>Create Admin account</h2>
+              <p className="panel-desc" style={{ margin: 0 }}>
                 Use this form to create an administrator account. Each admin is assigned a role and
                 specific permissions that define what parts of the system they can access. For
                 security and accountability, admin accounts are created only by Super Admins and
@@ -181,7 +163,7 @@ export default function Register() {
               </p>
             </header>
 
-            {/* Centered column form like the screenshot */}
+            {/* Form */}
             <div className="form-body">
               <form
                 className="form-grid"
@@ -190,30 +172,6 @@ export default function Register() {
                   handleRegister();
                 }}
               >
-                {/* Role selection
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Account Role</div>
-                    <div className="section-sub">Select the role for this user.</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="radio-row radio-row-inline radio-row-spaced">
-                      {['admin', 'drrmo', 'barangay'].map((r) => (
-                        <label className="radio" key={r}>
-                          <input
-                            type="radio"
-                            checked={role === r}
-                            onChange={() => setRole(r)}
-                          />
-                          {r.toUpperCase()}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div> */}
-
-                <hr className="divider" />
-
                 {/* Username */}
                 <div className="section">
                   <div className="section-head">
@@ -226,12 +184,10 @@ export default function Register() {
                         className={`input ${errors.username ? 'invalid' : ''}`}
                         placeholder="Username"
                         value={username}
-                         onChange={e => {
-    setUsername(e.target.value);
-    setTouched(prev => ({ ...prev, username: true }));
-  }}
-
-                        
+                        onChange={e => {
+                          setUsername(e.target.value);
+                          setTouched(prev => ({ ...prev, username: true }));
+                        }}
                       />
                       {errors.username && <span className="error">{errors.username}</span>}
                     </div>
@@ -275,10 +231,10 @@ export default function Register() {
                         className={`input ${errors.email ? 'invalid' : ''}`}
                         placeholder="Email"
                         value={email}
-                         onChange={e => {
-    setEmail(e.target.value);
-    setTouched(prev => ({ ...prev, email: true }));
-  }}
+                        onChange={e => {
+                          setEmail(e.target.value);
+                          setTouched(prev => ({ ...prev, email: true }));
+                        }}
                       />
                       {errors.email && <span className="error">{errors.email}</span>}
                     </div>
@@ -297,10 +253,10 @@ export default function Register() {
                         className={`input ${errors.phoneNumber ? 'invalid' : ''}`}
                         placeholder="Phone Number"
                         value={phoneNumber}
-                         onChange={e => {
-    setPhoneNumber(e.target.value);
-    setTouched(prev => ({ ...prev, phoneNumber: true }));
-  }}
+                        onChange={e => {
+                          setPhoneNumber(e.target.value);
+                          setTouched(prev => ({ ...prev, phoneNumber: true }));
+                        }}
                       />
                       {errors.phoneNumber && <span className="error">{errors.phoneNumber}</span>}
                     </div>
@@ -319,10 +275,10 @@ export default function Register() {
                         className="input"
                         placeholder="Hotline (optional)"
                         value={hotline}
-                         onChange={e => {
-    setHotline(e.target.value);
-    setTouched(prev => ({ ...prev, hotline: true }));
-  }}
+                        onChange={e => {
+                          setHotline(e.target.value);
+                          setTouched(prev => ({ ...prev, hotline: true }));
+                        }}
                       />
                     </div>
                   </div>
@@ -361,10 +317,10 @@ export default function Register() {
                         className={`input ${errors.password ? 'invalid' : ''}`}
                         placeholder="Password"
                         value={password}
-                         onChange={e => {
-    setPassword(e.target.value);
-    setTouched(prev => ({ ...prev, password: true }));
-  }}
+                        onChange={e => {
+                          setPassword(e.target.value);
+                          setTouched(prev => ({ ...prev, password: true }));
+                        }}
                       />
                       {errors.password && <span className="error">{errors.password}</span>}
                     </div>
@@ -384,10 +340,10 @@ export default function Register() {
                         className={`input ${errors.confirmPassword ? 'invalid' : ''}`}
                         placeholder="Confirm Password"
                         value={confirmPassword}
-                         onChange={e => {
-    setConfirmPassword(e.target.value);
-    setTouched(prev => ({ ...prev, confirmPassword: true }));
-  }}
+                        onChange={e => {
+                          setConfirmPassword(e.target.value);
+                          setTouched(prev => ({ ...prev, confirmPassword: true }));
+                        }}
                       />
                       {errors.confirmPassword && (
                         <span className="error">{errors.confirmPassword}</span>
@@ -408,21 +364,14 @@ export default function Register() {
                 <div className="section">
                   <div className="section-head" />
                   <div className="section-control actions-right">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => navigate('/admin/dashboard')}
-                      style={{ width: 220 }}
-                    >
-                      Go Back to Dashboard
-                    </button>
+             
                   </div>
                 </div>
               </form>
             </div>
-          </section>
-        </main>
+          </main>
+        </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

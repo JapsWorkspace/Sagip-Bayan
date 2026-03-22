@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
-import Header from './Header';
 import { MapContainer, TileLayer, Marker, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
@@ -91,7 +90,7 @@ export default function Admin() {
 
   return (
     <div>
-      <Header />
+     
       <h1>Admin Page</h1>
 
       <h3>Incident Map</h3>

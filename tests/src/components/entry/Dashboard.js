@@ -141,9 +141,9 @@ function Dashboard() {
             />
             <nav className="nav-links" aria-label="Main">
               <a href="#home">Home</a>
-              {/* <a href="#account" onClick={startSplash}>
+              <a href="#account" onClick={startSplash}>
                 Account
-              </a> */}
+              </a> 
             </nav>
           </div>
         </header>
