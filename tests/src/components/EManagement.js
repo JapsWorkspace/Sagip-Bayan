@@ -2,17 +2,16 @@ import React, { useEffect, useMemo, useRef, useState, useCallback } from "react"
 import { createPortal } from "react-dom";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import Header from "./Header";
 import Map from "./map/Map";
 import "./map/MapIcon";
 import "./css/EManagement.css";
+import DashboardShell from "./layout/DashboardShell";
 
 const DEV_DEBUG = false;
 
 const EManagement = () => {
   const navigate = useNavigate();
 
-  /* ================= AUTH ================= */
   useEffect(() => {
     const storedRole = localStorage.getItem("role");
     if (!storedRole) {
@@ -22,7 +21,6 @@ const EManagement = () => {
     fetchPlaces();
   }, [navigate]);
 
-  /* ================= STATE ================= */
   const [places, setPlaces] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -48,15 +46,11 @@ const EManagement = () => {
 
   const nameRef = useRef(null);
 
-  /* ====== Slider state & History search (ADDED) ====== */
-  const [panelView, setPanelView] = useState("main"); // 'main' | 'history'
+  const [panelView, setPanelView] = useState("main");
   const [historyQuery, setHistoryQuery] = useState("");
+  const [historySortBy, setHistorySortBy] = useState("date");
+  const [historySortDir, setHistorySortDir] = useState("desc");
 
-  /* ====== History sorting (ADDED) ====== */
-  const [historySortBy, setHistorySortBy] = useState("date"); // 'date' | 'action' | 'place'
-  const [historySortDir, setHistorySortDir] = useState("desc"); // 'asc' | 'desc'
-
-  /* ================= DERIVED ================= */
   const selectedPlace = useMemo(
     () => places.find((p) => p._id === selectedId) || null,
     [places, selectedId]
@@ -78,37 +72,26 @@ const EManagement = () => {
     setCapacityDisplay(Number(selectedPlace.capacity) || 0);
   }, [selectedPlace]);
 
-  /* ============== NEW: ZOOM to selected place (panel click) ============== */
   useEffect(() => {
     if (!selectedPlace) return;
     const lat = Number(selectedPlace.latitude);
     const lng = Number(selectedPlace.longitude);
     if (Number.isNaN(lat) || Number.isNaN(lng)) return;
-
-    // Broadcast to the map; MapBusBridge will flyTo(...)
     window.dispatchEvent(
-      new CustomEvent("emap:flyTo", {
-        detail: { lat, lng, zoom: 17 },
-      })
+      new CustomEvent("emap:flyTo", { detail: { lat, lng, zoom: 17 } })
     );
   }, [selectedPlace]);
 
-  /* ================= GLOBAL KEYS ================= */
   useEffect(() => {
     const onKey = (e) => {
-      const tag =
-        (e.target && e.target.tagName) || document.activeElement?.tagName;
+      const tag = (e.target && e.target.tagName) || document.activeElement?.tagName;
       const isField =
-        tag === "INPUT" ||
-        tag === "TEXTAREA" ||
-        tag === "SELECT" ||
-        e.target?.isContentEditable;
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || e.target?.isContentEditable;
       if (isField) return;
-
       if (e.key === "Escape") {
         if (showAddForm) setShowAddForm(false);
         if (pickMode) setPickMode(false);
-        if (panelView === "history") setShowHistory(false); // close history on ESC
+        if (panelView === "history") setShowHistory(false);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -122,7 +105,6 @@ const EManagement = () => {
     }
   }, [showAddForm]);
 
-  /* ===== Sync slider with your existing showHistory toggle (ADDED) ===== */
   useEffect(() => {
     if (showHistory) {
       fetchHistory();
@@ -133,17 +115,14 @@ const EManagement = () => {
     }
   }, [showHistory]);
 
-  /* ================= API ================= */
   const fetchPlaces = () => {
-    axios
-      .get("http://localhost:8000/evacs")
+    axios.get("http://localhost:8000/evacs")
       .then((res) => setPlaces(res.data))
       .catch(console.error);
   };
 
   const updateStatus = (id, status) =>
-    axios
-      .put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
+    axios.put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
       .then(fetchPlaces);
 
   const deletePlace = (id) => {
@@ -152,42 +131,29 @@ const EManagement = () => {
   };
 
   const fetchHistory = () => {
-    axios
-      .get("http://localhost:8000/evacs/history/logs")
+    axios.get("http://localhost:8000/evacs/history/logs")
       .then((res) => setHistory(res.data))
       .catch(console.error);
   };
 
-  /* ================= FORM ================= */
   const sanitizeText = (value) => value.replace(/<[^>]*>?/gm, "");
 
   const handleFieldChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]:
-        name === "capacity" ? value.replace(/\D/g, "") : sanitizeText(value),
+      [name]: name === "capacity" ? value.replace(/\D/g, "") : sanitizeText(value),
     }));
   };
 
-  /* ================= PICK MODE ================= */
   const handleStartPick = () => {
-    setFormData({
-      name: "",
-      location: "",
-      capacity: "",
-      latitude: null,
-      longitude: null,
-    });
+    setFormData({ name: "", location: "", capacity: "", latitude: null, longitude: null });
     setPickMode(true);
     setShowAddForm(false);
   };
 
   const normalizeMapArgs = (...args) => {
-    let loc = "",
-      lat = null,
-      lng = null;
-
+    let loc = "", lat = null, lng = null;
     if (args.length === 1 && args[0]?.latlng) {
       lat = args[0].latlng.lat;
       lng = args[0].latlng.lng;
@@ -197,54 +163,37 @@ const EManagement = () => {
       lat = Number(args[1]);
       lng = Number(args[2]);
     }
-
     return { loc, lat, lng };
   };
 
-  const handleMapSelectLocation = useCallback(
-    (...args) => {
-      if (!pickMode) return;
-      const { loc, lat, lng } = normalizeMapArgs(...args);
-      if (lat == null || lng == null) return;
-      const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
-      setFormData({
-        name: "",
-        location: clean(loc || ""),
-        capacity: "",
-        latitude: lat,
-        longitude: lng,
-      });
-      setPickMode(false);
-      setShowAddForm(true);
-    },
-    [pickMode]
-  );
+  const handleMapSelectLocation = useCallback((...args) => {
+    if (!pickMode) return;
+    const { loc, lat, lng } = normalizeMapArgs(...args);
+    if (lat == null || lng == null) return;
+    const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
+    setFormData({
+      name: "",
+      location: clean(loc || ""),
+      capacity: "",
+      latitude: lat,
+      longitude: lng,
+    });
+    setPickMode(false);
+    setShowAddForm(true);
+  }, [pickMode]);
 
   const handleSubmitAdd = () => {
-    if (
-      !formData.name ||
-      !formData.location ||
-      !formData.capacity ||
-      formData.latitude === null ||
-      formData.longitude === null
-    ) {
+    if (!formData.name || !formData.location || !formData.capacity ||
+        formData.latitude === null || formData.longitude === null) {
       alert("Please fill in all fields and select a location on the map.");
       return;
     }
     setLoading(true);
-    axios
-      .post("http://localhost:8000/evacs/make", {
-        ...formData,
-        capacity: Number(formData.capacity),
-      })
+    axios.post("http://localhost:8000/evacs/make", {
+      ...formData, capacity: Number(formData.capacity),
+    })
       .then(() => {
-        setFormData({
-          name: "",
-          location: "",
-          capacity: "",
-          latitude: null,
-          longitude: null,
-        });
+        setFormData({ name: "", location: "", capacity: "", latitude: null, longitude: null });
         setShowAddForm(false);
         fetchPlaces();
       })
@@ -252,7 +201,6 @@ const EManagement = () => {
       .finally(() => setLoading(false));
   };
 
-  /* ===== Filter + Sort the history (ADDED) ===== */
   const historySorted = useMemo(() => {
     const q = historyQuery.trim().toLowerCase();
     const filtered = history.filter((h) => {
@@ -265,20 +213,15 @@ const EManagement = () => {
     });
 
     const cmp = (a, b) => {
-      let vA, vB, result = 0;
+      let result = 0;
       if (historySortBy === "date") {
-        vA = new Date(a.createdAt).getTime() || 0;
-        vB = new Date(b.createdAt).getTime() || 0;
+        const vA = new Date(a.createdAt).getTime() || 0;
+        const vB = new Date(b.createdAt).getTime() || 0;
         result = vA - vB;
       } else if (historySortBy === "action") {
-        vA = String(a.action ?? "");
-        vB = String(b.action ?? "");
-        result = vA.localeCompare(vB, undefined, { sensitivity: "base" });
+        result = String(a.action ?? "").localeCompare(String(b.action ?? ""), undefined, { sensitivity: "base" });
       } else {
-        // 'place'
-        vA = String(a.placeName ?? "");
-        vB = String(b.placeName ?? "");
-        result = vA.localeCompare(vB, undefined, { sensitivity: "base" });
+        result = String(a.placeName ?? "").localeCompare(String(b.placeName ?? ""), undefined, { sensitivity: "base" });
       }
       return historySortDir === "asc" ? result : -result;
     };
@@ -286,37 +229,13 @@ const EManagement = () => {
     return filtered.slice().sort(cmp);
   }, [history, historyQuery, historySortBy, historySortDir]);
 
-  /* ================= RENDER ================= */
   return (
-    <>
-      <Header />
-
+    <DashboardShell>
       {/* Lock the entire screen area (under header). Page doesn't scroll. */}
       <div className="evac-screen-lock">
-        {/* Toolbar with Back + Refresh only */}
-        <div className="evac-toolbar">
-          <div className="evac-toolbar-left">
-            <strong>Evacuation Center Management</strong>
-          </div>
-          <div className="evac-toolbar-right">
-            <button
-              className="tbtn"
-              onClick={() => navigate(-1)}
-              title="Back"
-            >
-              ← Back
-            </button>
-            <button
-              className="tbtn"
-              onClick={fetchPlaces}
-              title="Refresh list"
-            >
-              ↻ Refresh
-            </button>
-          </div>
-        </div>
+        {/* ❌ Toolbar removed */}
 
-        {/* Split canvas: map (no scroll) | panel (only scrollable area) */}
+        {/* Split canvas: map | panel */}
         <div className="evac-page">
           {/* Map */}
           <div
@@ -343,9 +262,7 @@ const EManagement = () => {
                   pointerEvents: "none",
                 }}
               >
-                <span style={{ fontWeight: 700 }}>
-                  Click on the map to set location…
-                </span>
+                <span style={{ fontWeight: 700 }}>Click on the map to set location…</span>
                 <button
                   onClick={() => setPickMode(false)}
                   style={{
@@ -364,12 +281,11 @@ const EManagement = () => {
             )}
           </div>
 
-          {/* ===== Right Panel (slider; views own the scroll) ===== */}
+          {/* Right Panel */}
           <aside className={`evac-panel ${panelView === "history" ? "history-open" : ""}`}>
             <div className="panel-views">
-              {/* ===== MAIN VIEW (original content kept) ===== */}
+              {/* MAIN VIEW */}
               <section className="view-main">
-                {/* Brand */}
                 <div className="evac-brand">
                   <img
                     src="/logo-pasig.svg"
@@ -380,7 +296,6 @@ const EManagement = () => {
                   <div className="evac-brand-title">Evacuation Center Management</div>
                 </div>
 
-                {/* Search */}
                 <div className="evac-search">
                   <input
                     type="text"
@@ -391,7 +306,6 @@ const EManagement = () => {
                   />
                 </div>
 
-                {/* List (scrolls; doesn’t eat the whole panel) */}
                 <div className="evac-list">
                   {filteredPlaces.length === 0 ? (
                     <div className="evac-empty">No places found.</div>
@@ -423,13 +337,10 @@ const EManagement = () => {
                   )}
                 </div>
 
-                {/* Capacity stepper */}
                 <div className="evac-capacity">
                   <button
                     className="cap-btn"
-                    onClick={() =>
-                      setCapacityDisplay((n) => Math.max(0, (Number(n) || 0) - 1))
-                    }
+                    onClick={() => setCapacityDisplay((n) => Math.max(0, (Number(n) || 0) - 1))}
                   >
                     −
                   </button>
@@ -448,7 +359,6 @@ const EManagement = () => {
                   </button>
                 </div>
 
-                {/* Status selector */}
                 <div className="evac-status">
                   <label className="status-label">Status</label>
                   <div className="status-row">
@@ -468,15 +378,12 @@ const EManagement = () => {
                   </div>
                 </div>
 
-                {/* Selected & Notes */}
                 <div className="evac-selected">
                   <label>Selected Place</label>
                   <input
                     readOnly
                     value={
-                      selectedPlace
-                        ? `${selectedPlace.name} — ${selectedPlace.location}`
-                        : ""
+                      selectedPlace ? `${selectedPlace.name} — ${selectedPlace.location}` : ""
                     }
                     placeholder="(none)"
                   />
@@ -493,7 +400,6 @@ const EManagement = () => {
                   />
                 </div>
 
-                {/* Actions */}
                 <div className="evac-actions">
                   <button className="btn btn-back" onClick={() => navigate(-1)}>
                     BACK
@@ -513,7 +419,6 @@ const EManagement = () => {
                   </button>
                 </div>
 
-                {/* Utilities — Add Place & History (UNCHANGED) */}
                 <div className="evac-utils">
                   <button className="link-btn" onClick={handleStartPick}>
                     + Add Place
@@ -538,7 +443,6 @@ const EManagement = () => {
                   )}
                 </div>
 
-                {/* Your original inline History block (kept) */}
                 {showHistory && history.length > 0 && (
                   <div className="evac-history">
                     <div className="history-title">History</div>
@@ -562,7 +466,7 @@ const EManagement = () => {
                 )}
               </section>
 
-              {/* ===== HISTORY VIEW (slides in) ===== */}
+              {/* HISTORY VIEW */}
               <section className="view-history">
                 <div className="history-toolbar">
                   <button className="tbtn tbtn-light" onClick={() => setShowHistory(false)}>
@@ -578,7 +482,6 @@ const EManagement = () => {
                     />
                   </div>
 
-                  {/* ADDED: Sort controls */}
                   <div className="history-sort">
                     <label>Sort by:</label>
                     <select
@@ -593,16 +496,13 @@ const EManagement = () => {
                       type="button"
                       className="sort-dir"
                       title={`Toggle ${historySortDir === "asc" ? "descending" : "ascending"}`}
-                      onClick={() =>
-                        setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"))
-                      }
+                      onClick={() => setHistorySortDir((d) => (d === "asc" ? "desc" : "asc"))}
                     >
                       {historySortDir === "asc" ? "↑" : "↓"}
                     </button>
                   </div>
                 </div>
 
-                {/* Scrollable list area (won't occupy entire panel) */}
                 <div className="history-body">
                   <div className="evac-history-panel">
                     {historySorted.map((h) => (
@@ -617,10 +517,7 @@ const EManagement = () => {
                         </div>
                       </div>
                     ))}
-
-                    {history.length === 0 && (
-                      <div className="evac-empty">No history yet.</div>
-                    )}
+                    {history.length === 0 && <div className="evac-empty">No history yet.</div>}
                   </div>
                 </div>
               </section>
@@ -629,7 +526,7 @@ const EManagement = () => {
         </div>
       </div>
 
-      {/* Modal kept; uses existing submit handler */}
+      {/* Modal kept */}
       {showAddForm &&
         createPortal(
           <div
@@ -757,8 +654,7 @@ const EManagement = () => {
                       type="text"
                       readOnly
                       value={
-                        formData.latitude !== null &&
-                        formData.longitude !== null
+                        formData.latitude !== null && formData.longitude !== null
                           ? `${Number(formData.latitude).toFixed(6)}, ${Number(
                               formData.longitude
                             ).toFixed(6)}`
@@ -769,10 +665,7 @@ const EManagement = () => {
                   </div>
                 </div>
 
-                <div
-                  className="modal-actions"
-                  style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
-                >
+                <div className="modal-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
                   <button
                     type="button"
                     className="btn btn-back"
@@ -789,7 +682,7 @@ const EManagement = () => {
           </div>,
           document.body
         )}
-    </>
+    </DashboardShell>
   );
 };
 
