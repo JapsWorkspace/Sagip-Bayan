@@ -1,12 +1,8 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Header from '../Header';
-import '../css/AdminDashboard.css';
-import DashboardCard from '../../components/DashboardCard';
-import '../css/DashboardCard.css';
+import DashboardShell from '../layout/DashboardShell';
 
 export default function AdminDashboard() {
-console.log("SESSION:", req.session);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,68 +12,52 @@ console.log("SESSION:", req.session);
       navigate('/');
     }
   }, [navigate]);
-  
-  return (
-    <div>
-      <Header />
 
+  return (
+    <DashboardShell>
       <div className="admin-wrapper">
         <div className="admin-container">
           <h2 className="admin-title">Admin Dashboard</h2>
 
-          {/* Cards Grid */}
-          <section className="cards-grid">
-            <DashboardCard
-              title="Register Account"
-              desc="Register accounts for Barangay and DRRMO."
-              onClick={() => navigate('/admin/register')}
-              icon="user-add"
-            />
+          {/* Quick Actions (replaces the old DashboardCard grid) */}
+          <section className="quick-actions">
+            <div className="qa-grid">
+              <button className="qa-item" onClick={() => navigate('/admin/register')}>
+                Register Account
+              </button>
 
-            <DashboardCard
-              title="Edit Accounts"
-              desc="View and manage existing user accounts."
-              onClick={() => navigate('/admin/edit-accounts')}
-              icon="settings"
-            />
+              <button className="qa-item" onClick={() => navigate('/admin/edit-accounts')}>
+                Edit Accounts
+              </button>
 
-            <DashboardCard
-              title="Audit Trail"
-              desc="View logs of relief requests and actions taken."
-              onClick={() => navigate('/admin/audit-trail')}
-              icon="clipboard"
-            />
+              <button className="qa-item" onClick={() => navigate('/admin/audit-trail')}>
+                Audit Trail
+              </button>
 
-            <DashboardCard
-              title="Archived Accounts"
-              desc="View and manage archived accounts."
-              onClick={() => navigate('/admin/archived-accounts')}
-              icon="archive"
-            />
+              <button className="qa-item" onClick={() => navigate('/admin/archived-accounts')}>
+                Archived Accounts
+              </button>
 
-            <DashboardCard
-              title="Evacuation Management"
-              desc="View and manage evacuation sites."
-              onClick={() => navigate('/evacuation')}
-              icon="location"
-            />
+              <button className="qa-item" onClick={() => navigate('/evacuation')}>
+                Evacuation Management
+              </button>
 
-            <DashboardCard
-              title="Time-in / Time-out"
-              desc="Manage attendance for admin accounts."
-              onClick={() => navigate('/admin/time-in-time-out')}
-              icon="clock"
-            />
+              <button className="qa-item" onClick={() => navigate('/admin')}>
+                Incident Reports
+              </button>
 
-            <DashboardCard
-              title="Admin Logs"
-              desc="View administrative activity logs."
-              onClick={() => navigate('/admin/logs')}
-              icon="shield"
-            />
+              <button className="qa-item" onClick={() => navigate('/admin/time-in-time-out')}>
+                Time-in / Time-out
+              </button>
+
+              <button className="qa-item" onClick={() => navigate('/admin/logs')}>
+                Admin Logs
+              </button>
+            </div>
           </section>
         </div>
       </div>
-    </div>
+      
+    </DashboardShell>
   );
 }
