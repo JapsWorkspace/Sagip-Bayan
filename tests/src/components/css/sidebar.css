@@ -275,7 +275,85 @@ body {
 .sidebar .sidebar-link.is-button {
   filter: none !important;
 }
+/* === DashboardShell layout essentials (append at end) === */
 
+html, body, #root {
+  height: 100%;
+  min-height: 100%;
+}
+
+.admin-layout {
+  display: flex;
+  width: 100%;
+  height: 100vh;      /* Shell controls full viewport height */
+  min-height: 0;      /* Allow children to create scroll containers */
+  overflow: hidden;   /* No window horizontal scroll */
+}
+
+/* Left sidebar already has its own width via existing CSS, keep it as is */
+
+/* Right side column that holds header + content */
+.admin-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;     /* Take all remaining width */
+  min-width: 0;       /* Prevent overflow from long content */
+  min-height: 0;      /* Critical: allow the inner .admin-content to scroll */
+  /* background: inherit;  keep your current theme */
+}
+
+/* The page content region: this is the scroll container */
+.admin-content {
+  position: relative;
+  flex: 1 1 auto;     /* Fill the rest of the column height */
+  min-height: 0;      /* Critical for child scroll areas */
+  overflow-y: auto;   /* ✅ vertical scroll for long pages */
+  overflow-x: hidden; /* avoid horizontal scroll */
+  /* Remove default paddings/margins if any parent injected them */
+  padding: 0;
+  margin: 0;
+}
+/* ===============================
+   Analytics: left gap next to sidebar
+   (append at the very bottom)
+   =============================== */
+
+/* Add a subtle inner padding on the Analytics root so it doesn't hug the sidebar */
+.admin-content > .analytics-page {
+  padding-left: 12px !important;   /* creates the visual gap from the sidebar */
+  padding-right: 10px !important;  /* keeps right side symmetric */
+}
+
+/* Keep the scroll region flush inside the padding above */
+.admin-content > .analytics-page .analytics-container {
+  width: min(1200px, 98vw) !important;  /* still prevents right overflow */
+  margin-inline: auto !important;
+}
+
+/* Optional: slightly round the outer edge to accentuate separation */
+.admin-content > .analytics-page .a-card,
+.admin-content > .analytics-page .a-metric-card {
+  border-radius: 10px !important;
+}
+
+/* Responsive: tighten padding on narrow screens so content doesn’t feel cramped */
+@media (max-width: 1024px) {
+  .admin-content > .analytics-page {
+    padding-left: 10px !important;
+    padding-right: 8px !important;
+  }
+}
+@media (max-width: 640px) {
+  .admin-content > .analytics-page {
+    padding-left: 8px !important;
+    padding-right: 8px !important;
+  }
+}
+
+/* If your sidebar collapse state needs to adjust content width, keep your existing rules.
+   Example (optional):
+.admin-layout.has-collapsed .admin-main { ... }
+*/
 /* Optional role scopes for custom colors if you ever want:
 .sidebar--drrmo { --sb-bg: #032601; --sb-accent: #2e7d32; }
 .sidebar--barangay { --sb-bg: #032601; --sb-accent: #2e7d32; }

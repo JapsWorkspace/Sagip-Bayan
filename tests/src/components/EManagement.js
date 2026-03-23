@@ -27,7 +27,7 @@ const EManagement = () => {
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState(null);
   const [statusChoice, setStatusChoice] = useState("available");
-  const [notes, setNotes] = useState("");
+  const [notes, setNotes] = useState(""); // right-panel local-only notes
   const [capacityDisplay, setCapacityDisplay] = useState(0);
 
   const [showAddForm, setShowAddForm] = useState(false);
@@ -37,25 +37,8 @@ const EManagement = () => {
     capacity: "",
     latitude: null,
     longitude: null,
+    extraNotes: "", // persisted (0-30 chars)
   });
-
-  const JAEN_BARANGAYS = [
-  "Bagong Sikat",
-  "Bagong Silang",
-  "Calabasa",
-  "Don Mariano Marcos",
-  "Imelda District",
-  "Lambakin",
-  "Malabon Kaingin",
-  "Putlod",
-  "San Jose",
-  "San Pablo",
-  "San Roque",
-  "Santo Tomas Norte",
-  "Santo Tomas Sur",
-  "Sapang Putik",
-  "Ulanin-Pitak",
-];
 
   const [pickMode, setPickMode] = useState(false);
 
@@ -68,6 +51,9 @@ const EManagement = () => {
   const [historyQuery, setHistoryQuery] = useState("");
   const [historySortBy, setHistorySortBy] = useState("date");
   const [historySortDir, setHistorySortDir] = useState("desc");
+
+  // NEW: delete confirmation panel
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   const selectedPlace = useMemo(
     () => places.find((p) => p._id === selectedId) || null,
@@ -90,6 +76,7 @@ const EManagement = () => {
     setCapacityDisplay(Number(selectedPlace.capacity) || 0);
   }, [selectedPlace]);
 
+  // Selecting from list still zooms to 17 (unchanged)
   useEffect(() => {
     if (!selectedPlace) return;
     const lat = Number(selectedPlace.latitude);
@@ -110,11 +97,12 @@ const EManagement = () => {
         if (showAddForm) setShowAddForm(false);
         if (pickMode) setPickMode(false);
         if (panelView === "history") setShowHistory(false);
+        if (showDeleteConfirm) setShowDeleteConfirm(false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showAddForm, pickMode, panelView]);
+  }, [showAddForm, pickMode, panelView, showDeleteConfirm]);
 
   useEffect(() => {
     if (showAddForm && nameRef.current) {
@@ -134,22 +122,27 @@ const EManagement = () => {
   }, [showHistory]);
 
   const fetchPlaces = () => {
-    axios.get("http://localhost:8000/evacs")
+    axios
+      .get("http://localhost:8000/evacs")
       .then((res) => setPlaces(res.data))
       .catch(console.error);
   };
 
   const updateStatus = (id, status) =>
-    axios.put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
+    axios
+      .put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
       .then(fetchPlaces);
 
   const deletePlace = (id) => {
-    if (!window.confirm("Delete this place?")) return;
+    if (!window.confirm) {
+      // fallback just in case environment lacks window.confirm (shouldn't happen in browser)
+    }
     axios.delete(`http://localhost:8000/evacs/${id}`).then(fetchPlaces);
   };
 
   const fetchHistory = () => {
-    axios.get("http://localhost:8000/evacs/history/logs")
+    axios
+      .get("http://localhost:8000/evacs/history/logs")
       .then((res) => setHistory(res.data))
       .catch(console.error);
   };
@@ -160,8 +153,35 @@ const EManagement = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: name === "capacity" ? value.replace(/\D/g, "") : sanitizeText(value),
+      [name]:
+        name === "capacity"
+          ? value.replace(/\D/g, "")
+          : name === "extraNotes"
+          ? sanitizeText(value).slice(0, 30) // enforce 30-char max
+          : sanitizeText(value),
     }));
+  };
+
+  const handleLatitudeChange = (e) => {
+    const v = e.target.value.trim();
+    if (v === "") {
+      setFormData((prev) => ({ ...prev, latitude: null }));
+      return;
+    }
+    const num = Number(v);
+    if (Number.isNaN(num)) return;
+    setFormData((prev) => ({ ...prev, latitude: num }));
+  };
+
+  const handleLongitudeChange = (e) => {
+    const v = e.target.value.trim();
+    if (v === "") {
+      setFormData((prev) => ({ ...prev, longitude: null }));
+      return;
+    }
+    const num = Number(v);
+    if (Number.isNaN(num)) return;
+    setFormData((prev) => ({ ...prev, longitude: num }));
   };
 
   const handleStartPick = () => {
@@ -169,14 +189,21 @@ const EManagement = () => {
       name: "",
       location: "",
       capacity: "",
-      barangay: "",
       latitude: null,
       longitude: null,
+      extraNotes: "",
     });
     setPickMode(true);
     setShowAddForm(false);
   };
 
+  // Fly helper — used ONLY in pick mode
+  const flyTo = (lat, lng, zoom = 18) => {
+    if (lat == null || lng == null) return;
+    window.dispatchEvent(new CustomEvent("emap:flyTo", { detail: { lat, lng, zoom } }));
+  };
+
+  // Normalize args from Map -> supports {latlng:{lat,lng}, label?} or (label, lat, lng)
   const normalizeMapArgs = (...args) => {
     let loc = "", lat = null, lng = null;
     if (args.length === 1 && args[0]?.latlng) {
@@ -191,54 +218,67 @@ const EManagement = () => {
     return { loc, lat, lng };
   };
 
-  const handleMapSelectLocation = useCallback(
-    (...args) => {
-      if (!pickMode) return;
-      const { loc, lat, lng } = normalizeMapArgs(...args);
-      if (lat == null || lng == null) return;
+  // Only zoom when ADDING a place
+  const handleMapSelectLocation = useCallback((...args) => {
+    const { loc, lat, lng } = normalizeMapArgs(...args);
+    if (lat == null || lng == null) return;
+
+    if (pickMode) {
       const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
-      setFormData({
+      setFormData((prev) => ({
+        ...prev,
         name: "",
         location: clean(loc || ""),
         capacity: "",
-        barangay: "",
         latitude: lat,
         longitude: lng,
-      });
+        // preserve extraNotes that user may have typed before picking
+      }));
       setPickMode(false);
       setShowAddForm(true);
-    },
-    [pickMode]
-  );
+      flyTo(lat, lng, 18);
+    }
+  }, [pickMode]);
 
   const handleSubmitAdd = () => {
-    if (!formData.name || !formData.location || !formData.capacity ||
-        formData.latitude === null || formData.longitude === null) {
-      alert("Please fill in all fields and select a location on the map.");
+    const { name, location, capacity, latitude, longitude, extraNotes } = formData;
+
+    if (!name || !location || !capacity || latitude === null || longitude === null) {
+      alert("Please fill in all fields, including latitude and longitude.");
       return;
     }
+    if (latitude < -90 || latitude > 90) {
+      alert("Latitude must be between -90 and 90.");
+      return;
+    }
+    if (longitude < -180 || longitude > 180) {
+      alert("Longitude must be between -180 and 180.");
+      return;
+    }
+
+    const trimmedNotes = (extraNotes || "").slice(0, 30);
+
     setLoading(true);
     axios.post("http://localhost:8000/evacs/make", {
-      ...formData, capacity: Number(formData.capacity),
+      ...formData,
+      capacity: Number(capacity),
+      latitude: Number(latitude),
+      longitude: Number(longitude),
+      extraNotes: trimmedNotes, // include extra notes in payload
     })
       .then(() => {
         setFormData({
           name: "",
           location: "",
           capacity: "",
-          barangay: "",
           latitude: null,
           longitude: null,
+          extraNotes: "",
         });
         setShowAddForm(false);
         fetchPlaces();
-        
       })
-      .catch(() => {
-        alert("Error saving data")
-        console.log("Place added:", formData);
-      })
-      
+      .catch(() => alert("Error saving data"))
       .finally(() => setLoading(false));
   };
 
@@ -270,12 +310,41 @@ const EManagement = () => {
     return filtered.slice().sort(cmp);
   }, [history, historyQuery, historySortBy, historySortDir]);
 
+  // Clean legend for the right panel
+  const Legend = () => (
+    <div className="evac-legend" style={{
+      marginTop: 10,
+      padding: "8px 10px",
+      border: "1px solid #e5e7eb",
+      borderRadius: 8,
+      background: "#fff",
+    }}>
+      <div style={{ fontWeight: 700, fontSize: 12, color: "#374151", marginBottom: 6 }}>
+        Legend
+      </div>
+      <div style={{ display: "grid", rowGap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="evac-dot dot-green" />
+          <span style={{ fontSize: 12, color: "#374151" }}>Available</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="evac-dot dot-orange" />
+          <span style={{ fontSize: 12, color: "#374151" }}>Limited</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="evac-dot dot-red" />
+          <span style={{ fontSize: 12, color: "#374151" }}>Full</span>
+        </div>
+      </div>
+    </div>
+  );
+
+  const extraNotesCount = (formData.extraNotes || "").length;
+
   return (
     <DashboardShell>
       {/* Lock the entire screen area (under header). Page doesn't scroll. */}
       <div className="evac-screen-lock">
-        {/* ❌ Toolbar removed */}
-
         {/* Split canvas: map | panel */}
         <div className="evac-page">
           {/* Map */}
@@ -346,6 +415,9 @@ const EManagement = () => {
                     autoComplete="off"
                   />
                 </div>
+
+                {/* Legend */}
+                <Legend />
 
                 <div className="evac-list">
                   {filteredPlaces.length === 0 ? (
@@ -431,13 +503,20 @@ const EManagement = () => {
                 </div>
 
                 <div className="evac-notes">
-                  <label>Extra notes</label>
+                  <label>Extra notes (local)</label>
                   <textarea
                     rows={3}
                     placeholder="Add notes (local only)"
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                     autoComplete="off"
+                    style={{
+                      width: "100%",
+                      boxSizing: "border-box",
+                      resize: "vertical",
+                      maxHeight: 160,
+                      overflowX: "hidden",
+                    }}
                   />
                 </div>
 
@@ -477,7 +556,7 @@ const EManagement = () => {
                   {selectedPlace && (
                     <button
                       className="link-btn danger"
-                      onClick={() => deletePlace(selectedPlace._id)}
+                      onClick={() => setShowDeleteConfirm(true)}
                     >
                       Delete Selected
                     </button>
@@ -567,7 +646,7 @@ const EManagement = () => {
         </div>
       </div>
 
-      {/* Modal kept */}
+      {/* Add Place Modal */}
       {showAddForm &&
         createPortal(
           <div
@@ -591,14 +670,16 @@ const EManagement = () => {
             <div
               className="evac-modal-card"
               style={{
-                width: "min(560px, 92vw)",
-                maxHeight: "min(84vh, 800px)",
-                overflow: "hidden",
+                width: "min(100%, 960px)",   // full width within cap
+                maxWidth: "96vw",
+                maxHeight: "min(92vh, 900px)", // taller
+                overflow: "hidden",            // prevents horizontal overflow at card level
                 background: "#ffffff",
                 borderRadius: 12,
                 border: "1px solid #e5e7eb",
                 padding: 12,
                 boxShadow: "0 14px 40px rgba(0,0,0,0.18)",
+                boxSizing: "border-box",
               }}
               onKeyDown={(e) => {
                 if (e.key === "Escape") {
@@ -649,8 +730,10 @@ const EManagement = () => {
                   display: "grid",
                   gap: 12,
                   paddingTop: 12,
-                  maxHeight: "calc(84vh - 120px)",
+                  maxHeight: "calc(92vh - 120px)",
                   overflowY: "auto",
+                  overflowX: "hidden", // never horizontally scroll
+                  boxSizing: "border-box",
                 }}
                 onKeyDown={(e) => {
                   if (e.key !== "Escape") e.stopPropagation();
@@ -666,6 +749,7 @@ const EManagement = () => {
                       value={formData.name}
                       onChange={handleFieldChange}
                       autoComplete="off"
+                      style={{ width: "100%", boxSizing: "border-box" }}
                     />
                   </div>
                   <div>
@@ -676,6 +760,7 @@ const EManagement = () => {
                       value={formData.location}
                       onChange={handleFieldChange}
                       autoComplete="off"
+                      style={{ width: "100%", boxSizing: "border-box" }}
                     />
                   </div>
                   <div>
@@ -687,40 +772,75 @@ const EManagement = () => {
                       onChange={handleFieldChange}
                       autoComplete="off"
                       inputMode="numeric"
+                      style={{ width: "100%", boxSizing: "border-box" }}
                     />
                   </div>
 
-                  <div>
-  <label>Barangay</label>
-  <select
-    name="barangay"
-    value={formData.barangay}
-    onChange={handleFieldChange}
-  >
-    <option value="">Select Barangay</option>
-    {JAEN_BARANGAYS
-  .slice()
-  .sort((a, b) => a.localeCompare(b))
-  .map((b, index) => (
-    <option key={index} value={b}>
-      {b}
-    </option>
-))}
-  </select>
-</div>
+                  {/* Editable Latitude / Longitude */}
                   <div>
                     <label>Latitude / Longitude</label>
-                    <input
-                      type="text"
-                      readOnly
-                      value={
-                        formData.latitude !== null && formData.longitude !== null
-                          ? `${Number(formData.latitude).toFixed(6)}, ${Number(
-                              formData.longitude
-                            ).toFixed(6)}`
-                          : ""
-                      }
-                      placeholder="Click on the map to set coordinates"
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: 8,
+                      width: "100%",
+                    }}>
+                      <input
+                        type="number"
+                        step="0.000001"
+                        placeholder="Latitude (-90 to 90)"
+                        value={
+                          formData.latitude === null || Number.isNaN(formData.latitude)
+                            ? ""
+                            : String(formData.latitude)
+                        }
+                        onChange={handleLatitudeChange}
+                        autoComplete="off"
+                        min={-90}
+                        max={90}
+                        style={{ width: "100%", boxSizing: "border-box" }}
+                      />
+                      <input
+                        type="number"
+                        step="0.000001"
+                        placeholder="Longitude (-180 to 180)"
+                        value={
+                          formData.longitude === null || Number.isNaN(formData.longitude)
+                            ? ""
+                            : String(formData.longitude)
+                        }
+                        onChange={handleLongitudeChange}
+                        autoComplete="off"
+                        min={-180}
+                        max={180}
+                        style={{ width: "100%", boxSizing: "border-box" }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Extra Notes (30 chars) — taller, never wider than panel */}
+                  <div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <label>Extra Notes (max 30)</label>
+                      <span style={{ fontSize: 12, color: "#6b7280" }}>
+                        {extraNotesCount}/30
+                      </span>
+                    </div>
+                    <textarea
+                      name="extraNotes"
+                      rows={2}
+                      value={formData.extraNotes}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                      maxLength={30}
+                      placeholder="Short note shown in details"
+                      style={{
+                        width: "100%",
+                        boxSizing: "border-box",
+                        resize: "vertical",
+                        maxHeight: 120,
+                        overflowX: "hidden",
+                      }}
                     />
                   </div>
                 </div>
@@ -738,6 +858,104 @@ const EManagement = () => {
                   </button>
                 </div>
               </form>
+            </div>
+          </div>,
+          document.body
+        )}
+
+      {/* Delete confirmation panel */}
+      {showDeleteConfirm &&
+        createPortal(
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Delete Area Confirmation"
+            onClick={() => setShowDeleteConfirm(false)}
+            style={{
+              position: "fixed",
+              inset: 0,
+              background: "rgba(15,23,42,0.45)",
+              display: "grid",
+              placeItems: "center",
+              zIndex: 1000,
+            }}
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: "min(420px, 92vw)",
+                background: "#fff",
+                borderRadius: 12,
+                border: "1px solid #e5e7eb",
+                boxShadow: "0 14px 40px rgba(0,0,0,0.18)",
+                padding: 16,
+                boxSizing: "border-box",
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 10,
+                  borderBottom: "1px solid #e5e7eb",
+                  paddingBottom: 8,
+                }}
+              >
+                <div style={{ fontWeight: 800, color: "#111827" }}>Confirm Delete</div>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  style={{
+                    border: "none",
+                    background: "transparent",
+                    fontSize: 18,
+                    cursor: "pointer",
+                    lineHeight: 1,
+                  }}
+                  aria-label="Close"
+                  title="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ color: "#374151", marginBottom: 16 }}>
+                {selectedPlace ? (
+                  <>
+                    Do you want to delete this area?
+                    <br />
+                    <strong>{selectedPlace.name}</strong>
+                    {selectedPlace.location ? ` — ${selectedPlace.location}` : ""}
+                  </>
+                ) : (
+                  "Do you want to delete this area?"
+                )}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  className="btn btn-back"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-update"
+                  style={{ background: "#dc2626", borderColor: "#dc2626" }}
+                  onClick={() => {
+                    if (selectedPlace?._id) {
+                      // Call your existing function and refresh
+                      axios.delete(`http://localhost:8000/evacs/${selectedPlace._id}`).then(fetchPlaces);
+                    }
+                    setShowDeleteConfirm(false);
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           </div>,
           document.body
