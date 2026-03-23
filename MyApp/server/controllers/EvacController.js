@@ -37,6 +37,7 @@ const createPlace = async (req, res) => {
       latitude: latNum,
       longitude: lngNum,
       capacity: capNum,
+      barangay: req.body.barangay,
       capacityStatus: "available"
     });
 
@@ -126,6 +127,42 @@ const deletePlace = (req, res) => {
     });
 };
 
-module.exports = { getHistory, createPlace, getPlaces, updateCapacityStatus, deletePlace };
+const getAnalyticsSummary = async (req, res) => {
+  try {
+    // Fetch all places
+    const places = await Place.find();
+
+    // Total evacuation centers
+    const totalPlaces = places.length;
+
+    // Capacity status counts
+    const statusCounts = places.reduce(
+      (acc, p) => {
+        const status = p.capacityStatus || "available";
+        acc[status] = (acc[status] || 0) + 1;
+        return acc;
+      },
+      { available: 0, limited: 0, full: 0 }
+    );
+
+    // Total capacity
+    const totalCapacity = places.reduce((sum, p) => sum + (p.capacity || 0), 0);
+
+    // Average capacity
+    const averageCapacity = totalPlaces ? totalCapacity / totalPlaces : 0;
+
+    res.json({
+      totalPlaces,
+      statusCounts,
+      totalCapacity,
+      averageCapacity,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Failed to fetch analytics" });
+  }
+};
+
+module.exports = { getHistory, createPlace, getPlaces, updateCapacityStatus, deletePlace, getAnalyticsSummary };
 
 

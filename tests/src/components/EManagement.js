@@ -39,6 +39,24 @@ const EManagement = () => {
     longitude: null,
   });
 
+  const JAEN_BARANGAYS = [
+  "Bagong Sikat",
+  "Bagong Silang",
+  "Calabasa",
+  "Don Mariano Marcos",
+  "Imelda District",
+  "Lambakin",
+  "Malabon Kaingin",
+  "Putlod",
+  "San Jose",
+  "San Pablo",
+  "San Roque",
+  "Santo Tomas Norte",
+  "Santo Tomas Sur",
+  "Sapang Putik",
+  "Ulanin-Pitak",
+];
+
   const [pickMode, setPickMode] = useState(false);
 
   const [showHistory, setShowHistory] = useState(false);
@@ -147,7 +165,14 @@ const EManagement = () => {
   };
 
   const handleStartPick = () => {
-    setFormData({ name: "", location: "", capacity: "", latitude: null, longitude: null });
+    setFormData({
+      name: "",
+      location: "",
+      capacity: "",
+      barangay: "",
+      latitude: null,
+      longitude: null,
+    });
     setPickMode(true);
     setShowAddForm(false);
   };
@@ -166,21 +191,25 @@ const EManagement = () => {
     return { loc, lat, lng };
   };
 
-  const handleMapSelectLocation = useCallback((...args) => {
-    if (!pickMode) return;
-    const { loc, lat, lng } = normalizeMapArgs(...args);
-    if (lat == null || lng == null) return;
-    const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
-    setFormData({
-      name: "",
-      location: clean(loc || ""),
-      capacity: "",
-      latitude: lat,
-      longitude: lng,
-    });
-    setPickMode(false);
-    setShowAddForm(true);
-  }, [pickMode]);
+  const handleMapSelectLocation = useCallback(
+    (...args) => {
+      if (!pickMode) return;
+      const { loc, lat, lng } = normalizeMapArgs(...args);
+      if (lat == null || lng == null) return;
+      const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
+      setFormData({
+        name: "",
+        location: clean(loc || ""),
+        capacity: "",
+        barangay: "",
+        latitude: lat,
+        longitude: lng,
+      });
+      setPickMode(false);
+      setShowAddForm(true);
+    },
+    [pickMode]
+  );
 
   const handleSubmitAdd = () => {
     if (!formData.name || !formData.location || !formData.capacity ||
@@ -193,11 +222,23 @@ const EManagement = () => {
       ...formData, capacity: Number(formData.capacity),
     })
       .then(() => {
-        setFormData({ name: "", location: "", capacity: "", latitude: null, longitude: null });
+        setFormData({
+          name: "",
+          location: "",
+          capacity: "",
+          barangay: "",
+          latitude: null,
+          longitude: null,
+        });
         setShowAddForm(false);
         fetchPlaces();
+        
       })
-      .catch(() => alert("Error saving data"))
+      .catch(() => {
+        alert("Error saving data")
+        console.log("Place added:", formData);
+      })
+      
       .finally(() => setLoading(false));
   };
 
@@ -648,6 +689,25 @@ const EManagement = () => {
                       inputMode="numeric"
                     />
                   </div>
+
+                  <div>
+  <label>Barangay</label>
+  <select
+    name="barangay"
+    value={formData.barangay}
+    onChange={handleFieldChange}
+  >
+    <option value="">Select Barangay</option>
+    {JAEN_BARANGAYS
+  .slice()
+  .sort((a, b) => a.localeCompare(b))
+  .map((b, index) => (
+    <option key={index} value={b}>
+      {b}
+    </option>
+))}
+  </select>
+</div>
                   <div>
                     <label>Latitude / Longitude</label>
                     <input

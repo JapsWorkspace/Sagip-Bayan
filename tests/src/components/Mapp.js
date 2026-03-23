@@ -4,9 +4,9 @@ import dampulanZones from "./data/dampulan.json";
 import langlaZones from "./data/langla.json";
 import magsalisiZones from "./data/magsalisi.json";
 import "leaflet/dist/leaflet.css";
-import DashboardShell from "./layout/DashboardShell";
 
 function Mapp() {
+
   // Style for first polygon
   const floodStyle = {
     color: "red",
@@ -35,33 +35,29 @@ function Mapp() {
   };
 
   return (
-    <DashboardShell>
-      {/* Keep full-viewport map height inside the shell */}
-      <div style={{ height: "100vh", width: "100%" }}>
-        <MapContainer
-          center={[14.672, 121.053]} // you can change center to show both areas
-          zoom={13}
-          style={{ height: "100%", width: "100%" }}
-        >
-          <TileLayer
-            attribution="&copy; OpenStreetMap contributors"
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
+    <MapContainer
+      center={[14.672, 121.053]} // you can change center to show both areas
+      zoom={13}
+      style={{ height: "100vh", width: "100%" }}
+    >
+      <TileLayer
+        attribution="&copy; OpenStreetMap contributors"
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
 
-          {/* Plot first JSON */}
-          <GeoJSON data={floodZones} style={floodStyle} />
+      {/* Plot first JSON */}
+      <GeoJSON data={floodZones} style={floodStyle} />
 
-          {/* Plot second JSON */}
-          <GeoJSON data={dampulanZones} style={dampulanStyle} />
+      {/* Plot second JSON */}
+      <GeoJSON data={dampulanZones} style={dampulanStyle} />
 
-          {/* Plot third JSON */}
-          <GeoJSON data={langlaZones} style={langlaStyle} />
+      {/* Plot third JSON */}
+      <GeoJSON data={langlaZones} style={langlaStyle} />
 
-          {/* Plot fourth JSON */}
-          <GeoJSON data={magsalisiZones} style={magsalisiStyle} />
-        </MapContainer>
-      </div>
-    </DashboardShell>
+      {/* Plot fourth JSON */}
+      <GeoJSON data={magsalisiZones} style={magsalisiStyle} />
+
+    </MapContainer>
   );
 }
 

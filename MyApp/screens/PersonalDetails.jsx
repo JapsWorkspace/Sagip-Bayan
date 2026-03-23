@@ -37,6 +37,11 @@ export default function PersonalDetails({ navigation }) {
       return;
     }
 
+    if (!phone.trim()) {
+      setError("Phone number cannot be empty.");
+      return;
+    }
+
     api
       .put(`/user/update/${user.id}`, { username, phone })
       .then(() => {

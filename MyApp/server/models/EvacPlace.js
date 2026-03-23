@@ -6,6 +6,7 @@ const placeSchema = new mongoose.Schema({
   latitude: { type: Number, required: true },
   longitude: { type: Number, required: true },
   capacity: { type: Number, required: true },
+  barangay: {type: String, required: true},
   capacityStatus: { 
     type: String, enum: ["available","limited","full"], 
     default: "available" }

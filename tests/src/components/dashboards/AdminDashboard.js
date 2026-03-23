@@ -42,6 +42,7 @@ export default function AdminDashboard() {
                 Evacuation Management
               </button>
 
+<<<<<<< HEAD
               <button className="qa-item" onClick={() => navigate('/admin')}>
                 Incident Reports
               </button>
@@ -54,6 +55,29 @@ export default function AdminDashboard() {
                 Admin Logs
               </button>
             </div>
+=======
+            <DashboardCard
+              title="Incident Reports"
+              desc="View and manage the reported incidents."
+              onClick={() => navigate('/admin')}
+              icon="location"
+            />
+
+            <DashboardCard
+              title="Time-in / Time-out"
+              desc="Manage attendance for admin accounts."
+              onClick={() => navigate('/admin/time-in-time-out')}
+              icon="clock"
+            />
+
+            <DashboardCard
+              title="Admin Logs"
+              desc="View administrative activity logs."
+              onClick={() => navigate('/admin/logs')}
+              icon="shield"
+            />
+
+>>>>>>> 12fa248 (Initial commit)
           </section>
         </div>
       </div>
