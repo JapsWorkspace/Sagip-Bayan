@@ -1,4 +1,3 @@
-// src/App.js
 import './App.css';
 import './components/css/sidebar.css'; // ← add this
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
@@ -26,8 +25,6 @@ import HomeGuidelines from './components/guidelines/HomeGuidelines';
 import UpdateGuideline from './components/guidelines/UpdateGuidelines';
 import TimeInOut from './components/timeInOut';
 import AdminLogs from './components/AdminLogs';
-import EvacuationMap from './components/map/EvacuationMap';
-
 
 function App() {
   return (
@@ -38,12 +35,16 @@ function App() {
 
             <Route path="/admin" element={<Admin />} />
             <Route path="/auditTrails" element={<AuditTrails/>} />
-            <Route path="/evacuation" element={<EManagement/>} />
 
-          {/* Public */}
-          <Route path="/" element={<Dashboard/>}/>
-          <Route path="/Login" element={<Login />} />
-          <Route path="/Emaps" element={<EvacuationMap />} />
+            {/* Evacuation Center Management */}
+            {/* Keep existing generic route for backward compatibility */}
+            <Route path="/evacuation" element={<EManagement/>} />
+            {/* Add DRRMO-scoped route so DRRMO sidebar points here safely */}
+            <Route path="/drrmo/evacuation-centers" element={<EManagement />} />
+
+            {/* Public */}
+            <Route path="/" element={<Dashboard/>}/>
+            <Route path="/Login" element={<Login />} />
 
             {/* Barangay */}
             <Route path="/barangay/dashboard" element={<BarangayDashboard />} />

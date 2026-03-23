@@ -1,4 +1,3 @@
-// src/components/layout/SidebarBarangay.jsx
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -19,9 +18,9 @@ export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
   const dark = theme === "dark";
 
   const links = [
-    { to: "/barangay/relief-request",  label: "Relief Request",              icon: dark ? reliefwhite   : reliefgreen },
-    { to: "/barangay/messages",        label: "Messages & Announcements",    icon: dark ? messagewhite  : messagegreen },
-    { to: "/barangay/relief-status",   label: "Relief Distribution Status",  icon: dark ? analyticswhite: analyticsgreen },
+    { to: "/barangay/relief-request",  label: "Relief Request",             icon: dark ? reliefwhite   : reliefgreen },
+    { to: "/barangay/messages",        label: "Messages & Announcements",   icon: dark ? messagewhite  : messagegreen },
+    { to: "/barangay/relief-status",   label: "Relief Distribution Status", icon: dark ? analyticswhite: analyticsgreen },
   ];
 
   const themeIcon  = dark ? sunwhite    : nightgreen;
@@ -41,7 +40,12 @@ export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
       <nav className="sidebar-nav" role="navigation">
         <div className="sidebar-group">
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end
+              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}
+            >
               <img src={l.icon} className="sidebar-icon" alt="" />
               {!collapsed && <span>{l.label}</span>}
             </NavLink>
@@ -51,12 +55,22 @@ export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
         <div className="sidebar-spacer" />
 
         <div className="sidebar-footer">
-          <button type="button" className="sidebar-link is-button" onClick={toggleTheme} title={themeLabel}>
+          <button
+            type="button"
+            className="sidebar-link is-button"
+            onClick={toggleTheme}
+            title={themeLabel}
+          >
             <img src={themeIcon} className="sidebar-icon" alt="" />
             {!collapsed && <span>{themeLabel}</span>}
           </button>
 
-          <button type="button" className="sidebar-link is-button" onClick={onLogout} title="Log out">
+          <button
+            type="button"
+            className="sidebar-link is-button"
+            onClick={onLogout}
+            title="Log out"
+          >
             <img src={logoutIcon} className="sidebar-icon" alt="" />
             {!collapsed && <span>Log out</span>}
           </button>

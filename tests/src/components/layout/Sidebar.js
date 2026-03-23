@@ -43,7 +43,7 @@ export default function Sidebar({ collapsed, onToggle, onLogout }) {
     { to: "/admin/logs", label: "Admin Logs", icon: useDark ? auditwhite : auditgreen },
 
     { to: "/admin/relief", label: "Relief Request", icon: useDark ? reliefwhite : reliefgreen },
-    { to: "/admin/messages", label: "Messages & Announcement", icon: useDark ? messagewhite : messagegreen },
+
   ];
 
   const themeIcon  = useDark ? sunwhite : nightgreen;

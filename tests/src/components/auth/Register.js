@@ -385,13 +385,7 @@ export default function Register() {
                 {/* Back */}
                 <div className="section">
                   <div className="section-control actions-right">
-                    <button
-                      type="button"
-                      className="btn"
-                      onClick={() => navigate('/admin/dashboard')}
-                    >
-                      Go Back to Dashboard
-                    </button>
+                  
                   </div>
                 </div>
 

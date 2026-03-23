@@ -1,4 +1,3 @@
-// src/components/layout/SidebarDRRMO.jsx
 import { NavLink } from "react-router-dom";
 import { useTheme } from "../../context/ThemeContext";
 
@@ -16,12 +15,13 @@ export default function SidebarDRRMO({ collapsed, onToggle, onLogout }) {
   const { theme, toggleTheme } = useTheme();
   const dark = theme === "dark";
 
+  // IMPORTANT: All links are under /drrmo/... (no /admin)
   const links = [
-    { to: "/drrmo/relief-lists",  label: "Relief Requests List",  icon: dark ? analyticswhite : analyticsgreen },
-    { to: "/evacuation",          label: "Evacuation Management", icon: dark ? evacuationwhite: evacuationgreen },
-    { to: "/admin",               label: "Incident Reports",      icon: dark ? analyticswhite : analyticsgreen },
-    { to: "/idk",                 label: "Guidelines",            icon: dark ? analyticswhite : analyticsgreen },
-    { to: "/drrmo/audit-trail",   label: "Audit Trail",           icon: dark ? analyticswhite : analyticsgreen },
+    { to: "/drrmo/relief-lists",        label: "Relief Requests List",  icon: dark ? analyticswhite : analyticsgreen },
+    { to: "/drrmo/evacuation-centers",  label: "Evacuation Management", icon: dark ? evacuationwhite: evacuationgreen },
+    { to: "/drrmo/incidents",           label: "Incident Reports",      icon: dark ? analyticswhite : analyticsgreen },
+    { to: "/drrmo/guidelines",          label: "Guidelines",            icon: dark ? analyticswhite : analyticsgreen },
+    { to: "/drrmo/audit-trail",         label: "Audit Trail",           icon: dark ? analyticswhite : analyticsgreen },
   ];
 
   const themeIcon  = dark ? sunwhite : nightgreen;
@@ -41,7 +41,12 @@ export default function SidebarDRRMO({ collapsed, onToggle, onLogout }) {
       <nav className="sidebar-nav" role="navigation">
         <div className="sidebar-group">
           {links.map((l) => (
-            <NavLink key={l.to} to={l.to} className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}>
+            <NavLink
+              key={l.to}
+              to={l.to}
+              end
+              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}
+            >
               <img src={l.icon} className="sidebar-icon" alt="" />
               {!collapsed && <span>{l.label}</span>}
             </NavLink>
@@ -51,12 +56,22 @@ export default function SidebarDRRMO({ collapsed, onToggle, onLogout }) {
         <div className="sidebar-spacer" />
 
         <div className="sidebar-footer">
-          <button type="button" className="sidebar-link is-button" onClick={toggleTheme} title={themeLabel}>
+          <button
+            type="button"
+            className="sidebar-link is-button"
+            onClick={toggleTheme}
+            title={themeLabel}
+          >
             <img src={themeIcon} className="sidebar-icon" alt="" />
             {!collapsed && <span>{themeLabel}</span>}
           </button>
 
-          <button type="button" className="sidebar-link is-button" onClick={onLogout} title="Log out">
+          <button
+            type="button"
+            className="sidebar-link is-button"
+            onClick={onLogout}
+            title="Log out"
+          >
             <img src={logoutIcon} className="sidebar-icon" alt="" />
             {!collapsed && <span>Log out</span>}
           </button>
