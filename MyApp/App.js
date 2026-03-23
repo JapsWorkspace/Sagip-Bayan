@@ -16,6 +16,7 @@ import RiskHeatMap from './screens/RiskHeatMap';
 import Guidelines from './screens/Guidelines';
 import SafetyMark from './screens/SafetyMark';
 import MainCenter from './screens/MainCenter';
+import MainCenter from './screens/MainCenter';
 
 import GetStarted from './screens/GetStarted';        // ← NEW
 import { UserProvider } from './screens/UserProvider';

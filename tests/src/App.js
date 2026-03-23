@@ -26,6 +26,8 @@ import HomeGuidelines from './components/guidelines/HomeGuidelines';
 import UpdateGuideline from './components/guidelines/UpdateGuidelines';
 import TimeInOut from './components/timeInOut';
 import AdminLogs from './components/AdminLogs';
+import EvacuationMap from './components/map/EvacuationMap';
+
 
 function App() {
   return (
@@ -38,9 +40,10 @@ function App() {
             <Route path="/auditTrails" element={<AuditTrails/>} />
             <Route path="/evacuation" element={<EManagement/>} />
 
-            {/* Public */}
-            <Route path="/" element={<Dashboard/>}/>
-            <Route path="/Login" element={<Login />} />
+          {/* Public */}
+          <Route path="/" element={<Dashboard/>}/>
+          <Route path="/Login" element={<Login />} />
+          <Route path="/Emaps" element={<EvacuationMap />} />
 
             {/* Barangay */}
             <Route path="/barangay/dashboard" element={<BarangayDashboard />} />

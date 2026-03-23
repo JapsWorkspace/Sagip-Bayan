@@ -13,4 +13,6 @@ router.delete("/:id", EvacController.deletePlace);
 /* HISTORY */
 router.get("/history/logs", EvacController.getHistory);
 
+router.get("/analytics/summary", EvacController.getAnalyticsSummary);
+
 module.exports = router;

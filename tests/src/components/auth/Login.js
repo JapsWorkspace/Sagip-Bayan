@@ -68,15 +68,20 @@ export default function Login() {
     if (!trimmedEmail || !trimmedPassword) return alert('Please fill all fields');
     if (role === 'admin' && isLocked) return;
 
-    const payload = { email: trimmedEmail, password: trimmedPassword };
+  const payload = { email: trimmedEmail, password: trimmedPassword };
 
-    try {
-      const res = await fetch(`${local}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload)
-      });
+  console.log("Attempting login with:", payload);
+
+  try {
+    const res = await fetch(`${local}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    // DEBUG: log raw response
+    console.log("Login response status:", res.status, res.statusText);
 
       let data;
       try {
@@ -188,16 +193,27 @@ export default function Login() {
             <h3 className="card-title">Login</h3>
             <div className="card-divider" aria-hidden="true" />
 
-            {/* Fields */}
-            <div className="form-container">
-              <div className="field">
-                <label className="field-label">Email</label>
-                <input
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                />
+          {/* Form */}
+          <div className="form-container">
+            {/* <div className="field">
+              <label className="field-label">Role</label>
+              <div className="select-wrap">
+                <select value={role} onChange={e => setRole(e.target.value)}>
+                  <option value="barangay">Barangay</option>
+                  <option value="drrmo">DRRMO</option>
+                  <option value="admin">Admin</option>
+                </select>
               </div>
+            </div> */}
+
+            <div className="field">
+              <label className="field-label">Email</label>
+              <input
+                placeholder="name@example.com"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+              />
+            </div>
 
               <div className="field">
                 <label className="field-label">Password</label>
