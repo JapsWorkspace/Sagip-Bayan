@@ -40,6 +40,32 @@ const EManagement = () => {
     extraNotes: "", // persisted (0-30 chars)
   });
 
+
+  const JAEN_BARANGAYS = [
+  "Bagong Sikat",
+  "Bagong Silang",
+  "Calabasa",
+  "Don Mariano Marcos",
+  "Dampulan",
+  "Hilera",
+  "Imelda Poblacion",
+  "Ibunia",
+  "Lambakin",
+  "Langla",
+  "Magsalisi",
+  "Malabon Kaingin",
+  "Marawa",
+  "Niyugan",
+  "Putlod",
+  "San Jose",
+  "San Pablo",
+  "San Roque",
+  "Santo Tomas Norte",
+  "Santo Tomas Sur",
+  "Sapang Putik",
+  "Ulanin-Pitak",
+];
+
   const [pickMode, setPickMode] = useState(false);
 
   const [showHistory, setShowHistory] = useState(false);
@@ -60,6 +86,28 @@ const EManagement = () => {
     [places, selectedId]
   );
 
+  const handleLatitudeChange = (e) => {
+    const v = e.target.value.trim();
+    if (v === "") {
+      setFormData((prev) => ({ ...prev, latitude: null }));
+      return;
+    }
+    const num = Number(v);
+    if (Number.isNaN(num)) return;
+    setFormData((prev) => ({ ...prev, latitude: num }));
+  };
+
+   const handleLongitudeChange = (e) => {
+    const v = e.target.value.trim();
+    if (v === "") {
+      setFormData((prev) => ({ ...prev, longitude: null }));
+      return;
+    }
+    const num = Number(v);
+    if (Number.isNaN(num)) return;
+    setFormData((prev) => ({ ...prev, longitude: num }));
+  };
+
   const filteredPlaces = useMemo(() => {
     const term = search.trim().toLowerCase();
     if (!term) return places;
@@ -76,7 +124,6 @@ const EManagement = () => {
     setCapacityDisplay(Number(selectedPlace.capacity) || 0);
   }, [selectedPlace]);
 
-  // Selecting from list still zooms to 17 (unchanged)
   useEffect(() => {
     if (!selectedPlace) return;
     const lat = Number(selectedPlace.latitude);
@@ -122,27 +169,22 @@ const EManagement = () => {
   }, [showHistory]);
 
   const fetchPlaces = () => {
-    axios
-      .get("http://localhost:8000/evacs")
+    axios.get("http://localhost:8000/evacs")
       .then((res) => setPlaces(res.data))
       .catch(console.error);
   };
 
   const updateStatus = (id, status) =>
-    axios
-      .put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
+    axios.put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
       .then(fetchPlaces);
 
   const deletePlace = (id) => {
-    if (!window.confirm) {
-      // fallback just in case environment lacks window.confirm (shouldn't happen in browser)
-    }
+    if (!window.confirm("Delete this place?")) return;
     axios.delete(`http://localhost:8000/evacs/${id}`).then(fetchPlaces);
   };
 
   const fetchHistory = () => {
-    axios
-      .get("http://localhost:8000/evacs/history/logs")
+    axios.get("http://localhost:8000/evacs/history/logs")
       .then((res) => setHistory(res.data))
       .catch(console.error);
   };
@@ -162,33 +204,12 @@ const EManagement = () => {
     }));
   };
 
-  const handleLatitudeChange = (e) => {
-    const v = e.target.value.trim();
-    if (v === "") {
-      setFormData((prev) => ({ ...prev, latitude: null }));
-      return;
-    }
-    const num = Number(v);
-    if (Number.isNaN(num)) return;
-    setFormData((prev) => ({ ...prev, latitude: num }));
-  };
-
-  const handleLongitudeChange = (e) => {
-    const v = e.target.value.trim();
-    if (v === "") {
-      setFormData((prev) => ({ ...prev, longitude: null }));
-      return;
-    }
-    const num = Number(v);
-    if (Number.isNaN(num)) return;
-    setFormData((prev) => ({ ...prev, longitude: num }));
-  };
-
   const handleStartPick = () => {
     setFormData({
       name: "",
       location: "",
       capacity: "",
+      barangay: "",
       latitude: null,
       longitude: null,
       extraNotes: "",
@@ -220,8 +241,8 @@ const EManagement = () => {
 
   // Only zoom when ADDING a place
   const handleMapSelectLocation = useCallback((...args) => {
-    const { loc, lat, lng } = normalizeMapArgs(...args);
-    if (lat == null || lng == null) return;
+      const { loc, lat, lng } = normalizeMapArgs(...args);
+      if (lat == null || lng == null) return;
 
     if (pickMode) {
       const clean = (v) => (v || "").replace(/<[^>]*>?/gm, "").trim();
@@ -230,6 +251,7 @@ const EManagement = () => {
         name: "",
         location: clean(loc || ""),
         capacity: "",
+        barangay: "",
         latitude: lat,
         longitude: lng,
         // preserve extraNotes that user may have typed before picking
@@ -265,20 +287,38 @@ const EManagement = () => {
       latitude: Number(latitude),
       longitude: Number(longitude),
       extraNotes: trimmedNotes, // include extra notes in payload
+      capacityIndividual: Number(formData.capacity),
+      capacityFamily: Number(formData.capacityFamily || 0),
+      bedCapacity: Number(formData.bedCapacity || 0),
+      floorArea: Number(formData.floorArea || 0),
+      femaleCR: Boolean(formData.femaleCR),
+      maleCR: Boolean(formData.maleCR),
+      commonCR: Boolean(formData.commonCR),
+      potableWater: Boolean(formData.potableWater),
+      nonPotableWater: Boolean(formData.nonPotableWater),
+      foodPackCapacity: Number(formData.foodPackCapacity || 0),
+      isPermanent: Boolean(formData.isPermanent),
+      isCovidFacility: Boolean(formData.isCovidFacility),
     })
       .then(() => {
         setFormData({
           name: "",
           location: "",
           capacity: "",
+          barangay: "",
           latitude: null,
           longitude: null,
           extraNotes: "",
         });
         setShowAddForm(false);
         fetchPlaces();
+        
       })
-      .catch(() => alert("Error saving data"))
+      .catch(() => {
+        alert("Error saving data")
+        console.log("Place added:", formData);
+      })
+      
       .finally(() => setLoading(false));
   };
 
@@ -345,6 +385,8 @@ const EManagement = () => {
     <DashboardShell>
       {/* Lock the entire screen area (under header). Page doesn't scroll. */}
       <div className="evac-screen-lock">
+        {/* ❌ Toolbar removed */}
+
         {/* Split canvas: map | panel */}
         <div className="evac-page">
           {/* Map */}
@@ -415,9 +457,6 @@ const EManagement = () => {
                     autoComplete="off"
                   />
                 </div>
-
-                {/* Legend */}
-                <Legend />
 
                 <div className="evac-list">
                   {filteredPlaces.length === 0 ? (
@@ -646,7 +685,7 @@ const EManagement = () => {
         </div>
       </div>
 
-      {/* Add Place Modal */}
+      {/* Modal kept */}
       {showAddForm &&
         createPortal(
           <div
@@ -776,9 +815,26 @@ const EManagement = () => {
                     />
                   </div>
 
-                  {/* Editable Latitude / Longitude */}
                   <div>
-                    <label>Latitude / Longitude</label>
+                      <label>Barangay</label>
+                      <select
+                        name="barangay"
+                        value={formData.barangay}
+                        onChange={handleFieldChange}
+                      >
+                        <option value="">Select Barangay</option>
+                        {JAEN_BARANGAYS
+                      .slice()
+                      .sort((a, b) => a.localeCompare(b))
+                      .map((b, index) => (
+                        <option key={index} value={b}>
+                          {b}
+                        </option>
+                    ))}
+                      </select>
+                 </div>
+                  <div>
+                     <label>Latitude / Longitude</label>
                     <div style={{
                       display: "grid",
                       gridTemplateColumns: "1fr 1fr",
@@ -817,7 +873,6 @@ const EManagement = () => {
                       />
                     </div>
                   </div>
-
                   {/* Extra Notes (30 chars) — taller, never wider than panel */}
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -843,6 +898,110 @@ const EManagement = () => {
                       }}
                     />
                   </div>
+                  <div>
+                    <label>Bed Capacity</label>
+                    <input
+                      name="bedCapacity"
+                      type="number"
+                      value={formData.bedCapacity || ""}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div>
+                    <label>Floor Area (sq.m.)</label>
+                    <input
+                      name="floorArea"
+                      type="number"
+                      value={formData.floorArea || ""}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div>
+                    <label>Facilities</label>
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="femaleCR"
+                          checked={formData.femaleCR || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, femaleCR: e.target.checked }))}
+                        /> Female CR
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="maleCR"
+                          checked={formData.maleCR || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, maleCR: e.target.checked }))}
+                        /> Male CR
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="commonCR"
+                          checked={formData.commonCR || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, commonCR: e.target.checked }))}
+                        /> Common CR
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="potableWater"
+                          checked={formData.potableWater || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, potableWater: e.target.checked }))}
+                        /> Potable Water
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="nonPotableWater"
+                          checked={formData.nonPotableWater || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, nonPotableWater: e.target.checked }))}
+                        /> Non-potable Water
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label>Food Pack Capacity</label>
+                    <input
+                      name="foodPackCapacity"
+                      type="number"
+                      value={formData.foodPackCapacity || ""}
+                      onChange={handleFieldChange}
+                      autoComplete="off"
+                      inputMode="numeric"
+                    />
+                  </div>
+
+                  <div>
+                    <label>Flags</label>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="isPermanent"
+                          checked={formData.isPermanent || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, isPermanent: e.target.checked }))}
+                        /> Permanent
+                      </label>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="isCovidFacility"
+                          checked={formData.isCovidFacility || false}
+                          onChange={(e) => setFormData((prev) => ({ ...prev, isCovidFacility: e.target.checked }))}
+                        /> COVID Facility
+                      </label>
+                    </div>
+                  </div>
+
                 </div>
 
                 <div className="modal-actions" style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
