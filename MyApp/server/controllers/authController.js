@@ -183,10 +183,18 @@ const login = async (req, res) => {
     if (!match)
       return res.status(401).json({ message: 'Invalid email or password' });
 
+console.log("LOGIN ACCOUNT:", {
+  id: account._id,
+  email: account.email,
+  username: account.username,
+  role
+});
 
-    req.session.userId = account._id;
-    req.session.role = role;
-    req.session.username = account.username;
+req.session.userId = account._id;
+req.session.role = role;
+req.session.username = account.username;
+
+console.log("SESSION BEFORE SAVE:", req.session);
 
 
    req.session.save(async (err) => {
