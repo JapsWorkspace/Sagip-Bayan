@@ -1,44 +1,89 @@
 const Place = require("../models/EvacPlace.js");
 const EHistory = require("../models/EvacHistory.js");
 
-
+// Sanitize input
 const sanitizeText = (value) => {
   return value.replace(/<[^>]*>?/gm, "").trim();
 };
 
+// CREATE PLACE
 const createPlace = async (req, res) => {
   try {
-    const { name, location, capacity, latitude, longitude } = req.body;
+    const {
+      name,
+      location,
+      barangay,
+      latitude,
+      longitude,
 
-    // Ensure all fields including coordinates are provided
+      capacityIndividual,
+      capacityFamily,
+      bedCapacity,
+      floorArea,
+
+      femaleCR,
+      maleCR,
+      commonCR,
+
+      potableWater,
+      nonPotableWater,
+
+      foodPackCapacity,
+      isPermanent,
+      isCovidFacility,
+    } = req.body;
+
+    // Required validation
     if (
       !name ||
       !location ||
-      capacity === undefined ||
+      !barangay ||
       latitude === undefined ||
-      longitude === undefined
+      longitude === undefined ||
+      capacityIndividual === undefined ||
+      capacityFamily === undefined
     ) {
-      return res.status(400).json({ message: "All fields including coordinates are required." });
+      return res.status(400).json({
+        message: "Missing required fields",
+      });
     }
 
-    // Convert coordinates and capacity to numbers
+    // Convert numeric values
     const latNum = Number(latitude);
     const lngNum = Number(longitude);
-    const capNum = Number(capacity);
 
-    // Validate conversion
-    if (isNaN(latNum) || isNaN(lngNum) || isNaN(capNum)) {
-      return res.status(400).json({ message: "Coordinates and capacity must be valid numbers." });
+    if (isNaN(latNum) || isNaN(lngNum)) {
+      return res.status(400).json({
+        message: "Invalid coordinates",
+      });
     }
 
     const newPlace = new Place({
       name: sanitizeText(name),
       location: sanitizeText(location),
+      barangay: sanitizeText(barangay),
+
       latitude: latNum,
       longitude: lngNum,
-      capacity: capNum,
-      barangay: req.body.barangay,
-      capacityStatus: "available"
+
+      capacityIndividual: Number(capacityIndividual),
+      capacityFamily: Number(capacityFamily),
+      bedCapacity: Number(bedCapacity) || 0,
+      floorArea: Number(floorArea) || 0,
+
+      femaleCR: Boolean(femaleCR),
+      maleCR: Boolean(maleCR),
+      commonCR: Boolean(commonCR),
+
+      potableWater: Boolean(potableWater),
+      nonPotableWater: Boolean(nonPotableWater),
+
+      foodPackCapacity: Number(foodPackCapacity) || 0,
+
+      isPermanent: Boolean(isPermanent),
+      isCovidFacility: Boolean(isCovidFacility),
+
+      capacityStatus: "available",
     });
 
     await newPlace.save();
@@ -46,96 +91,101 @@ const createPlace = async (req, res) => {
     await EHistory.create({
       action: "ADD",
       placeName: newPlace.name,
-      details: `Added with capacity ${newPlace.capacity}`
+      details: `Added with individual capacity ${newPlace.capacityIndividual}`,
     });
 
     res.status(201).json({
       message: "Place created successfully",
-      place: newPlace
+      place: newPlace,
     });
-
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
-const getPlaces = (req, res) => {
-  Place.find().sort({ createdAt: -1 })
-    .then(places => {
-      res.json(places);
-    })
-    .catch(err => {
-      console.error(err);
-      res.status(500).json({ message: "Server error" });
-    });
+// GET ALL PLACES
+const getPlaces = async (req, res) => {
+  try {
+    const places = await Place.find().sort({ createdAt: -1 });
+    res.json(places);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
 };
 
-const getHistory = (req, res) => {
-  EHistory.find().sort({ createdAt: -1 })
-    .then((logs) => res.json(logs))
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ message: "Failed to load history" });
-    });
+// GET HISTORY
+const getHistory = async (req, res) => {
+  try {
+    const logs = await EHistory.find().sort({ createdAt: -1 });
+    res.json(logs);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to load history" });
+  }
 };
 
+// UPDATE CAPACITY STATUS
+const updateCapacityStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { capacityStatus } = req.body;
 
-const updateCapacityStatus = (req, res) => {
-  const { id } = req.params;
-  const { capacityStatus } = req.body;
+    const updated = await Place.findByIdAndUpdate(
+      id,
+      { capacityStatus },
+      { new: true }
+    );
 
-  Place.findByIdAndUpdate(id, { capacityStatus }, { new: true })
-    .then((updated) => {
-      if (!updated) {
-        return res.status(404).json({ message: "Place not found" });
-      }
+    if (!updated) {
+      return res.status(404).json({ message: "Place not found" });
+    }
 
-      return EHistory.create({
-        action: "STATUS_UPDATE",
-        placeName: updated.name,
-        details: `Status changed to ${capacityStatus}`
-      }).then(() => res.json(updated));
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ message: "Update failed" });
+    await EHistory.create({
+      action: "STATUS_UPDATE",
+      placeName: updated.name,
+      details: `Status changed to ${capacityStatus}`,
     });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Update failed" });
+  }
 };
 
-const deletePlace = (req, res) => {
-  const { id } = req.params;
+// DELETE PLACE
+const deletePlace = async (req, res) => {
+  try {
+    const { id } = req.params;
 
-  Place.findByIdAndDelete(id)
-    .then((deleted) => {
-      if (!deleted) {
-        return res.status(404).json({ message: "Place not found" });
-      }
+    const deleted = await Place.findByIdAndDelete(id);
 
-      return EHistory.create({
-        action: "DELETE",
-        placeName: deleted.name,
-        details: "Place deleted"
-      }).then(() =>
-        res.json({ message: "Place deleted successfully" })
-      );
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).json({ message: "Delete failed" });
+    if (!deleted) {
+      return res.status(404).json({ message: "Place not found" });
+    }
+
+    await EHistory.create({
+      action: "DELETE",
+      placeName: deleted.name,
+      details: "Place deleted",
     });
+
+    res.json({ message: "Place deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Delete failed" });
+  }
 };
 
+// ANALYTICS SUMMARY
 const getAnalyticsSummary = async (req, res) => {
   try {
-    // Fetch all places
     const places = await Place.find();
 
-    // Total evacuation centers
     const totalPlaces = places.length;
 
-    // Capacity status counts
     const statusCounts = places.reduce(
       (acc, p) => {
         const status = p.capacityStatus || "available";
@@ -145,17 +195,32 @@ const getAnalyticsSummary = async (req, res) => {
       { available: 0, limited: 0, full: 0 }
     );
 
-    // Total capacity
-    const totalCapacity = places.reduce((sum, p) => sum + (p.capacity || 0), 0);
+    const totalIndividualCapacity = places.reduce(
+      (sum, p) => sum + (p.capacityIndividual || 0),
+      0
+    );
 
-    // Average capacity
-    const averageCapacity = totalPlaces ? totalCapacity / totalPlaces : 0;
+    const totalFamilyCapacity = places.reduce(
+      (sum, p) => sum + (p.capacityFamily || 0),
+      0
+    );
+
+    const totalBedCapacity = places.reduce(
+      (sum, p) => sum + (p.bedCapacity || 0),
+      0
+    );
+
+    const permanentCount = places.filter(p => p.isPermanent).length;
+    const covidFacilities = places.filter(p => p.isCovidFacility).length;
 
     res.json({
       totalPlaces,
       statusCounts,
-      totalCapacity,
-      averageCapacity,
+      totalIndividualCapacity,
+      totalFamilyCapacity,
+      totalBedCapacity,
+      permanentCount,
+      covidFacilities,
     });
   } catch (error) {
     console.error(error);
@@ -163,6 +228,11 @@ const getAnalyticsSummary = async (req, res) => {
   }
 };
 
-module.exports = { getHistory, createPlace, getPlaces, updateCapacityStatus, deletePlace, getAnalyticsSummary };
-
-
+module.exports = {
+  createPlace,
+  getPlaces,
+  getHistory,
+  updateCapacityStatus,
+  deletePlace,
+  getAnalyticsSummary,
+};
