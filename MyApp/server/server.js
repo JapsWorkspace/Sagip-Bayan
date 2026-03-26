@@ -1,4 +1,4 @@
-// server.js
+// server.js 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -27,6 +27,9 @@ const connectionRoutes = require("./routes/connectionRoutes");
 const timeInOutRoutes = require('./routes/timeInOutRoutes');
 const editRoutes = require('./routes/editRoutes');
 
+// NEW donation & inventory routes
+const inventoryRoutes = require('./routes/inventoryRoutes');
+
 const app = express();
 app.set('trust proxy', 1);
 
@@ -38,6 +41,18 @@ if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 
 const guidelinesDir = path.join(uploadDir, "guidelines");
 if (!fs.existsSync(guidelinesDir)) fs.mkdirSync(guidelinesDir, { recursive: true });
+
+const inventoryDir = path.join(uploadDir, "inventory");
+if (!fs.existsSync(inventoryDir)) fs.mkdirSync(inventoryDir, { recursive: true });
+
+const goodsDir = path.join(uploadDir, "goods");
+if (!fs.existsSync(goodsDir)) fs.mkdirSync(goodsDir, { recursive: true });
+
+const monetaryDir = path.join(uploadDir, "monetary");
+if (!fs.existsSync(monetaryDir)) fs.mkdirSync(monetaryDir, { recursive: true });
+
+const proofsDir = path.join(uploadDir, "proofs");
+if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
 
 // --------------------
 // Body parsers
@@ -79,9 +94,9 @@ app.use(session({
   saveUninitialized: false,
   proxy: isProd,
   cookie: {
-    secure: isProd,                 // true in Render
+    secure: isProd,
     httpOnly: true,
-    sameSite: isProd ? 'none' : 'lax', // CRITICAL FIX
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: 1000 * 60 * 60 * 24
   }
 }));
@@ -110,6 +125,10 @@ app.get("/api/debug-express", (req, res) => {
 // --------------------
 app.use("/uploads", express.static(uploadDir));
 app.use("/uploads/guidelines", express.static(guidelinesDir));
+app.use("/uploads/inventory", express.static(inventoryDir));
+app.use("/uploads/goods", express.static(goodsDir));
+app.use("/uploads/monetary", express.static(monetaryDir));
+app.use("/uploads/proofs", express.static(proofsDir));
 
 // --------------------
 // API Routes
@@ -128,8 +147,11 @@ app.use("/connection", connectionRoutes);
 app.use('/api/timeinout', timeInOutRoutes);
 app.use('/api/edit', editRoutes);
 
+// NEW routes
+app.use('/api/inventory', inventoryRoutes);
+
 // --------------------
-// Hazard proxy (from 2nd file)
+// Hazard proxy
 // --------------------
 app.get("/hazards", async (req, res) => {
   try {
@@ -162,6 +184,15 @@ app.get("/hazards", async (req, res) => {
 // --------------------
 app.get("/api/tryserver", (req, res) => {
   res.json({ message: "Server is working!" });
+});
+
+app.get("/api/debug-session", (req, res) => {
+  res.json({
+    session: req.session,
+    username: req.session?.username || null,
+    userId: req.session?.userId || null,
+    role: req.session?.role || null
+  });
 });
 
 app.get("/", (req, res) => {
