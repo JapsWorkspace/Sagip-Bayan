@@ -127,14 +127,37 @@ const getHistory = async (req, res) => {
 };
 
 // UPDATE CAPACITY STATUS
-const updateCapacityStatus = async (req, res) => {
+const updatePlace = async (req, res) => {
   try {
     const { id } = req.params;
-    const { capacityStatus } = req.body;
+
+    const {
+      capacityStatus,
+
+      femaleCR,
+      maleCR,
+      commonCR,
+      potableWater,
+      nonPotableWater,
+
+      isPermanent,
+      isCovidFacility,
+    } = req.body;
 
     const updated = await Place.findByIdAndUpdate(
       id,
-      { capacityStatus },
+      {
+        capacityStatus,
+
+        femaleCR: Boolean(femaleCR),
+        maleCR: Boolean(maleCR),
+        commonCR: Boolean(commonCR),
+        potableWater: Boolean(potableWater),
+        nonPotableWater: Boolean(nonPotableWater),
+
+        isPermanent: Boolean(isPermanent),
+        isCovidFacility: Boolean(isCovidFacility),
+      },
       { new: true }
     );
 
@@ -143,9 +166,9 @@ const updateCapacityStatus = async (req, res) => {
     }
 
     await EHistory.create({
-      action: "STATUS_UPDATE",
+      action: "UPDATE",
       placeName: updated.name,
-      details: `Status changed to ${capacityStatus}`,
+      details: `Facilities + status updated`,
     });
 
     res.json(updated);
@@ -232,7 +255,7 @@ module.exports = {
   createPlace,
   getPlaces,
   getHistory,
-  updateCapacityStatus,
+  updatePlace,
   deletePlace,
   getAnalyticsSummary,
 };

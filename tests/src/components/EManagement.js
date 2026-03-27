@@ -40,6 +40,26 @@ const EManagement = () => {
     extraNotes: "", // persisted (0-30 chars)
   });
 
+  const [facilityState, setFacilityState] = useState({
+    femaleCR: false,
+    maleCR: false,
+    commonCR: false,
+    potableWater: false,
+    nonPotableWater: false,
+    isPermanent: false,
+    isCovidFacility: false,
+  });
+
+  const [selectedBarangays, setSelectedBarangays] = useState([]);
+
+  const handleBarangayFilterChange = (barangay) => {
+  setSelectedBarangays((prev) =>
+    prev.includes(barangay)
+      ? prev.filter((b) => b !== barangay)
+      : [...prev, barangay]
+  );
+};
+
 
   const JAEN_BARANGAYS = [
   "Bagong Sikat",
@@ -109,19 +129,50 @@ const EManagement = () => {
   };
 
   const filteredPlaces = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    if (!term) return places;
-    return places.filter(
-      (p) =>
-        p.name?.toLowerCase().includes(term) ||
-        p.location?.toLowerCase().includes(term)
-    );
-  }, [places, search]);
+  const term = search.trim().toLowerCase();
+
+  return places.filter((p) => {
+    const searchMatch =
+      !term ||
+      p.name?.toLowerCase().includes(term) ||
+      p.location?.toLowerCase().includes(term);
+
+    const barangayMatch =
+      selectedBarangays.length === 0 ||
+      selectedBarangays.includes(p.barangay);
+
+    return searchMatch && barangayMatch;
+  });
+  }, [places, search, selectedBarangays]);
+
+  const groupedPlaces = useMemo(() => {
+    const groups = {};
+
+    filteredPlaces.forEach((p) => {
+      if (!groups[p.barangay]) {
+        groups[p.barangay] = [];
+      }
+      groups[p.barangay].push(p);
+    });
+
+    return groups;
+  }, [filteredPlaces]);
 
   useEffect(() => {
     if (!selectedPlace) return;
+
     setStatusChoice(selectedPlace.capacityStatus || "available");
     setCapacityDisplay(Number(selectedPlace.capacity) || 0);
+
+    setFacilityState({
+      femaleCR: !!selectedPlace.femaleCR,
+      maleCR: !!selectedPlace.maleCR,
+      commonCR: !!selectedPlace.commonCR,
+      potableWater: !!selectedPlace.potableWater,
+      nonPotableWater: !!selectedPlace.nonPotableWater,
+      isPermanent: !!selectedPlace.isPermanent,
+      isCovidFacility: !!selectedPlace.isCovidFacility,
+    });
   }, [selectedPlace]);
 
   useEffect(() => {
@@ -174,9 +225,11 @@ const EManagement = () => {
       .catch(console.error);
   };
 
-  const updateStatus = (id, status) =>
-    axios.put(`http://localhost:8000/evacs/${id}/status`, { capacityStatus: status })
-      .then(fetchPlaces);
+  const updateStatus = (id) =>
+    axios.put(`http://localhost:8000/evacs/${id}`, {
+      capacityStatus: statusChoice,
+      ...facilityState,
+    }).then(fetchPlaces);
 
   const deletePlace = (id) => {
     if (!window.confirm("Delete this place?")) return;
@@ -458,33 +511,69 @@ const EManagement = () => {
                   />
                 </div>
 
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ fontWeight: 600 }}>Filter by Barangay</label>
+                  <div style={{ maxHeight: 120, overflowY: "auto" }}>
+                    {JAEN_BARANGAYS.map((b) => (
+                      <label key={b} style={{ display: "block", fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          checked={selectedBarangays.includes(b)}
+                          onChange={() => handleBarangayFilterChange(b)}
+                        />
+                        {" "}{b}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="evac-list">
                   {filteredPlaces.length === 0 ? (
                     <div className="evac-empty">No places found.</div>
                   ) : (
-                    filteredPlaces.map((p) => (
-                      <label
-                        key={p._id}
-                        className={`evac-list-item ${selectedId === p._id ? "selected" : ""}`}
-                      >
-                        <input
-                          type="radio"
-                          name="selectedPlace"
-                          checked={selectedId === p._id}
-                          onChange={() => setSelectedId(p._id)}
-                        />
-                        <span className="evac-list-name">{p.name}</span>
-                        <span className="evac-list-loc">{p.location}</span>
-                        <span
-                          className={`evac-dot ${
-                            (p.capacityStatus || "available") === "available"
-                              ? "dot-green"
-                              : (p.capacityStatus || "available") === "limited"
-                              ? "dot-orange"
-                              : "dot-red"
-                          }`}
-                        />
-                      </label>
+                    Object.entries(groupedPlaces).map(([barangay, places]) => (
+                      <div key={barangay} style={{ marginBottom: 12 }}>
+                        
+                        {/* Barangay Header */}
+                        <div
+                          style={{
+                            fontWeight: 700,
+                            fontSize: 13,
+                            padding: "6px 8px",
+                            background: "#f3f4f6",
+                            borderRadius: 6,
+                            marginBottom: 6,
+                          }}
+                        >
+                          {barangay}
+                        </div>
+
+                        {/* Places under barangay */}
+                        {places.map((p) => (
+                          <label
+                            key={p._id}
+                            className={`evac-list-item ${selectedId === p._id ? "selected" : ""}`}
+                          >
+                            <input
+                              type="radio"
+                              name="selectedPlace"
+                              checked={selectedId === p._id}
+                              onChange={() => setSelectedId(p._id)}
+                            />
+                            <span className="evac-list-name">{p.name}</span>
+                            <span className="evac-list-loc">{p.location}</span>
+                            <span
+                              className={`evac-dot ${
+                                (p.capacityStatus || "available") === "available"
+                                  ? "dot-green"
+                                  : (p.capacityStatus || "available") === "limited"
+                                  ? "dot-orange"
+                                  : "dot-red"
+                              }`}
+                            />
+                          </label>
+                        ))}
+                      </div>
                     ))
                   )}
                 </div>
@@ -525,6 +614,27 @@ const EManagement = () => {
                         <span className="pill-text">
                           {s.charAt(0).toUpperCase() + s.slice(1)}
                         </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div style={{ marginTop: 10 }}>
+                  <label>Facilities</label>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {Object.keys(facilityState).map((key) => (
+                      <label key={key} style={{ fontSize: 13 }}>
+                        <input
+                          type="checkbox"
+                          checked={facilityState[key]}
+                          onChange={(e) =>
+                            setFacilityState((prev) => ({
+                              ...prev,
+                              [key]: e.target.checked,
+                            }))
+                          }
+                        />
+                        {" "}
+                        {key}
                       </label>
                     ))}
                   </div>
@@ -571,7 +681,7 @@ const EManagement = () => {
                         alert("Select a place first");
                         return;
                       }
-                      await updateStatus(selectedId, statusChoice);
+                      await updateStatus(selectedId);
                     }}
                   >
                     UPDATE

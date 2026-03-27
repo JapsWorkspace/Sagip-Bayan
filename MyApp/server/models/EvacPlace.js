@@ -41,26 +41,5 @@ const placeSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Palitan  ng yung model ng ganito. tapos update  yung evacuation controller
-// Barangay {
-//   name: String,
-//   district: String,
-//   evacuationAreas: [
-//     {
-//       name: String,y
-//       latitude: Number,
-//       longitude: Number,
-//       capacityIndividual: Number,
-//       capacityFamily: Number,
-//       bedCapacity: Number,
-//       facilities: { ... },
-//       capacityStatus: "available" | "limited" | "full"
-//     }
-//   ]
-// }
-
-
-
-
 
 module.exports = mongoose.model("EvacPlace", placeSchema);

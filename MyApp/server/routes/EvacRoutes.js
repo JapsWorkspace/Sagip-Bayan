@@ -7,7 +7,7 @@ const EvacController = require ("../controllers/EvacController.js");
 
 router.post("/make", EvacController.createPlace);
 router.get("/", EvacController.getPlaces);
-router.put("/:id/status", EvacController.updateCapacityStatus);
+router.put("/:id", EvacController.updatePlace);
 router.delete("/:id", EvacController.deletePlace);
 
 /* HISTORY */
