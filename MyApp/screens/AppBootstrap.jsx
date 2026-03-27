@@ -1,19 +1,28 @@
-// screens/AppBootstrap.jsx
 import { useEffect } from "react";
 import { View, ActivityIndicator } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function AppBootstrap({ navigation }) {
   useEffect(() => {
-    const checkPrivacy = async () => {
-      const accepted = await AsyncStorage.getItem("privacyAccepted");
-      if (accepted === "true") {
-        navigation.replace("GetStarted");
-      } else {
+    const boot = async () => {
+      const privacyAccepted = await AsyncStorage.getItem("privacyAccepted");
+      const getStartedSeen = await AsyncStorage.getItem("getStartedSeen");
+
+      if (privacyAccepted !== "true") {
         navigation.replace("PrivacyGate");
+        return;
       }
+
+      if (getStartedSeen !== "true") {
+        navigation.replace("GetStarted");
+        return;
+      }
+
+      // ✅ Already onboarded
+      navigation.replace("MainCenter");
     };
-    checkPrivacy();
+
+    boot();
   }, []);
 
   return (
