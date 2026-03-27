@@ -40,6 +40,9 @@ const redIcon = new L.Icon({
   iconAnchor: [16, 32],
 });
 
+/* ---------- Added: tiny helper to safely show text (no behavior changes) ---------- */
+const sanitize = (s) => String(s ?? "").replace(/<[^>]*>?/gm, "").trim();
+
 /* ---------------- Map Updater ---------------- */
 function MapUpdater({ position, zoom }) {
   const map = useMap();
@@ -139,6 +142,25 @@ function FlyToOnClickMarker({ place, icon, onSelectLocation }) {
         <em>Status:</em> {place.capacityStatus}
         <br />
         Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
+        {/* Keep layout tight and prevent overflow */}
+        <div style={{ minWidth: 180, maxWidth: 280, wordBreak: "break-word" }}>
+          <strong>{sanitize(place.name)}</strong>
+          <br />
+          {sanitize(place.location)}
+          <br />
+          Capacity: {place.capacity}
+          <br />
+          Status: {sanitize(place.capacityStatus)}
+          {/* ------- Added: Extra Notes (only renders if present) ------- */}
+          {sanitize(place.extraNotes) && (
+            <>
+              <br />
+              <div style={{ marginTop: 4 }}>
+                <strong>Extra notes:</strong> {sanitize(place.extraNotes)}
+              </div>
+            </>
+          )}
+        </div>
       </Popup>
     </Marker>
   );
