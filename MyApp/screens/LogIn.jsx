@@ -11,9 +11,10 @@ import {
   SafeAreaView,
   ScrollView,
 } from "react-native";
-// ⬇️ use the shared axios instance that auto-picks the correct base URL
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import api from "../lib/api";
-import styles, { COLORS } from "../Designs/LogIn";  // ← use external design
+import styles, { COLORS } from "../Designs/LogIn";
 import { UserContext } from "./UserContext";
 
 export default function LogIn({ navigation }) {
@@ -23,13 +24,12 @@ export default function LogIn({ navigation }) {
 
   const { user, setUser } = useContext(UserContext);
 
-  // Helper function to remove special characters
-  const sanitizeInput = (text) => text.replace(/[^a-zA-Z0-9]/g, "");
+  const sanitizeInput = (text) =>
+    text.replace(/[^a-zA-Z0-9]/g, "");
 
   const handleLogin = () => {
     setError("");
     api
-      // ⬇️ relative path; base URL comes from myapp/lib/api.js
       .post("/user/login", { username, password })
       .then((res) => {
         const data = res.data;
@@ -39,14 +39,7 @@ export default function LogIn({ navigation }) {
             userId: data.userId,
             email: data.email,
           });
-
-          api
-            // ⬇️ relative path; base URL comes from myapp/lib/api.js
-            .post("/user/send-otp", {
-              email: data.email,
-            })
-            .then(() => console.log("OTP sent"))
-            .catch((err) => console.error("OTP error:", err));
+          api.post("/user/send-otp", { email: data.email });
         } else {
           setUser({
             id: data.user._id,
@@ -57,58 +50,62 @@ export default function LogIn({ navigation }) {
             email: data.user.email,
             phone: data.user.phone,
           });
-
-          console.log(user);
-
           navigation.navigate("MainCenter");
           setUsername("");
           setPassword("");
         }
       })
       .catch((err) => {
-        console.error(err);
         setError(err.response?.data?.message || "Login failed");
       });
   };
 
+  const handleGoToSignup = async () => {
+    try {
+      const accepted = await AsyncStorage.getItem("privacyAccepted");
+      accepted === "true"
+        ? navigation.navigate("SignUp")
+        : navigation.navigate("PrivacyGate");
+    } catch {
+      navigation.navigate("PrivacyGate");
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
+      {/* BACKGROUND STRIPES */}
+      <View style={styles.stripeTop} />
+      <View style={styles.stripeMid} />
+      <View style={styles.stripeMid2} />
+      <View style={styles.stripeBottom} />
+
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* ===== Optional background ===== */}
-        {/* Comment out this block if assets don't exist yet to avoid crashes */}
-        {/* <View style={styles.backgroundWrapper}>
-          <Image source={require("../assets/bg.png")} style={styles.backgroundImage} />
-        </View> */}
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
+          <View style={styles.pageContainer}>
 
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ flexGrow: 1 }}
-        >
-          {/* ===== Foreground content ===== */}
-          <View style={styles.contentWrapper}>
-            {/* Replace with your real logo asset */}
+            {/* WHITE LOGO */}
             <Image
-              source={require("../stores/assets/sagipbayanlogo.png")}
+              source={require("../stores/assets/sagipbayanlogowhite.png")}
               style={styles.logo}
               resizeMode="contain"
             />
 
-            <View style={{ height: 140 }} />
+            {/* FULL-WIDTH PANEL */}
+            <View style={styles.panel}>
 
-            <View style={styles.formWrapper}>
+              <Text style={styles.panelTitle}>LOG IN ACCOUNT</Text>
+
               <TextInput
                 style={styles.input}
                 placeholder="Username"
                 placeholderTextColor={COLORS.placeholder}
                 value={username}
-                onChangeText={(t) => setUsername(sanitizeInput(t.trimStart()))}
-                autoCapitalize="none"
-                autoCorrect={false}
-                keyboardType="email-address"
-                returnKeyType="next"
+                onChangeText={(t) =>
+                  setUsername(sanitizeInput(t.trimStart()))
+                }
               />
 
               <TextInput
@@ -117,10 +114,7 @@ export default function LogIn({ navigation }) {
                 placeholderTextColor={COLORS.placeholder}
                 secureTextEntry
                 value={password}
-                onChangeText={(text) => setPassword(text)}
-                autoCapitalize="none"
-                returnKeyType="go"
-                onSubmitEditing={handleLogin}
+                onChangeText={setPassword}
               />
 
               {error ? <Text style={styles.error}>{error}</Text> : null}
@@ -128,23 +122,23 @@ export default function LogIn({ navigation }) {
               <TouchableOpacity
                 style={styles.button}
                 onPress={handleLogin}
-                activeOpacity={0.85}
               >
-                <Text style={styles.buttonText}>Login</Text>
+                <Text style={styles.buttonText}>LOGIN</Text>
               </TouchableOpacity>
 
-              {/* Bottom helper row like your screenshot */}
-              <Text
-                style={{ textAlign: "center", marginTop: 10, color: "#111827" }}
-              >
-                Don’t have an account?{" "}
-                <Text
-                  style={styles.link}
-                  onPress={() => navigation.navigate("SignUp")}
-                >
-                  SignUp
-                </Text>
+              <Text style={styles.helperText}>
+                don’t have an account?
               </Text>
+
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={handleGoToSignup}
+              >
+                <Text style={styles.secondaryButtonText}>
+                  SIGN UP
+                </Text>
+              </TouchableOpacity>
+
             </View>
           </View>
         </ScrollView>
