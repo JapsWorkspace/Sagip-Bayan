@@ -1,54 +1,51 @@
 <!DOCTYPE html>
 <html>
-  <body style="margin:0; padding:0; font-family:Arial, sans-serif; background:#ffffff;">
+  <body style="margin:0;padding:0;font-family:Arial,sans-serif;background:#ffffff;">
 
-    <!-- Top green bar -->
+    <!-- Top bar -->
     <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td style="background:#0f3d0f; height:18px;"></td>
-      </tr>
+      <tr><td style="background:#0f3d0f;height:18px;"></td></tr>
     </table>
 
-    <!-- Main container -->
+    <!-- Wrapper -->
     <table width="100%" cellpadding="0" cellspacing="0">
       <tr>
         <td align="center" style="padding:30px 0;">
-
           <table width="520" cellpadding="0" cellspacing="0"
-            style="border:1px solid #dcdcdc; background:#ffffff; padding:25px;">
+            style="border:1px solid #dcdcdc;background:#ffffff;padding:25px;">
 
-            <!-- Logo -->
+            <!-- LOGO -->
             <tr>
               <td align="center" style="padding-bottom:20px;">
                 <img
-                  src="http://192.168.1.4:8000/uploads/logo/sagipbayanlogo.png"
-                  alt="SagipBayan"
+                  src="{{LOGO_URL}}"
                   width="140"
+                  alt="SagipBayan"
                   style="display:block;"
                 />
               </td>
             </tr>
 
-            <!-- Title -->
+            <!-- TITLE -->
             <tr>
               <td>
-                <h2 style="margin:0;">Verify your email</h2>
+                <h2 style="margin:0;color:#0f3d0f;">Verify your email</h2>
               </td>
             </tr>
 
-            <!-- Message -->
+            <!-- MESSAGE -->
             <tr>
-              <td style="padding-top:15px; font-size:14px; color:#333;">
+              <td style="padding-top:15px;font-size:14px;color:#333;">
                 Hi <strong>{{FIRST_NAME}}</strong>,<br /><br />
                 Thanks for signing up. Please click the button below to verify your email.
               </td>
             </tr>
 
-            <!-- BUTTON (THIS IS THE IMPORTANT PART) -->
+            <!-- BUTTON -->
             <tr>
               <td align="center" style="padding:25px 0;">
                 <a
-                  href="{{VERIFY_BUTTON}}"
+                  href="{{VERIFY_LINK}}"
                   style="
                     background:#166534;
                     color:#ffffff;
@@ -64,24 +61,21 @@
               </td>
             </tr>
 
-            <!-- Footer -->
+            <!-- FOOTER -->
             <tr>
-              <td style="font-size:12px; color:#777;">
+              <td style="font-size:12px;color:#777;">
                 If you didn’t create this account, ignore this email.
               </td>
             </tr>
 
           </table>
-
         </td>
       </tr>
     </table>
 
-    <!-- Bottom green bar -->
+    <!-- Bottom bar -->
     <table width="100%" cellpadding="0" cellspacing="0">
-      <tr>
-        <td style="background:#0f3d0f; height:18px;"></td>
-      </tr>
+      <tr><td style="background:#0f3d0f;height:18px;"></td></tr>
     </table>
 
   </body>

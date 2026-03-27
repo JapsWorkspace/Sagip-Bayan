@@ -6,6 +6,7 @@ import api from "../lib/api";
 import StepPersonal from "./signup/StepPersonal";
 import StepSecurity from "./signup/StepSecurity";
 import StepMobile from "./signup/StepMobile";
+import SignUpHeader from "./signup/SignUpHeader";
 
 const { width } = Dimensions.get("window");
 
@@ -13,7 +14,7 @@ export default function SignUp({ navigation }) {
   const ref = useRef(null);
   const [index, setIndex] = useState(0);
 
-  // ====== DATA STATE ======
+  // ===== DATA =====
   const [fName, setFName] = useState("");
   const [lName, setLName] = useState("");
   const [username, setUsername] = useState("");
@@ -22,7 +23,7 @@ export default function SignUp({ navigation }) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
 
-  // ====== ERROR STATE ======
+  // ===== ERRORS =====
   const [fNameError, setFNameError] = useState("");
   const [lNameError, setLNameError] = useState("");
   const [usernameError, setUsernameError] = useState("");
@@ -31,31 +32,22 @@ export default function SignUp({ navigation }) {
   const [phoneError, setPhoneError] = useState("");
   const [emailError, setEmailError] = useState("");
 
-  // ====== HELPERS ======
-  const sanitizeInput = (text, allowSpaces = false) => {
-    const pattern = allowSpaces ? /[^a-zA-Z0-9 ]/g : /[^a-zA-Z0-9]/g;
-    return text.replace(pattern, "");
-  };
-
-  // ====== VALIDATION HANDLERS (FROM YOUR OLD CODE) ======
-  const handleFName = (text) => {
-    const v = sanitizeInput(text, true);
+  // ===== VALIDATION (NO SANITIZE ON TYPE) =====
+  const handleFName = (v) => {
     setFName(v);
     if (!v) setFNameError("First name required");
     else if (/[0-9]/.test(v)) setFNameError("No numbers allowed");
     else setFNameError("");
   };
 
-  const handleLName = (text) => {
-    const v = sanitizeInput(text, true);
+  const handleLName = (v) => {
     setLName(v);
     if (!v) setLNameError("Last name required");
     else if (/[0-9]/.test(v)) setLNameError("No numbers allowed");
     else setLNameError("");
   };
 
-  const handleUsername = (text) => {
-    const v = sanitizeInput(text);
+  const handleUsername = (v) => {
     setUsername(v);
     if (!v) setUsernameError("Username required");
     else if (v.length < 4) setUsernameError("Minimum 4 characters");
@@ -63,52 +55,45 @@ export default function SignUp({ navigation }) {
     else setUsernameError("");
   };
 
-  const handlePassword = (text) => {
-    const v = sanitizeInput(text, true);
+  const handlePassword = (v) => {
     setPassword(v);
     if (!v) setPasswordError("Password required");
-    else if (v.length < 8) setPasswordError("Min 8 characters");
+    else if (v.length < 8) setPasswordError("Minimum 8 characters");
     else if (!/[A-Z]/.test(v)) setPasswordError("One uppercase required");
     else if (!/[0-9]/.test(v)) setPasswordError("One number required");
     else setPasswordError("");
   };
 
-  const handleConfirmPassword = (text) => {
-    const v = sanitizeInput(text, true);
+  const handleConfirmPassword = (v) => {
     setConfirmPassword(v);
-    if (!v) setConfirmPasswordError("Confirm your password");
+    if (!v) setConfirmPasswordError("Confirm password");
     else if (v !== password) setConfirmPasswordError("Passwords do not match");
     else setConfirmPasswordError("");
   };
 
-  const handlePhone = (text) => {
-    const v = sanitizeInput(text);
+  const handlePhone = (v) => {
     setPhone(v);
     if (!/^\d{10,11}$/.test(v)) setPhoneError("Invalid phone number");
     else setPhoneError("");
   };
 
-  const handleEmail = (text) => {
-    setEmail(text);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(text))
+  const handleEmail = (v) => {
+    setEmail(v);
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
       setEmailError("Invalid email");
     else setEmailError("");
   };
 
-  // ====== STEP NAVIGATION (BLOCKED BY VALIDATION) ======
+  // ===== NAV =====
   const next = () => {
-    // Step 1 validation
     if (index === 0 && (fNameError || lNameError || usernameError)) {
-      Alert.alert("Please fix errors before continuing");
+      Alert.alert("Fix errors first");
       return;
     }
-
-    // Step 2 validation
     if (index === 1 && (passwordError || confirmPasswordError)) {
-      Alert.alert("Fix password errors first");
+      Alert.alert("Fix password errors");
       return;
     }
-
     ref.current.scrollToIndex({ index: index + 1 });
   };
 
@@ -117,9 +102,8 @@ export default function SignUp({ navigation }) {
     else ref.current.scrollToIndex({ index: index - 1 });
   };
 
-  // ====== SUBMIT ======
   const register = () => {
-    if (emailError || phoneError) {
+    if (phoneError || emailError) {
       Alert.alert("Fix errors before submitting");
       return;
     }
@@ -132,12 +116,14 @@ export default function SignUp({ navigation }) {
       phone,
       email,
     }).then(() => {
-      Alert.alert("Verify Email", "Check your inbox for verification.");
+      Alert.alert(
+        "Verify Email",
+        "Check your inbox to verify your account."
+      );
       navigation.replace("LogIn");
     });
   };
 
-  // ====== PAGES ======
   const pages = [
     {
       key: "personal",
@@ -153,7 +139,6 @@ export default function SignUp({ navigation }) {
           onLNameChange={handleLName}
           onUsernameChange={handleUsername}
           onNext={next}
-          onBack={back}
         />
       ),
     },
@@ -168,7 +153,6 @@ export default function SignUp({ navigation }) {
           onPasswordChange={handlePassword}
           onConfirmChange={handleConfirmPassword}
           onNext={next}
-          onBack={back}
         />
       ),
     },
@@ -182,7 +166,6 @@ export default function SignUp({ navigation }) {
           emailError={emailError}
           onPhoneChange={handlePhone}
           onEmailChange={handleEmail}
-          onBack={back}
           onSubmit={register}
         />
       ),
@@ -190,19 +173,23 @@ export default function SignUp({ navigation }) {
   ];
 
   return (
-    <FlatList
-      ref={ref}
-      data={pages}
-      horizontal
-      pagingEnabled
-      showsHorizontalScrollIndicator={false}
-      renderItem={({ item }) => (
-        <View style={{ width }}>{item.component}</View>
-      )}
-      keyExtractor={(item) => item.key}
-      onMomentumScrollEnd={(e) =>
-        setIndex(Math.round(e.nativeEvent.contentOffset.x / width))
-      }
-    />
+    <View style={{ flex: 1 }}>
+      <SignUpHeader step={index} onBack={back} />
+
+      <FlatList
+        ref={ref}
+        data={pages}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.key}
+        renderItem={({ item }) => (
+          <View style={{ width }}>{item.component}</View>
+        )}
+        onMomentumScrollEnd={(e) =>
+          setIndex(Math.round(e.nativeEvent.contentOffset.x / width))
+        }
+      />
+    </View>
   );
 }
