@@ -4,18 +4,15 @@ import styles from "../../Designs/StepMobile";
 export default function StepMobile({
   phone,
   email,
-  setPhone,
-  setEmail,
+  phoneError,
+  emailError,
+  onPhoneChange,
+  onEmailChange,
   onBack,
   onSubmit,
 }) {
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <Text style={styles.backText}>‹</Text>
-      </TouchableOpacity>
-
       {/* Image */}
       <Image
         source={require("../../stores/assets/application3.png")}
@@ -23,30 +20,34 @@ export default function StepMobile({
         resizeMode="contain"
       />
 
-      {/* Title + Description */}
+      {/* Title */}
       <Text style={styles.title}>Mobile Registration</Text>
       <Text style={styles.description}>
-        Provide your contact details so we can verify and protect your account.
+        Provide contact details so we can verify your account.
       </Text>
 
-      {/* Inputs */}
+      {/* Phone */}
       <TextInput
         style={styles.input}
         placeholder="Phone Number"
         keyboardType="phone-pad"
         value={phone}
-        onChangeText={setPhone}
+        onChangeText={onPhoneChange}
       />
+      {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
+
+      {/* Email */}
       <TextInput
         style={styles.input}
         placeholder="Email Address"
         keyboardType="email-address"
         autoCapitalize="none"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={onEmailChange}
       />
+      {emailError ? <Text style={styles.error}>{emailError}</Text> : null}
 
-      {/* Submit Button */}
+      {/* Submit */}
       <TouchableOpacity style={styles.button} onPress={onSubmit}>
         <Text style={styles.buttonText}>SUBMIT</Text>
       </TouchableOpacity>

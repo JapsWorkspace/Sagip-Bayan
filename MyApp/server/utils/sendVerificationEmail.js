@@ -1,24 +1,42 @@
 const nodemailer = require("nodemailer");
+const fs = require("fs");
+const path = require("path");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
-const sendVerificationEmail = (email, verificationLink) => {
+const sendVerificationEmail = async (
+  email,
+  verificationLink,
+  firstName = "there"
+) => {
+  const templatePath = path.join(
+    __dirname,
+    "../emails/verifyEmail.html"
+  );
+
+  let html = fs.readFileSync(templatePath, "utf8");
+
+  html = html
+    .replace(/{{VERIFY_LINK}}/g, verificationLink)
+    .replace(/{{FIRST_NAME}}/g, firstName)
+    .replace(
+      /{{LOGO_URL}}/g,
+      "https://YOUR_PUBLIC_DOMAIN/uploads/logo/sagipbayanlogo.png"
+    );
+
+  console.log("✅ Verification email HTML loaded:", html.length);
+
   return transporter.sendMail({
-    from: "No Reply <no-reply@yourapp.com>",
+    from: `"SagipBayan" <${process.env.EMAIL_USER}>`,
     to: email,
     subject: "Verify Your Email",
-    html: `
-      <h2>Email Verification</h2>
-      <p>Click the link below to verify your email:</p>
-      <a href="${verificationLink}">${verificationLink}</a>
-      <p>This link will expire in 24 hours.</p>
-    `
+    html,
   });
 };
 

@@ -4,17 +4,15 @@ import styles from "../../Designs/StepSecurity";
 export default function StepSecurity({
   password,
   confirmPassword,
-  setPassword,
-  setConfirmPassword,
+  passwordError,
+  confirmPasswordError,
+  onPasswordChange,
+  onConfirmChange,
   onNext,
   onBack,
 }) {
   return (
     <View style={styles.container}>
-      {/* Back Button */}
-      <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <Text style={styles.backText}>‹</Text>
-      </TouchableOpacity>
 
       {/* Image */}
       <Image
@@ -23,29 +21,37 @@ export default function StepSecurity({
         resizeMode="contain"
       />
 
-      {/* Title + Description */}
+      {/* Title */}
       <Text style={styles.title}>Security Setup</Text>
       <Text style={styles.description}>
-        Create a strong password to keep your account safe and secure.
+        Create a strong password to keep your account secure.
       </Text>
 
-      {/* Inputs */}
+      {/* Password */}
       <TextInput
         style={styles.input}
         placeholder="Password"
         secureTextEntry
         value={password}
-        onChangeText={setPassword}
+        onChangeText={onPasswordChange}
       />
+      {passwordError ? (
+        <Text style={styles.error}>{passwordError}</Text>
+      ) : null}
+
+      {/* Confirm */}
       <TextInput
         style={styles.input}
         placeholder="Confirm Password"
         secureTextEntry
         value={confirmPassword}
-        onChangeText={setConfirmPassword}
+        onChangeText={onConfirmChange}
       />
+      {confirmPasswordError ? (
+        <Text style={styles.error}>{confirmPasswordError}</Text>
+      ) : null}
 
-      {/* Next Button */}
+      {/* Next */}
       <TouchableOpacity style={styles.button} onPress={onNext}>
         <Text style={styles.buttonText}>NEXT</Text>
       </TouchableOpacity>
