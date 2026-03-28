@@ -107,6 +107,9 @@ const createLog = async (item, action, username, remarks = '') => {
 
 // Add new inventory item
 const addInventory = async (req, res) => {
+  console.log("BODY:", req.body);
+console.log("FILES:", req.files);
+console.log("FILE:", req.file);
   try {
     const username = req.session?.username || '';
 
@@ -146,7 +149,11 @@ const addInventory = async (req, res) => {
 
     const item = await InventoryItem.create(itemData);
 
-    await createLog(item, 'create', username, 'Inventory item created');
+    try {
+  await createLog(item, 'create', username, 'Inventory item created');
+} catch (logErr) {
+  console.error("LOG ERROR:", logErr);
+}
 
     res.status(201).json(item);
   } catch (err) {
