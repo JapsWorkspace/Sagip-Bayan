@@ -50,7 +50,7 @@ export default function LogIn({ navigation }) {
             email: data.user.email,
             phone: data.user.phone,
           });
-          navigation.navigate("MainCenter");
+          navigation.replace("AppShell");
           setUsername("");
           setPassword("");
         }

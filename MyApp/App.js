@@ -1,3 +1,4 @@
+// App.js
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,20 +7,14 @@ import AppBootstrap from './screens/AppBootstrap';
 import PrivacyGate from './screens/PrivacyGate';
 import GetStarted from './screens/GetStarted';
 
-import Home from './screens/Home';
 import LogIn from './screens/LogIn';
 import SignUp from './screens/SignUp';
-import IncidentReportScreen from './screens/IncidentReportingScreen';
-import Profile from './screens/Profile';
 import SendOtp from './screens/SendOtp';
 import VerifyOtp from './screens/VerifyOtp';
 import PasswordSecurity from './screens/PasswordSecurity';
 import PersonalDetails from './screens/PersonalDetails';
-import RiskHeatMap from './screens/RiskHeatMap';
-import Guidelines from './screens/Guidelines';
-import SafetyMark from './screens/SafetyMark';
-import MainCenter from './screens/MainCenter';
 
+import AppShell from './screens/AppShell'; // ✅ THIS IS THE ONE
 import { UserProvider } from './screens/UserProvider';
 
 const Stack = createNativeStackNavigator();
@@ -39,7 +34,7 @@ export default function App() {
           <Stack.Screen name="GetStarted" component={GetStarted} />
           <Stack.Screen name="LogIn" component={LogIn} />
 
-          {/* SIGN UP FLOW ONLY */}
+          {/* SIGN UP FLOW */}
           <Stack.Screen name="PrivacyGate" component={PrivacyGate} />
           <Stack.Screen name="SignUp" component={SignUp} />
 
@@ -51,16 +46,12 @@ export default function App() {
             options={{ presentation: 'modal' }}
           />
 
-          {/* MAIN APP */}
-          <Stack.Screen name="Home" component={Home} />
-          <Stack.Screen name="MainCenter" component={MainCenter} />
-          <Stack.Screen name="IncidentReport" component={IncidentReportScreen} />
-          <Stack.Screen name="Profile" component={Profile} />
+          {/* ✅ MAIN APP (BOTTOM NAV LIVES HERE, ONCE) */}
+          <Stack.Screen name="AppShell" component={AppShell} />
+
+          {/* SETTINGS (NO BOTTOM NAV) */}
           <Stack.Screen name="PasswordSecurity" component={PasswordSecurity} />
           <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
-          <Stack.Screen name="RiskHeatMap" component={RiskHeatMap} />
-          <Stack.Screen name="Guidelines" component={Guidelines} />
-          <Stack.Screen name="Connection" component={SafetyMark} />
         </Stack.Navigator>
       </NavigationContainer>
     </UserProvider>

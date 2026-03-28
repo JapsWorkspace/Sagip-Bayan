@@ -70,7 +70,7 @@ export default function VerifyOtp({ route, navigation }) {
             const user = res.data.find((u) => u.email === email);
             if (user) {
               setUser(user);
-              navigation.navigate("Profile");
+              navigation.replace("AppShell");
             } else {
               Alert.alert("Error", "User not found after OTP verification");
             }

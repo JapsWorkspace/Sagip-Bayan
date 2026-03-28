@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
 import api from "../lib/api";
-import NewBottomNav from "./NewBottomNav";
 import { UserContext } from "./UserContext";
 
 // ✅ import the separated design file
@@ -24,6 +23,7 @@ import styles, { METRICS } from "../Designs/IncidentReporting";
 
 // ✅ Always import the map component (native RN Maps version)
 import WebMap from "./WebMap";
+import AppShell from "./AppShell";
 
 export default function IncidentReportScreen({ navigation }) {
   const { user } = useContext(UserContext);
@@ -315,7 +315,6 @@ export default function IncidentReportScreen({ navigation }) {
           </KeyboardAvoidingView>
         </Animated.View>
 
-        <NewBottomNav navigation={navigation} />
       </View>
     </View>
   );
