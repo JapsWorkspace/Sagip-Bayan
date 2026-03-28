@@ -299,10 +299,54 @@ const getArchivedInventory = async (req, res) => {
   }
 };
 
+const unarchiveInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const item = await InventoryItem.findById(id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    item.isArchive = false;
+    await item.save();
+
+    res.json({
+      message: 'Inventory unarchived successfully',
+      item
+    });
+  } catch (err) {
+    console.error('Unarchive Inventory Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const permanentDeleteInventory = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const item = await InventoryItem.findById(id);
+    if (!item) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
+    await InventoryItem.findByIdAndDelete(id);
+
+    res.json({
+      message: 'Inventory permanently deleted successfully'
+    });
+  } catch (err) {
+    console.error('Permanent Delete Inventory Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   addInventory,
   getInventory,
   updateInventory,
   deleteInventory,
-  getArchivedInventory
+  getArchivedInventory,
+  unarchiveInventory,
+  permanentDeleteInventory
 };
