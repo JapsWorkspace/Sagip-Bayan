@@ -115,7 +115,13 @@ const addInventory = async (req, res) => {
       return res.status(400).json({ message: errors[0], errors });
     }
 
-    const proofFiles = req.files ? req.files.map(file => file.filename) : [];
+    let proofFiles = [];
+
+    if (Array.isArray(req.files)) {
+  proofFiles = req.files.map(file => file.filename);
+} else if (req.file) {
+  proofFiles = [req.file.filename];
+}
 
     const itemData = {
       type: data.type,
