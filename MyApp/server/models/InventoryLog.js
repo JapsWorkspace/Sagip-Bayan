@@ -1,24 +1,54 @@
 const mongoose = require('mongoose');
 
-const inventoryLogSchema = new mongoose.Schema({
-  itemId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'InventoryItem'
+const inventoryLogSchema = new mongoose.Schema(
+  {
+    inventoryItem: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'InventoryItem',
+      required: true
+    },
+
+    itemName: {
+      type: String,
+      required: true,
+      trim: true
+    },
+
+    itemType: {
+      type: String,
+      enum: ['goods', 'monetary'],
+      required: true
+    },
+
+    action: {
+      type: String,
+      enum: ['create', 'update', 'archive', 'release'],
+      required: true
+    },
+
+    quantity: {
+      type: Number,
+      default: undefined
+    },
+
+    amount: {
+      type: Number,
+      default: undefined
+    },
+
+    performedBy: {
+      type: String,
+      default: '',
+      trim: true
+    },
+
+    remarks: {
+      type: String,
+      default: '',
+      trim: true
+    }
   },
-
-  itemName: String,
-
-  action: String, // ADD, RELEASE, EDIT
-
-  quantity: Number,
-
-  performedBy: String,
-
-  date: {
-    type: Date,
-    default: Date.now
-  }
-
-});
+  { timestamps: true }
+);
 
 module.exports = mongoose.model('InventoryLog', inventoryLogSchema);
