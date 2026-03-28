@@ -15,6 +15,7 @@ router.get('/', inventoryController.getInventory);
 
 // Get archived inventory items
 router.get('/archived', inventoryController.getArchivedInventory);
+router.patch('/:id/unarchive', inventoryController.unarchiveInventory);
 
 // Update inventory item
 router.put(
@@ -25,5 +26,8 @@ router.put(
 
 // Archive inventory item
 router.delete('/:id', inventoryController.deleteInventory);
+router.delete('/:id/permanent', inventoryController.permanentDeleteInventory);
+
+
 
 module.exports = router;
