@@ -138,14 +138,40 @@ console.log("FILE:", req.file);
     };
 
     if (data.type === 'goods') {
-      itemData.category = data.category;
-      itemData.quantity = data.quantity;
-      itemData.unit = data.unit;
-    }
+  if (data.quantity === undefined || data.quantity <= 0) {
+    return res.status(400).json({
+      message: 'Quantity must be greater than 0'
+    });
+  }
+
+  if (!data.unit) {
+    return res.status(400).json({
+      message: 'Unit is required'
+    });
+  }
+
+  if (!data.category) {
+    return res.status(400).json({
+      message: 'Category is required'
+    });
+  }
+
+  itemData.category = data.category;
+  itemData.quantity = data.quantity;
+  itemData.unit = data.unit;
+}
 
     if (data.type === 'monetary') {
-      itemData.amount = data.amount;
-    }
+  if (data.amount === undefined || data.amount <= 0) {
+    return res.status(400).json({
+      message: 'Amount must be greater than 0'
+    });
+  }
+
+  itemData.amount = data.amount;
+}
+    
+    console.log("FINAL ITEM DATA:", itemData);
 
     const item = await InventoryItem.create(itemData);
 
