@@ -90,7 +90,7 @@ const inventoryItemSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-inventoryItemSchema.pre('validate', function (next) {
+inventoryItemSchema.pre('validate', function () {
   if (this.type === 'goods') {
     this.amount = undefined;
   }
@@ -100,8 +100,6 @@ inventoryItemSchema.pre('validate', function (next) {
     this.quantity = undefined;
     this.unit = undefined;
   }
-
-  next();
 });
 
 module.exports = mongoose.model('InventoryItem', inventoryItemSchema);
