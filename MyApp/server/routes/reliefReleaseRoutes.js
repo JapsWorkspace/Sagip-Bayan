@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('../controllers/ReliefReleaseController');
+const controller = require('../controllers/reliefReleaseController');
 
 router.get('/approved-requests', controller.getApprovedRequestsForRelease);
 router.post('/', controller.createReliefRelease);
