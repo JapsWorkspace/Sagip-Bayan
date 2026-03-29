@@ -203,7 +203,7 @@ const reliefRequestSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-reliefRequestSchema.pre("save", function (next) {
+reliefRequestSchema.pre("save", function () {
   const rows = this.rows || [];
 
   this.totals = {
@@ -221,7 +221,6 @@ reliefRequestSchema.pre("save", function (next) {
     ),
   };
 
-  next();
 });
 
 module.exports = mongoose.model("ReliefRequest", reliefRequestSchema);
