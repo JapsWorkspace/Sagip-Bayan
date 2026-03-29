@@ -1,107 +1,92 @@
-const Barangay = require('../models/Barangay');
+const ReliefRequest = require('../models/ReliefRequest');
 const Audit = require('../models/Audit');
 
-const categoryLabels = {
-  food: 'Food & Water',
-  hygiene: 'Hygiene & Sanitation',
-  clothing: 'Clothes & Warmth',
-  furniture: 'Furniture',
-  medicine: 'Medical & Safety'
-};
-
-// GET all pending relief requests for DRRMO
+/* GET PENDING RELIEF REQUESTS */
 const getPendingRequests = async (req, res) => {
   try {
-    const barangays = await Barangay.find().sort({ barangayName: 1 });
-    const categories = Object.keys(categoryLabels);
+    const requests = await ReliefRequest.find({
+      status: 'pending',
+      isArchived: false
+    }).sort({ createdAt: -1 });
 
-    const pendingRequests = [];
-
-    barangays.forEach(b => {
-      const reliefReq = b.reliefReq || {};
-
-      categories.forEach(key => {
-        // Ensure every category has proper defaults
-        const reqCategory = reliefReq[key] || {};
-        const status = reqCategory.status || null;
-        const peopleRange = reqCategory.peopleRange || '-';
-        const requestedAt = reqCategory.requestedAt || null;
-
-        if (status === 'requested') {
-          pendingRequests.push({
-            barangayId: b._id,
-            barangayName: b.barangayName,
-            categoryKey: key,
-            category: categoryLabels[key],
-            peopleRange,
-            requestedAt,
-            status
-          });
-        }
-      });
-    });
-
-    console.log('Pending requests:', pendingRequests);
-    res.json(pendingRequests);
-
+    res.json(requests);
   } catch (err) {
-    console.error(err);
+    console.error('Get Pending Requests Error:', err);
     res.status(500).json({ message: err.message });
   }
 };
 
-// Update relief request status (approve/cancel)
+/* APPROVE OR REJECT REQUEST */
 const updateReliefStatus = async (req, res) => {
   try {
-    const { categoryKey, action } = req.body;
-    const barangay = await Barangay.findById(req.params.barangayId);
-    if (!barangay) return res.status(404).json({ message: 'Barangay not found' });
+    const username = req.session?.username || req.session?.userId || '';
+    const { action, remarks } = req.body;
 
-    const reqCategory = barangay.reliefReq[categoryKey];
-    if (!reqCategory?.active) return res.status(400).json({ message: 'No active request' });
+    const request = await ReliefRequest.findById(req.params.requestId);
+    if (!request || request.isArchived) {
+      return res.status(404).json({ message: 'Relief request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({
+        message: 'Only pending requests can be updated here.'
+      });
+    }
 
     if (action === 'accept') {
-      reqCategory.status = 'approved';
+      request.status = 'approved';
+      request.approvedBy = String(username);
+      request.approvedAt = new Date();
+
+      if (remarks) {
+        request.remarks = String(remarks).trim();
+      }
+
+      await request.save();
 
       await Audit.create({
-        barangayId: barangay._id,
-        barangayName: barangay.barangayName,
-        category: categoryKey,
-        peopleRange: reqCategory.peopleRange,
+        barangayId: request.barangayId,
+        barangayName: request.barangayName,
+        category: 'relief_request',
+        peopleRange: `Food packs requested: ${request.totals.requestedFoodPacks}`,
         status: 'approved',
         actionBy: 'drrmo'
       });
 
-    } else if (action === 'cancel') {
+      return res.json({
+        message: 'Relief request approved successfully.',
+        request
+      });
+    }
+
+    if (action === 'cancel' || action === 'reject') {
+      request.status = 'rejected';
+      request.rejectedBy = String(username);
+      request.rejectedAt = new Date();
+      request.rejectionReason = remarks ? String(remarks).trim() : '';
+
+      await request.save();
+
       await Audit.create({
-        barangayId: barangay._id,
-        barangayName: barangay.barangayName,
-        category: categoryKey,
-        peopleRange: reqCategory.peopleRange,
-        status: 'cancelled',
+        barangayId: request.barangayId,
+        barangayName: request.barangayName,
+        category: 'relief_request',
+        peopleRange: `Food packs requested: ${request.totals.requestedFoodPacks}`,
+        status: 'rejected',
         actionBy: 'drrmo'
       });
 
-      barangay.history = barangay.history || [];
-      barangay.history.push({
-        category: categoryKey,
-        peopleRange: reqCategory.peopleRange,
-        status: 'Rejected/Cancelled By:',
-        actionBy: 'drrmo',
-        actionByName: req.session.userId,
-        actionAt: new Date()
+      return res.json({
+        message: 'Relief request rejected successfully.',
+        request
       });
-
-      // Reset the request
-      barangay.reliefReq[categoryKey] = { active: false, status: null };
     }
 
-    await barangay.save();
-
-    res.json({ message: 'Updated successfully', reliefReq: barangay.reliefReq, history: barangay.history });
-
+    return res.status(400).json({
+      message: 'Invalid action. Use accept or reject.'
+    });
   } catch (err) {
-    console.error(err);
+    console.error('Update Relief Status Error:', err);
     res.status(500).json({ message: err.message });
   }
 };

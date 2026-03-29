@@ -1,7 +1,7 @@
-const Barangay = require('../models/Barangay.js');
-const User = require('../models/User.js');
-
-const categories = ['food', 'hygiene', 'clothing', 'furniture', 'medicine'];
+const ReliefRequest = require('../models/ReliefRequest');
+const ReliefRelease = require('../models/ReliefRelease');
+const Barangay = require('../models/Barangay');
+const User = require('../models/User');
 
 async function getReliefTracking(req, res) {
   try {
@@ -14,29 +14,11 @@ async function getReliefTracking(req, res) {
 
     /* ================= DRRMO VIEW ================= */
     if (isDRRMO) {
-      const barangays = await Barangay.find();
+      const requests = await ReliefRequest.find({
+        isArchived: false
+      }).sort({ createdAt: -1 });
 
-      const rows = barangays.flatMap(barangay =>
-        categories
-          .map(key => {
-            const r = barangay.reliefReq?.[key];
-            if (!r) return null;
-            if (!['approved', 'received'].includes(r.status)) return null;
-
-            return {
-              viewerType: 'drrmo',
-              barangayId: barangay._id,
-              barangayName: barangay.barangayName,
-              categoryKey: key,
-              status: r.status,
-              peopleRange: r.peopleRange,
-              requestedAt: r.requestedAt
-            };
-          })
-          .filter(Boolean)
-      );
-
-      return res.json(rows);
+      return res.json(requests);
     }
 
     /* ================= BARANGAY VIEW ================= */
@@ -45,31 +27,26 @@ async function getReliefTracking(req, res) {
       return res.status(404).json({ message: 'Barangay not found' });
     }
 
-    const rows = categories
-      .map(key => {
-        const r = barangay.reliefReq?.[key];
-        if (!r || !r.status) return null;
+    const requests = await ReliefRequest.find({
+      barangayId: barangay._id,
+      isArchived: false
+    }).sort({ createdAt: -1 });
 
-        return {
-          viewerType: 'barangay',
-          barangayId: barangay._id,
-          barangayName: barangay.barangayName,
-          categoryKey: key,
-          status: r.status,
-          peopleRange: r.peopleRange,
-          requestedAt: r.requestedAt
-        };
-      })
-      .filter(Boolean);
+    const requestIds = requests.map((r) => r._id);
+
+    const releases = await ReliefRelease.find({
+      reliefRequestId: { $in: requestIds },
+      isArchived: false
+    }).sort({ createdAt: -1 });
 
     res.json({
-      rows,
-      history: barangay.history || []
+      rows: requests,
+      releases
     });
   } catch (err) {
-    console.error(err);
+    console.error('Get Relief Tracking Error:', err);
     res.status(500).json({ message: err.message });
   }
 }
 
-module.exports = {getReliefTracking}
+module.exports = { getReliefTracking };
