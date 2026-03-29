@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const controller = require('../controllers/ReliefRequestController');
+const controller = require('../controllers/reliefRequestController');
 
 router.post('/', controller.submitReliefRequest);
 router.get('/mine', controller.getMyReliefRequests);
