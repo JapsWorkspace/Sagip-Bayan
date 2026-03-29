@@ -1,0 +1,133 @@
+const mongoose = require("mongoose");
+
+const releaseItemSchema = new mongoose.Schema(
+  {
+    inventoryItemId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "InventoryItem",
+      default: null,
+    },
+
+    itemName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    category: {
+      type: String,
+      enum: ["food", "clothing", "hygiene", "furniture", "medicine"],
+      required: true,
+    },
+
+    quantityReleased: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    unit: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    remarks: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
+const reliefReleaseSchema = new mongoose.Schema(
+  {
+    reliefRequestId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ReliefRequest",
+      required: true,
+    },
+
+    barangayId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Barangay",
+      required: true,
+    },
+
+    barangayName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    releaseNo: {
+      type: String,
+      required: true,
+      unique: true,
+      trim: true,
+    },
+
+    items: {
+      type: [releaseItemSchema],
+      default: [],
+      validate: {
+        validator: function (value) {
+          return Array.isArray(value) && value.length > 0;
+        },
+        message: "At least one released item is required.",
+      },
+    },
+
+    totalItemsReleased: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    releaseStatus: {
+      type: String,
+      enum: ["draft", "released", "received", "cancelled"],
+      default: "released",
+    },
+
+    releasedBy: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    releasedAt: {
+      type: Date,
+      default: Date.now,
+    },
+
+    receivedAt: {
+      type: Date,
+      default: null,
+    },
+
+    remarks: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+  },
+  { timestamps: true }
+);
+
+reliefReleaseSchema.pre("save", function (next) {
+  const items = this.items || [];
+  this.totalItemsReleased = items.reduce(
+    (sum, item) => sum + (Number(item.quantityReleased) || 0),
+    0
+  );
+  next();
+});
+
+module.exports = mongoose.model("ReliefRelease", reliefReleaseSchema);
