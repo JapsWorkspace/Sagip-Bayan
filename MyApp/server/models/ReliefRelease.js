@@ -121,13 +121,12 @@ const reliefReleaseSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-reliefReleaseSchema.pre("save", function (next) {
+reliefReleaseSchema.pre("save", function () {
   const items = this.items || [];
   this.totalItemsReleased = items.reduce(
     (sum, item) => sum + (Number(item.quantityReleased) || 0),
     0
   );
-  next();
 });
 
 module.exports = mongoose.model("ReliefRelease", reliefReleaseSchema);
