@@ -29,6 +29,8 @@ const editRoutes = require('./routes/editRoutes');
 
 // NEW donation & inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
+const reliefRequestRoutes = require('./routes/reliefRequestRoutes');
+const reliefReleaseRoutes = require('./routes/reliefReleaseRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -149,6 +151,9 @@ app.use('/api/edit', editRoutes);
 
 // NEW routes
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/relief-requests', reliefRequestRoutes);
+app.use('/api/relief-releases', reliefReleaseRoutes);
+
 
 // --------------------
 // Hazard proxy
