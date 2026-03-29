@@ -1,0 +1,11 @@
+const express = require('express');
+const router = express.Router();
+const controller = require('../controllers/ReliefRequestController');
+
+router.post('/', controller.submitReliefRequest);
+router.get('/mine', controller.getMyReliefRequests);
+router.get('/mine/:id', controller.getMyReliefRequestById);
+router.put('/:id/cancel', controller.cancelOwnReliefRequest);
+router.put('/:id/received', controller.markReliefRequestReceived);
+
+module.exports = router;
