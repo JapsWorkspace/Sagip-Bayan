@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const ReliefRequest = require('../models/ReliefRequest');
 const ReliefRelease = require('../models/ReliefRelease');
 const InventoryItem = require('../models/InventoryItem');
@@ -15,13 +16,15 @@ const toNumber = (value) => {
   return Number.isNaN(parsed) ? 0 : parsed;
 };
 
-const generateReleaseNo = async () => {
+const generateReleaseNo = async (session = null) => {
   const year = new Date().getFullYear();
   const prefix = `RL-${year}`;
 
   const latest = await ReliefRelease.findOne({
     releaseNo: { $regex: `^${prefix}-` }
-  }).sort({ createdAt: -1 });
+  })
+    .sort({ createdAt: -1 })
+    .session(session);
 
   let nextNumber = 1;
 
@@ -51,7 +54,6 @@ const validateReleaseItems = (items) => {
       return 'Each release item must have an item name.';
     }
 
-    // ❗ REMOVED FIXED CATEGORY CHECK
     if (!category) {
       return `Category is required for item "${itemName}".`;
     }
@@ -85,8 +87,10 @@ const getApprovedRequestsForRelease = async (req, res) => {
 
 /* CREATE RELEASE AND DEDUCT INVENTORY */
 const createReliefRelease = async (req, res) => {
+  const session = await mongoose.startSession();
+
   try {
-    const username = req.session?.username || req.session?.userId || '';
+    const username = String(req.session?.username || req.session?.userId || '');
 
     const { reliefRequestId, items, remarks } = req.body;
 
@@ -110,23 +114,29 @@ const createReliefRelease = async (req, res) => {
       return res.status(400).json({ message: validationError });
     }
 
-    const reliefRequest = await ReliefRequest.findById(reliefRequestId);
+    session.startTransaction();
+
+    const reliefRequest = await ReliefRequest.findById(reliefRequestId).session(session);
+
     if (!reliefRequest || reliefRequest.isArchived) {
+      await session.abortTransaction();
       return res.status(404).json({ message: 'Relief request not found.' });
     }
 
     if (!['approved', 'partially_released'].includes(reliefRequest.status)) {
+      await session.abortTransaction();
       return res.status(400).json({
         message: 'Only approved or partially released requests can be released.'
       });
     }
 
-    // Validate stock first before deducting anything
+    const preparedItems = [];
+
     for (const item of releaseItems) {
       let inventoryDoc = null;
 
       if (item.inventoryItemId) {
-        inventoryDoc = await InventoryItem.findById(item.inventoryItemId);
+        inventoryDoc = await InventoryItem.findById(item.inventoryItemId).session(session);
       }
 
       if (!inventoryDoc) {
@@ -134,12 +144,13 @@ const createReliefRelease = async (req, res) => {
           isArchive: false,
           type: 'goods',
           name: item.itemName,
-          category: item.category.toLowerCase(),
+          category: item.category,
           unit: item.unit
-        });
+        }).session(session);
       }
 
       if (!inventoryDoc) {
+        await session.abortTransaction();
         return res.status(404).json({
           message: `Inventory item not found for "${item.itemName}".`
         });
@@ -148,62 +159,73 @@ const createReliefRelease = async (req, res) => {
       const availableQty = Number(inventoryDoc.quantity || 0);
 
       if (availableQty < item.quantityReleased) {
+        await session.abortTransaction();
         return res.status(400).json({
           message: `Insufficient stock for "${item.itemName}". Available: ${availableQty}, requested release: ${item.quantityReleased}.`
         });
       }
-    }
 
-    // Deduct stock
-    for (const item of releaseItems) {
-      let inventoryDoc = null;
-
-      if (item.inventoryItemId) {
-        inventoryDoc = await InventoryItem.findById(item.inventoryItemId);
-      }
-
-      if (!inventoryDoc) {
-        inventoryDoc = await InventoryItem.findOne({
-          isArchive: false,
-          type: 'goods',
-          name: item.itemName,
-          category: item.category.toLowerCase(),
-          unit: item.unit
-        });
-      }
-
-      inventoryDoc.quantity = Number(inventoryDoc.quantity || 0) - item.quantityReleased;
-      await inventoryDoc.save();
-
-      await InventoryLog.create({
-        inventoryItem: inventoryDoc._id,
+      preparedItems.push({
+        inventoryDoc,
+        inventoryItemId: inventoryDoc._id,
         itemName: inventoryDoc.name,
-        itemType: inventoryDoc.type,
-        action: 'release',
-        quantity: item.quantityReleased,
-        amount: undefined,
-        performedBy: String(username),
-        remarks: `Released for relief request ${reliefRequest.requestNo}`
+        category: normalizeString(item.category).toLowerCase(),
+        quantityReleased: Number(item.quantityReleased),
+        unit: inventoryDoc.unit,
+        remarks: item.remarks
       });
-
-      item.inventoryItemId = inventoryDoc._id;
     }
 
-    const releaseNo = await generateReleaseNo();
+    for (const item of preparedItems) {
+      item.inventoryDoc.quantity =
+        Number(item.inventoryDoc.quantity || 0) - item.quantityReleased;
 
-    const reliefRelease = await ReliefRelease.create({
-      reliefRequestId: reliefRequest._id,
-      barangayId: reliefRequest.barangayId,
-      barangayName: reliefRequest.barangayName,
-      releaseNo,
-      items: releaseItems,
-      releaseStatus: 'released',
-      releasedBy: String(username),
-      releasedAt: new Date(),
-      remarks: normalizeString(remarks)
-    });
+      await item.inventoryDoc.save({ session });
 
-    const totalReleased = releaseItems.reduce(
+      await InventoryLog.create(
+        [
+          {
+            inventoryItem: item.inventoryDoc._id,
+            itemName: item.inventoryDoc.name,
+            itemType: item.inventoryDoc.type,
+            action: 'release',
+            quantity: item.quantityReleased,
+            amount: undefined,
+            performedBy: username,
+            remarks: `Released for relief request ${reliefRequest.requestNo}`
+          }
+        ],
+        { session }
+      );
+    }
+
+    const releaseNo = await generateReleaseNo(session);
+
+    const [reliefRelease] = await ReliefRelease.create(
+      [
+        {
+          reliefRequestId: reliefRequest._id,
+          barangayId: reliefRequest.barangayId,
+          barangayName: reliefRequest.barangayName,
+          releaseNo,
+          items: preparedItems.map((item) => ({
+            inventoryItemId: item.inventoryItemId,
+            itemName: item.itemName,
+            category: item.category,
+            quantityReleased: item.quantityReleased,
+            unit: item.unit,
+            remarks: item.remarks
+          })),
+          releaseStatus: 'released',
+          releasedBy: username,
+          releasedAt: new Date(),
+          remarks: normalizeString(remarks)
+        }
+      ],
+      { session }
+    );
+
+    const totalReleased = preparedItems.reduce(
       (sum, item) => sum + Number(item.quantityReleased || 0),
       0
     );
@@ -216,18 +238,26 @@ const createReliefRelease = async (req, res) => {
       reliefRequest.status = 'released';
     }
 
-    reliefRequest.releasedBy = String(username);
+    reliefRequest.releasedBy = username;
     reliefRequest.releasedAt = new Date();
-    await reliefRequest.save();
 
-    await Audit.create({
-      barangayId: reliefRequest.barangayId,
-      barangayName: reliefRequest.barangayName,
-      category: 'relief_release',
-      peopleRange: `Released total quantity: ${totalReleased}`,
-      status: reliefRequest.status,
-      actionBy: 'drrmo'
-    });
+    await reliefRequest.save({ session });
+
+    await Audit.create(
+      [
+        {
+          barangayId: reliefRequest.barangayId,
+          barangayName: reliefRequest.barangayName,
+          category: 'relief_release',
+          peopleRange: `Released total quantity: ${totalReleased}`,
+          status: reliefRequest.status,
+          actionBy: 'drrmo'
+        }
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
 
     res.status(201).json({
       message: 'Relief goods released successfully.',
@@ -235,8 +265,11 @@ const createReliefRelease = async (req, res) => {
       request: reliefRequest
     });
   } catch (err) {
+    await session.abortTransaction();
     console.error('Create Relief Release Error:', err);
     res.status(500).json({ message: err.message });
+  } finally {
+    session.endSession();
   }
 };
 
