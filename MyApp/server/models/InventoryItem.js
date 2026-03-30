@@ -16,13 +16,13 @@ const inventoryItemSchema = new mongoose.Schema(
       trim: true
     },
 
+    // ✅ UPDATED — REMOVE ENUM
     category: {
       type: String,
-      enum: ['food', 'clothing', 'hygiene'],
       required: function () {
         return this.type === 'goods';
       },
-      default: undefined
+      trim: true
     },
 
     quantity: {
@@ -30,8 +30,7 @@ const inventoryItemSchema = new mongoose.Schema(
       required: function () {
         return this.type === 'goods';
       },
-      min: 0,
-      default: undefined
+      min: 0
     },
 
     unit: {
@@ -39,8 +38,7 @@ const inventoryItemSchema = new mongoose.Schema(
       required: function () {
         return this.type === 'goods';
       },
-      trim: true,
-      default: undefined
+      trim: true
     },
 
     amount: {
@@ -48,8 +46,7 @@ const inventoryItemSchema = new mongoose.Schema(
       required: function () {
         return this.type === 'monetary';
       },
-      min: 0,
-      default: undefined
+      min: 0
     },
 
     description: {
@@ -90,7 +87,12 @@ const inventoryItemSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+// Normalize fields before saving
 inventoryItemSchema.pre('validate', function () {
+  if (this.category) {
+    this.category = this.category.toLowerCase().trim();
+  }
+
   if (this.type === 'goods') {
     this.amount = undefined;
   }
