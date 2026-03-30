@@ -3,6 +3,21 @@ const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
 const { uploadProof } = require('../middleware/upload');
 
+
+router.get('/categories', inventoryController.getInventoryCategories);
+// =========================
+// ANALYTICS
+// =========================
+router.get('/analytics/summary', inventoryController.getInventorySummary);
+router.get('/analytics/category-stats', inventoryController.getInventoryCategoryStats);
+router.get('/analytics/source-stats', inventoryController.getInventorySourceStats);
+router.get('/analytics/recent-trend', inventoryController.getInventoryRecentTrend);
+
+
+// =========================
+// INVENTORY CRUD
+// =========================
+
 // Add new inventory item
 router.post(
   '/',
@@ -15,7 +30,13 @@ router.get('/', inventoryController.getInventory);
 
 // Get archived inventory items
 router.get('/archived', inventoryController.getArchivedInventory);
-router.patch('/:id/unarchive', inventoryController.unarchiveInventory);
+
+// Unarchive inventory item
+router.put('/archived/:id/restore', inventoryController.unarchiveInventory);
+
+// Permanent delete archived inventory item
+router.delete('/archived/:id/permanent', inventoryController.permanentDeleteInventory);
+
 
 // Update inventory item
 router.put(
@@ -26,8 +47,5 @@ router.put(
 
 // Archive inventory item
 router.delete('/:id', inventoryController.deleteInventory);
-router.delete('/:id/permanent', inventoryController.permanentDeleteInventory);
-
-
 
 module.exports = router;
