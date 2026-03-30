@@ -3,7 +3,6 @@ import * as Location from "expo-location";
 import { useRef, useState, useEffect } from "react";
 import { FlatList, Dimensions, View, Alert } from "react-native";
 import api from "../lib/api";
-import { Alert } from "react-native";
 
 import StepPersonal from "./signup/StepPersonal";
 import StepSecurity from "./signup/StepSecurity";

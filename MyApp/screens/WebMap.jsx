@@ -8,15 +8,29 @@ import { MarkerImages, getMarkerImageBySeverity } from './MapIcon';
 
 /* ------------------------- JAEN, NUEVA ECIJA LOCK ------------------------- */
 const METRO_MANILA_CENTER = { latitude: 14.5995, longitude: 120.9842 };
+const JAEN_CENTER = { latitude: 15.3274, longitude: 120.9190 };
 
-// pad ~20–25 km to cover the whole Metro Manila area
-const PAD_LAT = 0.20, PAD_LNG = 0.20;
+// padding (adjust depending on zoom size)
+const MANILA_PAD_LAT = 0.20;
+const MANILA_PAD_LNG = 0.20;
 
-const JAEN_BOUNDS={
-  north: METRO_MANILA_CENTER.latitude + PAD_LAT,
-  south: METRO_MANILA_CENTER.latitude - PAD_LAT,
-  west:  METRO_MANILA_CENTER.longitude - PAD_LNG,
-  east:  METRO_MANILA_CENTER.longitude + PAD_LNG,
+const JAEN_PAD_LAT = 0.05;
+const JAEN_PAD_LNG = 0.05;
+
+// Metro Manila bounds
+const METRO_MANILA_BOUNDS = {
+  north: METRO_MANILA_CENTER.latitude + MANILA_PAD_LAT,
+  south: METRO_MANILA_CENTER.latitude - MANILA_PAD_LAT,
+  west:  METRO_MANILA_CENTER.longitude - MANILA_PAD_LNG,
+  east:  METRO_MANILA_CENTER.longitude + MANILA_PAD_LNG,
+};
+
+// Jaen bounds (smaller area)
+const JAEN_BOUNDS = {
+  north: JAEN_CENTER.latitude + JAEN_PAD_LAT,
+  south: JAEN_CENTER.latitude - JAEN_PAD_LAT,
+  west:  JAEN_CENTER.longitude - JAEN_PAD_LNG,
+  east:  JAEN_CENTER.longitude + JAEN_PAD_LNG,
 };
 
 function isInsideBounds(lat, lng) {
