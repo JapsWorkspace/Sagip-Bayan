@@ -14,10 +14,11 @@ const releaseItemSchema = new mongoose.Schema(
       trim: true,
     },
 
+    // ✅ UPDATED — REMOVE ENUM
     category: {
       type: String,
-      enum: ["food", "clothing", "hygiene", "furniture", "medicine"],
       required: true,
+      trim: true,
     },
 
     quantityReleased: {
@@ -120,6 +121,33 @@ const reliefReleaseSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// Normalize fields before saving
+reliefReleaseSchema.pre("validate", function () {
+  const items = this.items || [];
+
+  this.items = items.map((item) => {
+    const normalizedItem = { ...item.toObject?.() ? item.toObject() : item };
+
+    if (normalizedItem.category) {
+      normalizedItem.category = String(normalizedItem.category).toLowerCase().trim();
+    }
+
+    if (normalizedItem.itemName) {
+      normalizedItem.itemName = String(normalizedItem.itemName).trim();
+    }
+
+    if (normalizedItem.unit) {
+      normalizedItem.unit = String(normalizedItem.unit).trim();
+    }
+
+    if (normalizedItem.remarks) {
+      normalizedItem.remarks = String(normalizedItem.remarks).trim();
+    }
+
+    return normalizedItem;
+  });
+});
 
 reliefReleaseSchema.pre("save", function () {
   const items = this.items || [];
