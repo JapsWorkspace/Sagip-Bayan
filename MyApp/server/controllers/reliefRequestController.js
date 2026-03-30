@@ -206,6 +206,76 @@ const getMyReliefRequestById = async (req, res) => {
   }
 };
 
+/* BARANGAY UPDATE OWN REQUEST */
+const updateOwnReliefRequest = async (req, res) => {
+  try {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: 'Not logged in' });
+    }
+
+    const request = await ReliefRequest.findOne({
+      _id: req.params.id,
+      barangayId: req.session.userId,
+      isArchived: false
+    });
+
+    if (!request) {
+      return res.status(404).json({ message: 'Relief request not found' });
+    }
+
+    if (request.status !== 'pending') {
+      return res.status(400).json({
+        message: 'Only pending requests can be edited.'
+      });
+    }
+
+    const disaster = String(req.body.disaster || '').trim();
+    const remarks = String(req.body.remarks || '').trim();
+    const requestDate = req.body.requestDate ? new Date(req.body.requestDate) : request.requestDate;
+
+    const rows = Array.isArray(req.body.rows)
+      ? req.body.rows.map(sanitizeRow)
+      : [];
+
+    if (!disaster) {
+      return res.status(400).json({ message: 'Disaster is required.' });
+    }
+
+    if (Number.isNaN(requestDate.getTime())) {
+      return res.status(400).json({ message: 'Invalid request date.' });
+    }
+
+    const rowsError = validateRows(rows);
+    if (rowsError) {
+      return res.status(400).json({ message: rowsError });
+    }
+
+    request.disaster = disaster;
+    request.requestDate = requestDate;
+    request.rows = rows;
+    request.remarks = remarks;
+
+    await request.save();
+
+    await Audit.create({
+      barangayId: request.barangayId,
+      barangayName: request.barangayName,
+      category: 'relief_request',
+      peopleRange: `Updated food packs requested: ${request.totals.requestedFoodPacks}`,
+      status: 'updated',
+      actionBy: 'barangay'
+    });
+
+    res.json({
+      message: 'Relief request updated successfully.',
+      request
+    });
+  } catch (err) {
+    console.error('Update Own Relief Request Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 /* BARANGAY CANCEL OWN REQUEST */
 const cancelOwnReliefRequest = async (req, res) => {
   try {
@@ -306,6 +376,7 @@ module.exports = {
   submitReliefRequest,
   getMyReliefRequests,
   getMyReliefRequestById,
+  updateOwnReliefRequest,
   cancelOwnReliefRequest,
   markReliefRequestReceived
 };
