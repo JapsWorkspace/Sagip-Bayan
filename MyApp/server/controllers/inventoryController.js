@@ -2,7 +2,6 @@ const InventoryItem = require('../models/InventoryItem');
 const InventoryLog = require('../models/InventoryLog');
 
 const VALID_TYPES = ['goods', 'monetary'];
-const VALID_CATEGORIES = ['food', 'clothing', 'hygiene'];
 const VALID_SOURCE_TYPES = ['external', 'government', 'internal'];
 
 const normalizeString = (value) => {
@@ -50,8 +49,8 @@ const validateInventoryData = (body, isUpdate = false, currentType = null) => {
 
   if (type === 'goods') {
     if (!isUpdate || body.category !== undefined) {
-      if (!category || !VALID_CATEGORIES.includes(category)) {
-        errors.push('Category is required for goods and must be food, clothing, or hygiene.');
+      if (!category) {
+        errors.push('Category is required for goods.');
       }
     }
 
@@ -105,11 +104,167 @@ const createLog = async (item, action, username, remarks = '') => {
   });
 };
 
+// =========================
+// ANALYTICS HELPERS
+// =========================
+const getDateKey = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = `${d.getMonth() + 1}`.padStart(2, '0');
+  const day = `${d.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// =========================
+// ANALYTICS CONTROLLERS
+// =========================
+const getInventorySummary = async (req, res) => {
+  try {
+    const items = await InventoryItem.find({ isArchive: false }).lean();
+
+    const now = new Date();
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(now.getDate() - 7);
+
+    const summary = items.reduce(
+      (acc, item) => {
+        acc.totalEntries += 1;
+
+        if (item.type === 'goods') {
+          acc.goodsEntries += 1;
+          acc.totalGoodsQuantity += Number(item.quantity || 0);
+        }
+
+        if (item.type === 'monetary') {
+          acc.monetaryEntries += 1;
+          acc.totalMonetaryAmount += Number(item.amount || 0);
+        }
+
+        if (item.createdAt && new Date(item.createdAt) >= sevenDaysAgo) {
+          acc.recentDonations += 1;
+        }
+
+        return acc;
+      },
+      {
+        totalEntries: 0,
+        goodsEntries: 0,
+        monetaryEntries: 0,
+        totalGoodsQuantity: 0,
+        totalMonetaryAmount: 0,
+        recentDonations: 0
+      }
+    );
+
+    res.json(summary);
+  } catch (err) {
+    console.error('Get Inventory Summary Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getInventoryCategoryStats = async (req, res) => {
+  try {
+    const items = await InventoryItem.find({
+      isArchive: false,
+      type: 'goods'
+    }).lean();
+
+    const result = {};
+
+items.forEach((item) => {
+  const category = String(item.category || '').toLowerCase();
+
+  if (!result[category]) {
+    result[category] = 0;
+  }
+
+  result[category] += Number(item.quantity || 0);
+});
+
+    items.forEach((item) => {
+      const category = String(item.category || '').toLowerCase();
+      if (result[category] !== undefined) {
+        result[category] += Number(item.quantity || 0);
+      }
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Get Inventory Category Stats Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getInventorySourceStats = async (req, res) => {
+  try {
+    const items = await InventoryItem.find({ isArchive: false }).lean();
+
+    const result = {
+      external: 0,
+      government: 0,
+      internal: 0
+    };
+
+    items.forEach((item) => {
+      const sourceType = String(item.sourceType || '').toLowerCase();
+      if (result[sourceType] !== undefined) {
+        result[sourceType] += 1;
+      }
+    });
+
+    res.json(result);
+  } catch (err) {
+    console.error('Get Inventory Source Stats Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+const getInventoryRecentTrend = async (req, res) => {
+  try {
+    const items = await InventoryItem.find({ isArchive: false })
+      .sort({ createdAt: 1 })
+      .lean();
+
+    const now = new Date();
+    const start = new Date();
+    start.setDate(now.getDate() - 6);
+
+    const dateMap = {};
+
+    for (let i = 0; i < 7; i += 1) {
+      const day = new Date(start);
+      day.setDate(start.getDate() + i);
+      dateMap[getDateKey(day)] = 0;
+    }
+
+    items.forEach((item) => {
+      if (!item.createdAt) return;
+
+      const key = getDateKey(item.createdAt);
+      if (dateMap[key] !== undefined) {
+        dateMap[key] += 1;
+      }
+    });
+
+    const trend = Object.entries(dateMap).map(([date, count]) => ({
+      _id: date,
+      count
+    }));
+
+    res.json(trend);
+  } catch (err) {
+    console.error('Get Inventory Recent Trend Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // Add new inventory item
 const addInventory = async (req, res) => {
-  console.log("BODY:", req.body);
-console.log("FILES:", req.files);
-console.log("FILE:", req.file);
+  console.log('BODY:', req.body);
+  console.log('FILES:', req.files);
+  console.log('FILE:', req.file);
+
   try {
     const username = req.session?.username || '';
 
@@ -121,10 +276,10 @@ console.log("FILE:", req.file);
     let proofFiles = [];
 
     if (Array.isArray(req.files)) {
-  proofFiles = req.files.map(file => file.filename);
-} else if (req.file) {
-  proofFiles = [req.file.filename];
-}
+      proofFiles = req.files.map(file => file.filename);
+    } else if (req.file) {
+      proofFiles = [req.file.filename];
+    }
 
     const itemData = {
       type: data.type,
@@ -138,48 +293,48 @@ console.log("FILE:", req.file);
     };
 
     if (data.type === 'goods') {
-  if (data.quantity === undefined || data.quantity <= 0) {
-    return res.status(400).json({
-      message: 'Quantity must be greater than 0'
-    });
-  }
+      if (data.quantity === undefined || data.quantity <= 0) {
+        return res.status(400).json({
+          message: 'Quantity must be greater than 0'
+        });
+      }
 
-  if (!data.unit) {
-    return res.status(400).json({
-      message: 'Unit is required'
-    });
-  }
+      if (!data.unit) {
+        return res.status(400).json({
+          message: 'Unit is required'
+        });
+      }
 
-  if (!data.category) {
-    return res.status(400).json({
-      message: 'Category is required'
-    });
-  }
+      if (!data.category) {
+        return res.status(400).json({
+          message: 'Category is required'
+        });
+      }
 
-  itemData.category = data.category;
-  itemData.quantity = data.quantity;
-  itemData.unit = data.unit;
-}
+      itemData.category = data.category;
+      itemData.quantity = data.quantity;
+      itemData.unit = data.unit;
+    }
 
     if (data.type === 'monetary') {
-  if (data.amount === undefined || data.amount <= 0) {
-    return res.status(400).json({
-      message: 'Amount must be greater than 0'
-    });
-  }
+      if (data.amount === undefined || data.amount <= 0) {
+        return res.status(400).json({
+          message: 'Amount must be greater than 0'
+        });
+      }
 
-  itemData.amount = data.amount;
-}
-    
-    console.log("FINAL ITEM DATA:", itemData);
+      itemData.amount = data.amount;
+    }
+
+    console.log('FINAL ITEM DATA:', itemData);
 
     const item = await InventoryItem.create(itemData);
 
     try {
-  await createLog(item, 'create', username, 'Inventory item created');
-} catch (logErr) {
-  console.error("LOG ERROR:", logErr);
-}
+      await createLog(item, 'create', username, 'Inventory item created');
+    } catch (logErr) {
+      console.error('LOG ERROR:', logErr);
+    }
 
     res.status(201).json(item);
   } catch (err) {
@@ -341,6 +496,20 @@ const permanentDeleteInventory = async (req, res) => {
   }
 };
 
+const getInventoryCategories = async (req, res) => {
+  try {
+    const categories = await InventoryItem.distinct('category', {
+      isArchive: false,
+      type: 'goods'
+    });
+
+    res.json(categories.sort());
+  } catch (err) {
+    console.error('Get Categories Error:', err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 module.exports = {
   addInventory,
   getInventory,
@@ -348,5 +517,10 @@ module.exports = {
   deleteInventory,
   getArchivedInventory,
   unarchiveInventory,
-  permanentDeleteInventory
+  permanentDeleteInventory,
+  getInventorySummary,
+  getInventoryCategoryStats,
+  getInventorySourceStats,
+  getInventoryRecentTrend,
+  getInventoryCategories
 };
