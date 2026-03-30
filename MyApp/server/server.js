@@ -7,6 +7,11 @@ const dotenv = require('dotenv');
 const path = require('path');
 const fs = require('fs');
 
+const http = require("http");
+const { Server } = require("socket.io");
+
+
+
 dotenv.config();
 
 const userRoutes = require('./routes/userRoutes');
@@ -23,6 +28,7 @@ const connectionRoutes = require("./routes/connectionRoutes");
 const timeInOutRoutes = require("./routes/timeInOutRoutes");
 
 const app = express();
+const server = http.createServer(app);
 
 // --------------------
 // Upload folders
@@ -40,7 +46,7 @@ app.use(cors({
   origin: [
     'https://sagipbayan.com',
     'http://localhost:3000',
-    'http://localhost:8081'
+    'http://localhost:8081',
   ],
   credentials: true,
 }));
@@ -142,4 +148,32 @@ mongoose.connection.once("open", async () => {
 
   const collections = await mongoose.connection.db.listCollections().toArray();
   console.log("Collections in DB:", collections.map(c => c.name));
+});
+
+//stuffs I wanna do
+const io = new Server(server, {
+  cors: {
+    origin: [
+      'https://sagipbayan.com',
+      'http://localhost:3000',
+      'http://localhost:8081',
+    ],
+    credentials: true,
+  },
+});
+
+// Socket.IO events
+io.on("connection", (socket) => {
+  console.log("[socket] User connected:", socket.id);
+
+  socket.on("send-location", (data) => {
+    console.log("[socket] Received location:", data);
+
+    // Broadcast to all other clients
+    socket.broadcast.emit("receive-location", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("[socket] User disconnected:", socket.id);
+  });
 });

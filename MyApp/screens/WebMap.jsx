@@ -7,14 +7,16 @@ import axios from 'axios';
 import { MarkerImages, getMarkerImageBySeverity } from './MapIcon';
 
 /* ------------------------- JAEN, NUEVA ECIJA LOCK ------------------------- */
-const JAEN_CENTER = { latitude: 15.33830, longitude: 120.91410 };
-// pad ~2 km around town
-const PAD_LAT = 0.020, PAD_LNG = 0.020;
-const JAEN_BOUNDS = {
-  north: JAEN_CENTER.latitude + PAD_LAT,
-  south: JAEN_CENTER.latitude - PAD_LAT,
-  west:  JAEN_CENTER.longitude - PAD_LNG,
-  east:  JAEN_CENTER.longitude + PAD_LNG,
+const METRO_MANILA_CENTER = { latitude: 14.5995, longitude: 120.9842 };
+
+// pad ~20–25 km to cover the whole Metro Manila area
+const PAD_LAT = 0.20, PAD_LNG = 0.20;
+
+const JAEN_BOUNDS={
+  north: METRO_MANILA_CENTER.latitude + PAD_LAT,
+  south: METRO_MANILA_CENTER.latitude - PAD_LAT,
+  west:  METRO_MANILA_CENTER.longitude - PAD_LNG,
+  east:  METRO_MANILA_CENTER.longitude + PAD_LNG,
 };
 
 function isInsideBounds(lat, lng) {
@@ -40,7 +42,7 @@ function markerSizeFromDelta(latDelta) {
   return Math.max(MIN * BOOST, Math.min(MAX * BOOST, raw));
 }
 
-export default function WebMap({ onSelect, selected, selectedLevel }) {
+export default function WebMap({ onSelect, selected, selectedLevel, userLocation })  {
   const mapRef = useRef(null);
   const { width, height } = Dimensions.get('window');
   const aspect = width / height;
@@ -199,10 +201,27 @@ export default function WebMap({ onSelect, selected, selectedLevel }) {
             ) : null}
           </Marker>
         )}
+        {/*New Thingyyy RealTime :3 */}
+        {!!userLocation?.lat && !!userLocation?.lng && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.lat,
+              longitude: userLocation.lng,
+            }}
+            anchor={{ x: 0.5, y: 0.5 }}
+          >
+            <Image
+              source={MarkerImages.def} // or create a "user.png"
+              style={{ width: 30, height: 30 }}
+              resizeMode="contain"
+            />
+          </Marker>
+        )}
       </MapView>
     </View>
   );
 }
+
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff' },

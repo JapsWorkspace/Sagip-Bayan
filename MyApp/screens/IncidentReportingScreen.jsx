@@ -1,5 +1,7 @@
 // screens/IncidentReportingScreen.jsx
 import React, { useState, useRef, useEffect, useContext } from "react";
+import * as Location from "expo-location";
+import { Alert } from "react-native";
 import {
   View,
   Text,
@@ -23,6 +25,7 @@ import styles, { METRICS } from "../Designs/IncidentReporting";
 
 // ✅ Always import the map component (native RN Maps version)
 import WebMap from "./WebMap";
+import { socket } from "../lib/socket";
 import AppShell from "./AppShell";
 
 export default function IncidentReportScreen({ navigation }) {
@@ -38,6 +41,8 @@ export default function IncidentReportScreen({ navigation }) {
     phone: user.phone || "",
   });
   const [image, setImage] = useState(null); // single image
+  const [debuger, setDebuger] = useState(false);
+  const [userLocation, setUserLocation] = useState(null);
 
   // Seed initial selection pin at Jaen
   useEffect(() => {
@@ -49,6 +54,73 @@ export default function IncidentReportScreen({ navigation }) {
         longitude: 120.91410,
       }));
     }
+  }, []);
+  //Jaen Bounds and fencing
+  const JAEN_CENTER = {
+    lat: 15.33830,
+    lng: 120.91410,
+  };
+
+  const MAX_DISTANCE_KM = 5; // adjust (e.g., 3–10 km depending on strictness)
+
+  const getDistanceKm = (lat1, lon1, lat2, lon2) => {
+    const toRad = (val) => (val * Math.PI) / 180;
+
+    const R = 6371; // Earth radius (km)
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+  };
+
+  //New thing, realtime gps thingy
+  useEffect(() => {
+    socket.connect();
+
+    let subscription;
+
+    const startTracking = async () => {
+      const permission = await Location.requestForegroundPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert("Location Required", "Enable location to proceed.");
+        return;
+      }
+
+      // 🔥 continuous tracking (NOT one-time)
+      subscription = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.High,
+          timeInterval: 3000,     // every 3 seconds
+          distanceInterval: 5,    // or every 5 meters
+        },
+        (loc) => {
+          const coords = {
+            lat: loc.coords.latitude,
+            lng: loc.coords.longitude,
+          };
+
+          // update local state
+          setUserLocation(coords);
+
+          // 🔥 send to server
+          socket.emit("send-location", coords);
+        }
+      );
+    };
+
+    startTracking();
+
+    return () => {
+      if (subscription) subscription.remove();
+      socket.disconnect();
+    };
   }, []);
 
   // ------------------- IMAGE PICKER -------------------
@@ -91,6 +163,34 @@ export default function IncidentReportScreen({ navigation }) {
     if (!latitude || !longitude) {
       alert("Please select a location on the map!");
       return;
+    }
+
+    const userLat = userLocation?.lat;
+    const userLng = userLocation?.lng;
+
+    if (!userLat || !userLng) {
+      Alert.alert(
+        "Location Error",
+        "Unable to get current location."
+      );
+      return;
+    }
+
+    if (!debuger) {
+      const distance = getDistanceKm(
+        userLat,
+        userLng,
+        JAEN_CENTER.lat,
+        JAEN_CENTER.lng
+      );
+
+      if (distance > MAX_DISTANCE_KM) {
+        Alert.alert(
+          "Outside Service Area",
+          "You must be within Jaen, Nueva Ecija to report an incident."
+        );
+        return;
+      }
     }
 
     try {
@@ -198,7 +298,8 @@ export default function IncidentReportScreen({ navigation }) {
               lng: incidentReports.longitude,
               label: incidentReports.location,
             }}
-            selectedLevel={incidentReports.level}  // used only if you want severity image elsewhere
+            selectedLevel={incidentReports.level}
+            userLocation={userLocation}
             onSelect={(obj) => {
               setIncidentReports((prev) => ({
                 ...prev,
@@ -309,6 +410,14 @@ export default function IncidentReportScreen({ navigation }) {
 
                 <TouchableOpacity style={styles.button} onPress={submitReport}>
                   <Text style={styles.buttonText}>SUBMIT</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setDebuger(prev => !prev)}
+                  style={{ marginBottom: 8 }}
+                >
+                  <Text style={{ color: debuger ? "green" : "red", fontSize: 12 }}>
+                    {debuger ? "Geo Check: OFF (Debug)" : "Geo Check: ON"}
+                  </Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>

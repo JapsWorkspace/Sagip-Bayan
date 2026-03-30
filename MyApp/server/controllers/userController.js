@@ -23,7 +23,7 @@ const registerUser = async (req, res) => {
     const user = await newUser.save();
 
     const verificationLink =
-      `http://localhost:8000/user/verify/${verificationToken}`;
+      `http://10.208.46.51:8000/user/verify/${verificationToken}`;
 
     await sendVerificationEmail(user.email, verificationLink);
 

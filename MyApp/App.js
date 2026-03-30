@@ -13,6 +13,11 @@ import SendOtp from './screens/SendOtp';
 import VerifyOtp from './screens/VerifyOtp';
 import PasswordSecurity from './screens/PasswordSecurity';
 import PersonalDetails from './screens/PersonalDetails';
+import RiskHeatMap from './screens/RiskHeatMap';
+import Guidelines from './screens/Guidelines';
+import SafetyMark from './screens/SafetyMark';
+import MainCenter from './screens/MainCenter';
+
 
 import AppShell from './screens/AppShell'; // ✅ THIS IS THE ONE
 import { UserProvider } from './screens/UserProvider';

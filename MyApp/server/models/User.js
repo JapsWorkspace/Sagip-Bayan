@@ -10,6 +10,10 @@ const userSchema = new mongoose.Schema({
   dateOfBirth: Date,
   phone: String,
   address: String,
+  location: {
+    lat: Number,
+    lng: Number
+  },
 
     connections: [{
     type: mongoose.Schema.Types.ObjectId,

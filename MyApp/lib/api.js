@@ -11,7 +11,7 @@ import { Platform } from 'react-native';
 
 // 1) Your laptop's LAN IP (for real phone via Expo Go)
 //    Find it via `ipconfig` (Windows) / `ifconfig` (macOS/Linux).
-const LAN_IP = '192.168.1.6'; // <-- your LAN IP
+const LAN_IP = '10.208.46.51'; // <-- your LAN IP
 
 // 2) Optional HTTPS tunnel for dev (works anywhere, avoids HTTP issues)
 //    Example: 'https://abcd-12-34-56-78.ngrok.app'
