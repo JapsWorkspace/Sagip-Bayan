@@ -4,8 +4,6 @@ const InventoryItem = require('../models/InventoryItem');
 const InventoryLog = require('../models/InventoryLog');
 const Audit = require('../models/Audit');
 
-const VALID_RELEASE_CATEGORIES = ['food', 'clothing', 'hygiene', 'furniture', 'medicine'];
-
 const normalizeString = (value) => {
   if (value === undefined || value === null) return '';
   return String(value).trim();
@@ -53,8 +51,9 @@ const validateReleaseItems = (items) => {
       return 'Each release item must have an item name.';
     }
 
-    if (!VALID_RELEASE_CATEGORIES.includes(category)) {
-      return `Invalid category for item "${itemName}".`;
+    // ❗ REMOVED FIXED CATEGORY CHECK
+    if (!category) {
+      return `Category is required for item "${itemName}".`;
     }
 
     if (quantityReleased <= 0) {
@@ -135,7 +134,7 @@ const createReliefRelease = async (req, res) => {
           isArchive: false,
           type: 'goods',
           name: item.itemName,
-          category: item.category,
+          category: item.category.toLowerCase(),
           unit: item.unit
         });
       }
@@ -168,7 +167,7 @@ const createReliefRelease = async (req, res) => {
           isArchive: false,
           type: 'goods',
           name: item.itemName,
-          category: item.category,
+          category: item.category.toLowerCase(),
           unit: item.unit
         });
       }
