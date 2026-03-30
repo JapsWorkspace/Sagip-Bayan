@@ -7,6 +7,7 @@ router.get('/init', authController.initAdmin);
 router.post('/register', authController.register);
 router.post('/login', authController.login);
 router.post('/logout', authController.logout);
+router.get('/barangay-options', controller.getAvailableBarangays);
 
 router.get('/all', requireAdmin, authController.getAllAccounts);          // admin list
 router.put('/update/:id', requireAdmin, authController.updateAccount);   // update any account
