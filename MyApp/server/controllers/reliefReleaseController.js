@@ -4,6 +4,8 @@ const ReliefRelease = require('../models/ReliefRelease');
 const InventoryItem = require('../models/InventoryItem');
 const InventoryLog = require('../models/InventoryLog');
 const Audit = require('../models/Audit');
+const BarangayStock = require('../models/BarangayStock');
+const BarangayStockTransaction = require('../models/BarangayStockTransaction');
 
 const normalizeString = (value) => {
   if (value === undefined || value === null) return '';
@@ -176,6 +178,7 @@ const createReliefRelease = async (req, res) => {
       });
     }
 
+    // 1) DEDUCT FROM DRRMO INVENTORY + LOG
     for (const item of preparedItems) {
       item.inventoryDoc.quantity =
         Number(item.inventoryDoc.quantity || 0) - item.quantityReleased;
@@ -199,6 +202,7 @@ const createReliefRelease = async (req, res) => {
       );
     }
 
+    // 2) CREATE RELIEF RELEASE
     const releaseNo = await generateReleaseNo(session);
 
     const [reliefRelease] = await ReliefRelease.create(
@@ -224,6 +228,60 @@ const createReliefRelease = async (req, res) => {
       ],
       { session }
     );
+
+    // 3) ADD TO BARANGAY STOCK + CREATE TRANSACTIONS
+    for (const item of preparedItems) {
+      let stockDoc = await BarangayStock.findOne({
+        barangayId: reliefRequest.barangayId,
+        itemName: item.itemName,
+        category: item.category,
+        unit: item.unit,
+        isArchived: false
+      }).session(session);
+
+      if (stockDoc) {
+        stockDoc.quantityAvailable =
+          Number(stockDoc.quantityAvailable || 0) + item.quantityReleased;
+        stockDoc.lastUpdatedBy = username;
+        await stockDoc.save({ session });
+      } else {
+        const createdStocks = await BarangayStock.create(
+          [
+            {
+              barangayId: reliefRequest.barangayId,
+              barangayName: reliefRequest.barangayName,
+              itemName: item.itemName,
+              category: item.category,
+              unit: item.unit,
+              quantityAvailable: item.quantityReleased,
+              lastUpdatedBy: username
+            }
+          ],
+          { session }
+        );
+
+        stockDoc = createdStocks[0];
+      }
+
+      await BarangayStockTransaction.create(
+        [
+          {
+            barangayId: reliefRequest.barangayId,
+            barangayName: reliefRequest.barangayName,
+            stockId: stockDoc._id,
+            itemName: item.itemName,
+            category: item.category,
+            unit: item.unit,
+            quantity: item.quantityReleased,
+            transactionType: 'release_in',
+            reliefReleaseId: reliefRelease._id,
+            remarks: `Received from DRRMO release ${reliefRelease.releaseNo}`,
+            performedBy: username
+          }
+        ],
+        { session }
+      );
+    }
 
     const totalReleased = preparedItems.reduce(
       (sum, item) => sum + Number(item.quantityReleased || 0),

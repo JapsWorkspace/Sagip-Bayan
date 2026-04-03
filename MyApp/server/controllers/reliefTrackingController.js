@@ -49,4 +49,28 @@ async function getReliefTracking(req, res) {
   }
 }
 
-module.exports = { getReliefTracking };
+const updateReliefRequest = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updated = await ReliefRequest.findByIdAndUpdate(
+      id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: 'Request not found' });
+    }
+
+    res.json({
+      message: 'Relief request updated successfully',
+      request: updated
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+module.exports = { getReliefTracking, updateReliefRequest };

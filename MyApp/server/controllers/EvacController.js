@@ -1,5 +1,7 @@
 const Place = require("../models/EvacPlace.js");
 const EHistory = require("../models/EvacHistory.js");
+const BarangayStock = require("../models/BarangayStock");
+const BarangayStockTransaction = require("../models/BarangayStockTransaction");
 
 // Sanitize input
 const sanitizeText = (value) => {
@@ -228,6 +230,89 @@ const getAnalyticsSummary = async (req, res) => {
   }
 };
 
+const allocateStockToPlace = async (req, res) => {
+  try {
+    const { id } = req.params; // evacPlaceId
+    const { stockId, quantity } = req.body;
+
+    const username = req.session?.username || "unknown";
+
+    // 1. Validate
+    if (!stockId || !quantity) {
+      return res.status(400).json({
+        message: "Stock ID and quantity are required",
+      });
+    }
+
+    const qty = Number(quantity);
+    if (qty <= 0) {
+      return res.status(400).json({
+        message: "Quantity must be greater than 0",
+      });
+    }
+
+    // 2. Find evac place
+    const place = await Place.findById(id);
+    if (!place) {
+      return res.status(404).json({ message: "Evac place not found" });
+    }
+
+    // 3. Find stock
+    const stock = await BarangayStock.findById(stockId);
+    if (!stock) {
+      return res.status(404).json({ message: "Stock not found" });
+    }
+
+    // 4. SECURITY CHECK (VERY IMPORTANT)
+    if (String(stock.barangayId) !== String(place.barangayId)) {
+      return res.status(403).json({
+        message: "Stock and evac place do not belong to the same barangay",
+      });
+    }
+
+    // 5. Check quantity
+    if (stock.quantityAvailable < qty) {
+      return res.status(400).json({
+        message: `Insufficient stock. Available: ${stock.quantityAvailable}`,
+      });
+    }
+
+    // 6. Deduct stock
+    stock.quantityAvailable -= qty;
+    stock.lastUpdatedBy = username;
+
+    await stock.save();
+
+    // 7. Create transaction
+    await BarangayStockTransaction.create({
+      barangayId: stock.barangayId,
+      barangayName: stock.barangayName,
+
+      stockId: stock._id,
+
+      itemName: stock.itemName,
+      category: stock.category,
+      unit: stock.unit,
+
+      quantity: qty,
+      transactionType: "allocation",
+
+      evacPlaceId: place._id,
+      evacPlaceName: place.name,
+
+      remarks: `Allocated to evac place: ${place.name}`,
+      performedBy: username,
+    });
+
+    res.json({
+      message: "Stock allocated to evacuation place successfully",
+    });
+  } catch (err) {
+    console.error("Allocate Stock Error:", err);
+    res.status(500).json({ message: "Allocation failed" });
+  }
+};
+
 module.exports = {
   createPlace,
   getPlaces,
@@ -235,4 +320,5 @@ module.exports = {
   updateCapacityStatus,
   deletePlace,
   getAnalyticsSummary,
+  allocateStockToPlace,
 };
