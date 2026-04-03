@@ -2,24 +2,50 @@ const mongoose = require("mongoose");
 
 const notificationSchema = new mongoose.Schema(
   {
-    
     action: {
       type: String,
-      enum: ["ADD", "STATUS_UPDATE", "DELETE"],
-      required: true
+      enum: ["ADD", "UPDATE", "STATUS_UPDATE", "DELETE", "ALLOCATE"],
+      required: true,
+      trim: true,
     },
+
     placeName: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
     },
-    details: {
-      type: String
-    }
 
+    details: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    barangayId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Barangay",
+      default: null,
+    },
+
+    barangayName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    performedBy: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    performedByRole: {
+      type: String,
+      enum: ["admin", "drrmo", "barangay", ""],
+      default: "",
+    },
   },
   { timestamps: true }
 );
 
-
-const EvacHistoryModel = mongoose.model('EHistory', notificationSchema);
-module.exports = EvacHistoryModel;
+module.exports = mongoose.model("EHistory", notificationSchema);
