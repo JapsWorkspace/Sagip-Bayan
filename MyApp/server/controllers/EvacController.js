@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const Place = require("../models/EvacPlace.js");
 const EHistory = require("../models/EvacHistory.js");
 const BarangayStock = require("../models/BarangayStock");
@@ -5,7 +6,21 @@ const BarangayStockTransaction = require("../models/BarangayStockTransaction");
 
 // Sanitize input
 const sanitizeText = (value) => {
-  return value.replace(/<[^>]*>?/gm, "").trim();
+  return String(value || "").replace(/<[^>]*>?/gm, "").trim();
+};
+
+const toNumber = (value, fallback = 0) => {
+  if (value === "" || value === null || value === undefined) return fallback;
+  const num = Number(value);
+  return Number.isNaN(num) ? fallback : num;
+};
+
+const toBoolean = (value) => {
+  if (typeof value === "boolean") return value;
+  if (typeof value === "string") {
+    return value === "true" || value === "1";
+  }
+  return Boolean(value);
 };
 
 // CREATE PLACE
@@ -14,7 +29,11 @@ const createPlace = async (req, res) => {
     const {
       name,
       location,
-      barangay,
+
+      barangayId,
+      barangayName,
+      barangay, // fallback for old frontend
+
       latitude,
       longitude,
 
@@ -33,58 +52,78 @@ const createPlace = async (req, res) => {
       foodPackCapacity,
       isPermanent,
       isCovidFacility,
+      remarks,
     } = req.body;
 
-    // Required validation
+    const finalBarangayId =
+      barangayId || (req.session?.role === "barangay" ? req.session.userId : null);
+
+    const finalBarangayName =
+      sanitizeText(barangayName) ||
+      sanitizeText(barangay) ||
+      (req.session?.role === "barangay"
+        ? sanitizeText(req.session?.barangayName || req.session?.username)
+        : "");
+
     if (
-      !name ||
-      !location ||
-      !barangay ||
+      !sanitizeText(name) ||
+      !sanitizeText(location) ||
+      !finalBarangayId ||
+      !finalBarangayName ||
       latitude === undefined ||
       longitude === undefined ||
       capacityIndividual === undefined ||
       capacityFamily === undefined
     ) {
       return res.status(400).json({
-        message: "Missing required fields",
+        message:
+          "Missing required fields: name, location, barangayId, barangayName, latitude, longitude, capacityIndividual, capacityFamily",
       });
     }
 
-    // Convert numeric values
     const latNum = Number(latitude);
     const lngNum = Number(longitude);
 
-    if (isNaN(latNum) || isNaN(lngNum)) {
+    if (Number.isNaN(latNum) || Number.isNaN(lngNum)) {
       return res.status(400).json({
         message: "Invalid coordinates",
+      });
+    }
+
+    if (latNum < -90 || latNum > 90 || lngNum < -180 || lngNum > 180) {
+      return res.status(400).json({
+        message: "Coordinates out of valid range",
       });
     }
 
     const newPlace = new Place({
       name: sanitizeText(name),
       location: sanitizeText(location),
-      barangay: sanitizeText(barangay),
+
+      barangayId: finalBarangayId,
+      barangayName: finalBarangayName,
 
       latitude: latNum,
       longitude: lngNum,
 
-      capacityIndividual: Number(capacityIndividual),
-      capacityFamily: Number(capacityFamily),
-      bedCapacity: Number(bedCapacity) || 0,
-      floorArea: Number(floorArea) || 0,
+      capacityIndividual: toNumber(capacityIndividual, 0),
+      capacityFamily: toNumber(capacityFamily, 0),
+      bedCapacity: toNumber(bedCapacity, 0),
+      floorArea: toNumber(floorArea, 0),
 
-      femaleCR: Boolean(femaleCR),
-      maleCR: Boolean(maleCR),
-      commonCR: Boolean(commonCR),
+      femaleCR: toBoolean(femaleCR),
+      maleCR: toBoolean(maleCR),
+      commonCR: toBoolean(commonCR),
 
-      potableWater: Boolean(potableWater),
-      nonPotableWater: Boolean(nonPotableWater),
+      potableWater: toBoolean(potableWater),
+      nonPotableWater: toBoolean(nonPotableWater),
 
-      foodPackCapacity: Number(foodPackCapacity) || 0,
+      foodPackCapacity: toNumber(foodPackCapacity, 0),
 
-      isPermanent: Boolean(isPermanent),
-      isCovidFacility: Boolean(isCovidFacility),
+      isPermanent: toBoolean(isPermanent),
+      isCovidFacility: toBoolean(isCovidFacility),
 
+      remarks: sanitizeText(remarks),
       capacityStatus: "available",
     });
 
@@ -93,7 +132,7 @@ const createPlace = async (req, res) => {
     await EHistory.create({
       action: "ADD",
       placeName: newPlace.name,
-      details: `Added with individual capacity ${newPlace.capacityIndividual}`,
+      details: `Added ${newPlace.name} in ${newPlace.barangayName} with individual capacity ${newPlace.capacityIndividual}`,
     });
 
     res.status(201).json({
@@ -101,18 +140,49 @@ const createPlace = async (req, res) => {
       place: newPlace,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Create Place Error:", error);
+
+    if (error.code === 11000) {
+      return res.status(400).json({
+        message: "An active evacuation place with the same name already exists in this barangay",
+      });
+    }
+
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// GET ALL PLACES
+// GET ALL PLACES (ROLE-AWARE)
 const getPlaces = async (req, res) => {
   try {
-    const places = await Place.find().sort({ createdAt: -1 });
+    const role = req.session?.role;
+    const userId = req.session?.userId;
+    const barangayName = sanitizeText(
+      req.session?.barangayName || req.session?.username
+    );
+
+    let filter = { isArchived: false };
+
+    if (role === "barangay") {
+      filter.$or = [];
+
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        filter.$or.push({ barangayId: userId });
+      }
+
+      if (barangayName) {
+        filter.$or.push({ barangayName });
+      }
+
+      if (filter.$or.length === 0) {
+        delete filter.$or;
+      }
+    }
+
+    const places = await Place.find(filter).sort({ createdAt: -1 });
     res.json(places);
   } catch (err) {
-    console.error(err);
+    console.error("Get Places Error:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -123,8 +193,123 @@ const getHistory = async (req, res) => {
     const logs = await EHistory.find().sort({ createdAt: -1 });
     res.json(logs);
   } catch (err) {
-    console.error(err);
+    console.error("Get History Error:", err);
     res.status(500).json({ message: "Failed to load history" });
+  }
+};
+
+// UPDATE PLACE (FULL EDIT)
+const updatePlace = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existing = await Place.findById(id);
+    if (!existing) {
+      return res.status(404).json({ message: "Place not found" });
+    }
+
+    const {
+      name,
+      location,
+      barangayId,
+      barangayName,
+      barangay,
+      latitude,
+      longitude,
+      capacityIndividual,
+      capacityFamily,
+      bedCapacity,
+      floorArea,
+      femaleCR,
+      maleCR,
+      commonCR,
+      potableWater,
+      nonPotableWater,
+      foodPackCapacity,
+      isPermanent,
+      isCovidFacility,
+      remarks,
+    } = req.body;
+
+    const finalBarangayName = sanitizeText(barangayName) || sanitizeText(barangay);
+
+    existing.name = sanitizeText(name || existing.name);
+    existing.location = sanitizeText(location || existing.location);
+
+    if (barangayId) existing.barangayId = barangayId;
+    if (finalBarangayName) existing.barangayName = finalBarangayName;
+
+    if (latitude !== undefined) {
+      const latNum = Number(latitude);
+      if (Number.isNaN(latNum) || latNum < -90 || latNum > 90) {
+        return res.status(400).json({ message: "Invalid latitude" });
+      }
+      existing.latitude = latNum;
+    }
+
+    if (longitude !== undefined) {
+      const lngNum = Number(longitude);
+      if (Number.isNaN(lngNum) || lngNum < -180 || lngNum > 180) {
+        return res.status(400).json({ message: "Invalid longitude" });
+      }
+      existing.longitude = lngNum;
+    }
+
+    if (capacityIndividual !== undefined) {
+      existing.capacityIndividual = toNumber(capacityIndividual, 0);
+    }
+
+    if (capacityFamily !== undefined) {
+      existing.capacityFamily = toNumber(capacityFamily, 0);
+    }
+
+    if (bedCapacity !== undefined) {
+      existing.bedCapacity = toNumber(bedCapacity, 0);
+    }
+
+    if (floorArea !== undefined) {
+      existing.floorArea = toNumber(floorArea, 0);
+    }
+
+    if (foodPackCapacity !== undefined) {
+      existing.foodPackCapacity = toNumber(foodPackCapacity, 0);
+    }
+
+    if (femaleCR !== undefined) existing.femaleCR = toBoolean(femaleCR);
+    if (maleCR !== undefined) existing.maleCR = toBoolean(maleCR);
+    if (commonCR !== undefined) existing.commonCR = toBoolean(commonCR);
+    if (potableWater !== undefined) existing.potableWater = toBoolean(potableWater);
+    if (nonPotableWater !== undefined)
+      existing.nonPotableWater = toBoolean(nonPotableWater);
+
+    if (isPermanent !== undefined) existing.isPermanent = toBoolean(isPermanent);
+    if (isCovidFacility !== undefined)
+      existing.isCovidFacility = toBoolean(isCovidFacility);
+
+    if (remarks !== undefined) existing.remarks = sanitizeText(remarks);
+
+    await existing.save();
+
+    await EHistory.create({
+      action: "UPDATE",
+      placeName: existing.name,
+      details: `Updated details for ${existing.name}`,
+    });
+
+    res.json({
+      message: "Place updated successfully",
+      place: existing,
+    });
+  } catch (err) {
+    console.error("Update Place Error:", err);
+
+    if (err.code === 11000) {
+      return res.status(400).json({
+        message: "An active evacuation place with the same name already exists in this barangay",
+      });
+    }
+
+    res.status(500).json({ message: "Update failed" });
   }
 };
 
@@ -133,6 +318,10 @@ const updateCapacityStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { capacityStatus } = req.body;
+
+    if (!["available", "limited", "full"].includes(capacityStatus)) {
+      return res.status(400).json({ message: "Invalid capacity status" });
+    }
 
     const updated = await Place.findByIdAndUpdate(
       id,
@@ -152,17 +341,24 @@ const updateCapacityStatus = async (req, res) => {
 
     res.json(updated);
   } catch (err) {
-    console.error(err);
+    console.error("Update Capacity Status Error:", err);
     res.status(500).json({ message: "Update failed" });
   }
 };
 
-// DELETE PLACE
+// DELETE PLACE (SOFT DELETE)
 const deletePlace = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deleted = await Place.findByIdAndDelete(id);
+    const deleted = await Place.findByIdAndUpdate(
+      id,
+      {
+        isArchived: true,
+        archivedAt: new Date(),
+      },
+      { new: true }
+    );
 
     if (!deleted) {
       return res.status(404).json({ message: "Place not found" });
@@ -171,12 +367,12 @@ const deletePlace = async (req, res) => {
     await EHistory.create({
       action: "DELETE",
       placeName: deleted.name,
-      details: "Place deleted",
+      details: "Place archived",
     });
 
-    res.json({ message: "Place deleted successfully" });
+    res.json({ message: "Place archived successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Delete Place Error:", err);
     res.status(500).json({ message: "Delete failed" });
   }
 };
@@ -184,7 +380,31 @@ const deletePlace = async (req, res) => {
 // ANALYTICS SUMMARY
 const getAnalyticsSummary = async (req, res) => {
   try {
-    const places = await Place.find();
+    const role = req.session?.role;
+    const userId = req.session?.userId;
+    const barangayName = sanitizeText(
+      req.session?.barangayName || req.session?.username
+    );
+
+    let filter = { isArchived: false };
+
+    if (role === "barangay") {
+      filter.$or = [];
+
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        filter.$or.push({ barangayId: userId });
+      }
+
+      if (barangayName) {
+        filter.$or.push({ barangayName });
+      }
+
+      if (filter.$or.length === 0) {
+        delete filter.$or;
+      }
+    }
+
+    const places = await Place.find(filter);
 
     const totalPlaces = places.length;
 
@@ -212,8 +432,8 @@ const getAnalyticsSummary = async (req, res) => {
       0
     );
 
-    const permanentCount = places.filter(p => p.isPermanent).length;
-    const covidFacilities = places.filter(p => p.isCovidFacility).length;
+    const permanentCount = places.filter((p) => p.isPermanent).length;
+    const covidFacilities = places.filter((p) => p.isCovidFacility).length;
 
     res.json({
       totalPlaces,
@@ -225,19 +445,19 @@ const getAnalyticsSummary = async (req, res) => {
       covidFacilities,
     });
   } catch (error) {
-    console.error(error);
+    console.error("Get Analytics Summary Error:", error);
     res.status(500).json({ message: "Failed to fetch analytics" });
   }
 };
 
+// ALLOCATE STOCK TO EVAC PLACE
 const allocateStockToPlace = async (req, res) => {
   try {
-    const { id } = req.params; // evacPlaceId
+    const { id } = req.params;
     const { stockId, quantity } = req.body;
 
     const username = req.session?.username || "unknown";
 
-    // 1. Validate
     if (!stockId || !quantity) {
       return res.status(400).json({
         message: "Stock ID and quantity are required",
@@ -251,57 +471,51 @@ const allocateStockToPlace = async (req, res) => {
       });
     }
 
-    // 2. Find evac place
     const place = await Place.findById(id);
     if (!place) {
       return res.status(404).json({ message: "Evac place not found" });
     }
 
-    // 3. Find stock
     const stock = await BarangayStock.findById(stockId);
     if (!stock) {
       return res.status(404).json({ message: "Stock not found" });
     }
 
-    // 4. SECURITY CHECK (VERY IMPORTANT)
     if (String(stock.barangayId) !== String(place.barangayId)) {
       return res.status(403).json({
         message: "Stock and evac place do not belong to the same barangay",
       });
     }
 
-    // 5. Check quantity
     if (stock.quantityAvailable < qty) {
       return res.status(400).json({
         message: `Insufficient stock. Available: ${stock.quantityAvailable}`,
       });
     }
 
-    // 6. Deduct stock
     stock.quantityAvailable -= qty;
     stock.lastUpdatedBy = username;
-
     await stock.save();
 
-    // 7. Create transaction
     await BarangayStockTransaction.create({
       barangayId: stock.barangayId,
       barangayName: stock.barangayName,
-
       stockId: stock._id,
-
       itemName: stock.itemName,
       category: stock.category,
       unit: stock.unit,
-
       quantity: qty,
       transactionType: "allocation",
-
       evacPlaceId: place._id,
       evacPlaceName: place.name,
-
       remarks: `Allocated to evac place: ${place.name}`,
       performedBy: username,
+    });
+
+    await EHistory.create({
+      action: "ALLOCATE",
+      placeName: place.name,
+      details: `Allocated ${qty} ${stock.unit || ""} of ${stock.itemName} to ${place.name}`,
     });
 
     res.json({
@@ -317,6 +531,7 @@ module.exports = {
   createPlace,
   getPlaces,
   getHistory,
+  updatePlace,
   updateCapacityStatus,
   deletePlace,
   getAnalyticsSummary,
