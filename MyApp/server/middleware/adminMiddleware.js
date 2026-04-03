@@ -6,14 +6,44 @@ const requireLogin = (req, res, next) => {
 };
 
 const requireAdmin = (req, res, next) => {
-  console.log("SESSION IN MIDDLEWARE:", req.session);
+  console.log("SESSION IN requireAdmin:", req.session);
+
   if (!req.session || req.session.role !== "admin") {
     return res.status(403).json({ message: "Admin access required" });
   }
+
+  next();
+};
+
+const requireDrrmo = (req, res, next) => {
+  console.log("SESSION IN requireDrrmo:", req.session);
+
+  if (!req.session || req.session.role !== "drrmo") {
+    return res.status(403).json({ message: "DRRMO access required" });
+  }
+
+  next();
+};
+
+const requireAdminOrDrrmo = (req, res, next) => {
+  console.log("SESSION IN requireAdminOrDrrmo:", req.session);
+
+  if (
+    !req.session ||
+    !req.session.role ||
+    !["admin", "drrmo"].includes(req.session.role)
+  ) {
+    return res
+      .status(403)
+      .json({ message: "Admin or DRRMO access required" });
+  }
+
   next();
 };
 
 module.exports = {
   requireLogin,
-  requireAdmin
+  requireAdmin,
+  requireDrrmo,
+  requireAdminOrDrrmo,
 };
