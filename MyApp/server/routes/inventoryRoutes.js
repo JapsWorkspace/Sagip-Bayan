@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
 const { uploadProof } = require('../middleware/upload');
+const { requireLogin, requireAdminOrDrrmo } = require('../middleware/auth');
 
 
 router.get('/categories', inventoryController.getInventoryCategories);
@@ -26,16 +27,16 @@ router.post(
 );
 
 // Get all active inventory items
-router.get('/', inventoryController.getInventory);
+router.get('/', requireAdminOrDrrmo, inventoryController.getInventory);
 
 // Get archived inventory items
-router.get('/archived', inventoryController.getArchivedInventory);
+router.get('/archived', requireAdminOrDrrmo, inventoryController.getArchivedInventory);
 
 // Unarchive inventory item
-router.put('/archived/:id/restore', inventoryController.unarchiveInventory);
+router.put('/archived/:id/restore', requireAdminOrDrrmo, inventoryController.unarchiveInventory);
 
 // Permanent delete archived inventory item
-router.delete('/archived/:id/permanent', inventoryController.permanentDeleteInventory);
+router.delete('/archived/:id/permanent', requireAdminOrDrrmo, inventoryController.permanentDeleteInventory);
 
 
 // Update inventory item
