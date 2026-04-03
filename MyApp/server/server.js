@@ -31,6 +31,7 @@ const editRoutes = require('./routes/editRoutes');
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const reliefRequestRoutes = require('./routes/reliefRequestRoutes');
 const reliefReleaseRoutes = require('./routes/reliefReleaseRoutes');
+const barangayStockRoutes = require('./routes/barangayStockRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -153,6 +154,7 @@ app.use('/api/edit', editRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/relief-requests', reliefRequestRoutes);
 app.use('/api/relief-releases', reliefReleaseRoutes);
+app.use('/api/barangay-stock', barangayStockRoutes);
 
 
 // --------------------
