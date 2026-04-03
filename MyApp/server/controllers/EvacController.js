@@ -23,6 +23,18 @@ const toBoolean = (value) => {
   return Boolean(value);
 };
 
+const buildHistoryMeta = (req, place = null, fallbackBarangayId = null, fallbackBarangayName = "") => {
+  return {
+    barangayId: place?.barangayId || fallbackBarangayId || req.session?.userId || null,
+    barangayName:
+      sanitizeText(place?.barangayName) ||
+      sanitizeText(fallbackBarangayName) ||
+      sanitizeText(req.session?.barangayName || req.session?.username),
+    performedBy: sanitizeText(req.session?.username || "unknown"),
+    performedByRole: sanitizeText(req.session?.role || ""),
+  };
+};
+
 // CREATE PLACE
 const createPlace = async (req, res) => {
   try {
@@ -133,6 +145,7 @@ const createPlace = async (req, res) => {
       action: "ADD",
       placeName: newPlace.name,
       details: `Added ${newPlace.name} in ${newPlace.barangayName} with individual capacity ${newPlace.capacityIndividual}`,
+      ...buildHistoryMeta(req, newPlace, finalBarangayId, finalBarangayName),
     });
 
     res.status(201).json({
@@ -187,10 +200,34 @@ const getPlaces = async (req, res) => {
   }
 };
 
-// GET HISTORY
+// GET HISTORY (ROLE-AWARE)
 const getHistory = async (req, res) => {
   try {
-    const logs = await EHistory.find().sort({ createdAt: -1 });
+    const role = req.session?.role;
+    const userId = req.session?.userId;
+    const barangayName = sanitizeText(
+      req.session?.barangayName || req.session?.username
+    );
+
+    let filter = {};
+
+    if (role === "barangay") {
+      filter.$or = [];
+
+      if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        filter.$or.push({ barangayId: userId });
+      }
+
+      if (barangayName) {
+        filter.$or.push({ barangayName });
+      }
+
+      if (filter.$or.length === 0) {
+        delete filter.$or;
+      }
+    }
+
+    const logs = await EHistory.find(filter).sort({ createdAt: -1 });
     res.json(logs);
   } catch (err) {
     console.error("Get History Error:", err);
@@ -279,12 +316,14 @@ const updatePlace = async (req, res) => {
     if (maleCR !== undefined) existing.maleCR = toBoolean(maleCR);
     if (commonCR !== undefined) existing.commonCR = toBoolean(commonCR);
     if (potableWater !== undefined) existing.potableWater = toBoolean(potableWater);
-    if (nonPotableWater !== undefined)
+    if (nonPotableWater !== undefined) {
       existing.nonPotableWater = toBoolean(nonPotableWater);
+    }
 
     if (isPermanent !== undefined) existing.isPermanent = toBoolean(isPermanent);
-    if (isCovidFacility !== undefined)
+    if (isCovidFacility !== undefined) {
       existing.isCovidFacility = toBoolean(isCovidFacility);
+    }
 
     if (remarks !== undefined) existing.remarks = sanitizeText(remarks);
 
@@ -294,6 +333,7 @@ const updatePlace = async (req, res) => {
       action: "UPDATE",
       placeName: existing.name,
       details: `Updated details for ${existing.name}`,
+      ...buildHistoryMeta(req, existing),
     });
 
     res.json({
@@ -337,6 +377,7 @@ const updateCapacityStatus = async (req, res) => {
       action: "STATUS_UPDATE",
       placeName: updated.name,
       details: `Status changed to ${capacityStatus}`,
+      ...buildHistoryMeta(req, updated),
     });
 
     res.json(updated);
@@ -368,6 +409,7 @@ const deletePlace = async (req, res) => {
       action: "DELETE",
       placeName: deleted.name,
       details: "Place archived",
+      ...buildHistoryMeta(req, deleted),
     });
 
     res.json({ message: "Place archived successfully" });
@@ -516,6 +558,7 @@ const allocateStockToPlace = async (req, res) => {
       action: "ALLOCATE",
       placeName: place.name,
       details: `Allocated ${qty} ${stock.unit || ""} of ${stock.itemName} to ${place.name}`,
+      ...buildHistoryMeta(req, place),
     });
 
     res.json({
