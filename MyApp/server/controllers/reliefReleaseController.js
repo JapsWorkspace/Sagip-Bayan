@@ -202,7 +202,7 @@ const createReliefRelease = async (req, res) => {
       );
     }
 
-    // 2) CREATE RELIEF RELEASE
+    // 2) CREATE RELIEF RELEASE ONLY
     const releaseNo = await generateReleaseNo(session);
 
     const [reliefRelease] = await ReliefRelease.create(
@@ -223,65 +223,12 @@ const createReliefRelease = async (req, res) => {
           releaseStatus: 'released',
           releasedBy: username,
           releasedAt: new Date(),
+          receivedAt: null,
           remarks: normalizeString(remarks)
         }
       ],
       { session }
     );
-
-    // 3) ADD TO BARANGAY STOCK + CREATE TRANSACTIONS
-    for (const item of preparedItems) {
-      let stockDoc = await BarangayStock.findOne({
-        barangayId: reliefRequest.barangayId,
-        itemName: item.itemName,
-        category: item.category,
-        unit: item.unit,
-        isArchived: false
-      }).session(session);
-
-      if (stockDoc) {
-        stockDoc.quantityAvailable =
-          Number(stockDoc.quantityAvailable || 0) + item.quantityReleased;
-        stockDoc.lastUpdatedBy = username;
-        await stockDoc.save({ session });
-      } else {
-        const createdStocks = await BarangayStock.create(
-          [
-            {
-              barangayId: reliefRequest.barangayId,
-              barangayName: reliefRequest.barangayName,
-              itemName: item.itemName,
-              category: item.category,
-              unit: item.unit,
-              quantityAvailable: item.quantityReleased,
-              lastUpdatedBy: username
-            }
-          ],
-          { session }
-        );
-
-        stockDoc = createdStocks[0];
-      }
-
-      await BarangayStockTransaction.create(
-        [
-          {
-            barangayId: reliefRequest.barangayId,
-            barangayName: reliefRequest.barangayName,
-            stockId: stockDoc._id,
-            itemName: item.itemName,
-            category: item.category,
-            unit: item.unit,
-            quantity: item.quantityReleased,
-            transactionType: 'release_in',
-            reliefReleaseId: reliefRelease._id,
-            remarks: `Received from DRRMO release ${reliefRelease.releaseNo}`,
-            performedBy: username
-          }
-        ],
-        { session }
-      );
-    }
 
     const totalReleased = preparedItems.reduce(
       (sum, item) => sum + Number(item.quantityReleased || 0),
@@ -331,6 +278,140 @@ const createReliefRelease = async (req, res) => {
   }
 };
 
+/* BARANGAY CONFIRMS RECEIPT */
+const receiveReliefRelease = async (req, res) => {
+  const session = await mongoose.startSession();
+
+  try {
+    const username = String(req.session?.username || req.session?.userId || '');
+    const role = String(req.session?.role || '');
+    const releaseId = req.params.id;
+
+    if (!releaseId) {
+      return res.status(400).json({ message: 'Release ID is required.' });
+    }
+
+    session.startTransaction();
+
+    const reliefRelease = await ReliefRelease.findById(releaseId).session(session);
+
+    if (!reliefRelease || reliefRelease.isArchived) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'Relief release not found.' });
+    }
+
+    if (reliefRelease.releaseStatus === 'received') {
+      await session.abortTransaction();
+      return res.status(400).json({ message: 'This release has already been received.' });
+    }
+
+    if (reliefRelease.releaseStatus !== 'released') {
+      await session.abortTransaction();
+      return res.status(400).json({
+        message: 'Only released items can be marked as received.'
+      });
+    }
+
+    // Optional ownership check for barangay users
+    if (role === 'barangay') {
+      if (String(reliefRelease.barangayId) !== String(req.session.userId)) {
+        await session.abortTransaction();
+        return res.status(403).json({
+          message: 'You can only receive releases assigned to your barangay.'
+        });
+      }
+    }
+
+    // 1) UPDATE RELEASE STATUS
+    reliefRelease.releaseStatus = 'received';
+    reliefRelease.receivedAt = new Date();
+
+    await reliefRelease.save({ session });
+
+    // 2) ADD TO BARANGAY STOCK + CREATE TRANSACTIONS
+    for (const item of reliefRelease.items || []) {
+      let stockDoc = await BarangayStock.findOne({
+        barangayId: reliefRelease.barangayId,
+        itemName: item.itemName,
+        category: item.category,
+        unit: item.unit,
+        isArchived: false
+      }).session(session);
+
+      if (stockDoc) {
+        stockDoc.quantityAvailable =
+          Number(stockDoc.quantityAvailable || 0) + Number(item.quantityReleased || 0);
+        stockDoc.lastUpdatedBy = username;
+        await stockDoc.save({ session });
+      } else {
+        const createdStocks = await BarangayStock.create(
+          [
+            {
+              barangayId: reliefRelease.barangayId,
+              barangayName: reliefRelease.barangayName,
+              itemName: item.itemName,
+              category: item.category,
+              unit: item.unit,
+              quantityAvailable: Number(item.quantityReleased || 0),
+              lastUpdatedBy: username
+            }
+          ],
+          { session }
+        );
+
+        stockDoc = createdStocks[0];
+      }
+
+      await BarangayStockTransaction.create(
+        [
+          {
+            barangayId: reliefRelease.barangayId,
+            barangayName: reliefRelease.barangayName,
+            stockId: stockDoc._id,
+            itemName: item.itemName,
+            category: item.category,
+            unit: item.unit,
+            quantity: Number(item.quantityReleased || 0),
+            transactionType: 'release_in',
+            reliefReleaseId: reliefRelease._id,
+            remarks: `Received from DRRMO release ${reliefRelease.releaseNo}`,
+            performedBy: username
+          }
+        ],
+        { session }
+      );
+    }
+
+    // 3) OPTIONAL AUDIT
+    await Audit.create(
+      [
+        {
+          barangayId: reliefRelease.barangayId,
+          barangayName: reliefRelease.barangayName,
+          category: 'relief_receive',
+          peopleRange: `Received release ${reliefRelease.releaseNo}`,
+          status: 'received',
+          actionBy: role === 'barangay' ? username : 'barangay'
+        }
+      ],
+      { session }
+    );
+
+    await session.commitTransaction();
+
+    res.json({
+      message: 'Relief goods received successfully.',
+      release: reliefRelease
+    });
+  } catch (err) {
+    await session.abortTransaction();
+    console.error('Receive Relief Release Error:', err);
+    res.status(500).json({ message: err.message });
+  } finally {
+    session.endSession();
+  }
+};
+
 /* GET RELEASES FOR A REQUEST */
 const getReleasesByRequest = async (req, res) => {
   try {
@@ -363,6 +444,7 @@ const getAllReliefReleases = async (req, res) => {
 module.exports = {
   getApprovedRequestsForRelease,
   createReliefRelease,
+  receiveReliefRelease,
   getReleasesByRequest,
   getAllReliefReleases
 };
