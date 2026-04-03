@@ -4,70 +4,58 @@
 
 import axios from 'axios';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 /* -------------------------------------------------------------------------- */
 /*                               CONFIGURE THESE                               */
 /* -------------------------------------------------------------------------- */
 
 // 1) Your laptop's LAN IP (for real phone via Expo Go)
-//    Find it via `ipconfig` (Windows) / `ifconfig` (macOS/Linux).
-const LAN_IP = '10.208.46.51'; // <-- your LAN IP
+const LAN_IP = '192.168.1.4';
 
-// 2) Optional HTTPS tunnel for dev (works anywhere, avoids HTTP issues)
-//    Example: 'https://abcd-12-34-56-78.ngrok.app'
-const NGROK_URL = ''; // <-- paste your tunnel URL if you use one
+// 2) Optional HTTPS tunnel for dev (ngrok, cloudflared, etc.)
+const NGROK_URL = ''; // e.g. 'https://xxxx.ngrok.app'
 
-// 3) Your backend port in dev
+// 3) Backend port
 const PORT = 8000;
 
-// 4) A quick endpoint to probe reachability (GET)
-const HEALTH_PATH = '/health'; // or '/incident/getIncidents' if that responds 200 quickly
+// 4) Health probe path
+const HEALTH_PATH = '/health';
 
-// 5) Your production API base (HTTPS)
-const PROD_BASE = 'https://YOUR-PROD-API.com'; // <-- set for release
+// 5) Production base
+const PROD_BASE = 'https://YOUR-PROD-API.com';
 
-// 6) OPTIONAL: temporarily force a base during debugging (overrides detection in dev)
-// const FORCE_BASE = 'https://abcd-12-34-56-78.ngrok.app';
-// const FORCE_BASE = 'http://192.168.1.6:8000';
+// 6) Optional override
 const FORCE_BASE = '';
 
 /* -------------------------------------------------------------------------- */
 /*                              RUNTIME CANDIDATES                             */
 /* -------------------------------------------------------------------------- */
 
-// Candidate bases for development (ordered by priority)
 const candidatesDev = [
-  // 1) HTTPS tunnel (best for phones & teammates)
   ...(NGROK_URL ? [NGROK_URL] : []),
-  // 2) Real phone on same Wi‑Fi
   `http://${LAN_IP}:${PORT}`,
-  // 3) Emulator alias (iOS simulator will use localhost)
-  Platform.OS === 'android' ? `http://10.0.2.2:${PORT}` : `http://localhost:${PORT}`,
+  Platform.OS === 'android'
+    ? `http://10.0.2.2:${PORT}`
+    : `http://localhost:${PORT}`,
 ];
 
-// Cache the chosen base for this session
 let resolvedBase = null;
 
-/**
- * Resolve a working base URL in development by pinging HEALTH_PATH with a short timeout.
- * First one that responds wins. Falls back to the first candidate if none respond.
- */
 async function resolveDevBase() {
   if (resolvedBase) return resolvedBase;
 
   for (const base of candidatesDev) {
     try {
-      // Slightly longer timeout for slower Wi‑Fi
       await axios.get(`${base}${HEALTH_PATH}`, { timeout: 2500 });
       resolvedBase = base;
       console.log('[api] using base:', resolvedBase);
       return resolvedBase;
     } catch (_) {
-      // try next candidate
+      // try next
     }
   }
 
-  // Nothing responded — fall back to the first candidate to avoid undefined baseURL.
   resolvedBase = candidatesDev[0];
   console.log('[api] fallback base:', resolvedBase);
   return resolvedBase;
@@ -77,16 +65,18 @@ async function resolveDevBase() {
 /*                               AXIOS INSTANCE                                */
 /* -------------------------------------------------------------------------- */
 
-// In production we set the base immediately.
-// In development we inject baseURL per-request once resolveDevBase() completes.
 const api = axios.create({
   baseURL: __DEV__ ? undefined : PROD_BASE,
   timeout: 10000,
   headers: { 'Content-Type': 'application/json' },
 });
 
-// In development, inject a resolved baseURL before each request.
+/* -------------------------------------------------------------------------- */
+/*                      REQUEST INTERCEPTOR (FIXED ✅)                         */
+/* -------------------------------------------------------------------------- */
+
 api.interceptors.request.use(async (config) => {
+  // ✅ Resolve base URL dynamically in development
   if (__DEV__) {
     if (FORCE_BASE) {
       config.baseURL = FORCE_BASE;
@@ -95,14 +85,26 @@ api.interceptors.request.use(async (config) => {
       config.baseURL = base;
     }
   }
+
+  // ✅ ATTACH AUTH TOKEN (THIS FIXES 401)
+  const token = await AsyncStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
-// Helpful response interceptor to log issues (optional)
+/* -------------------------------------------------------------------------- */
+/*                       RESPONSE INTERCEPTOR (LOGGING)                        */
+/* -------------------------------------------------------------------------- */
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    const url = (err?.config?.baseURL || '') + (err?.config?.url || '');
+    const url =
+      (err?.config?.baseURL || '') + (err?.config?.url || '');
+
     console.log('[api] error:', {
       url,
       method: err?.config?.method,
@@ -110,6 +112,7 @@ api.interceptors.response.use(
       status: err?.response?.status,
       data: err?.response?.data,
     });
+
     return Promise.reject(err);
   }
 );

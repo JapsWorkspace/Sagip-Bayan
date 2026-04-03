@@ -22,34 +22,34 @@ export default function LogIn({ navigation }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  const { user, setUser } = useContext(UserContext);
+  const { setUser } = useContext(UserContext);
 
   const sanitizeInput = (text) =>
     text.replace(/[^a-zA-Z0-9]/g, "");
 
+  /* ================= LOGIN ================= */
   const handleLogin = () => {
     setError("");
+
     api
       .post("/user/login", { username, password })
       .then((res) => {
         const data = res.data;
 
         if (data.twoFactor) {
+          // ✅ Two-factor flow
           navigation.navigate("VerifyOtp", {
             userId: data.userId,
             email: data.email,
           });
           api.post("/user/send-otp", { email: data.email });
         } else {
+          // ✅ Store FULL backend user object (includes avatar)
           setUser({
-            id: data.user._id,
-            fname: data.user.fname,
-            lname: data.user.lname,
-            username: data.user.username,
-            password: password,
-            email: data.user.email,
-            phone: data.user.phone,
+            ...data.user,
+            id: data.user._id, // normalize ID once
           });
+
           navigation.replace("AppShell");
           setUsername("");
           setPassword("");
@@ -60,6 +60,7 @@ export default function LogIn({ navigation }) {
       });
   };
 
+  /* ================= NAV ================= */
   const handleGoToSignup = async () => {
     try {
       const accepted = await AsyncStorage.getItem("privacyAccepted");
@@ -95,7 +96,6 @@ export default function LogIn({ navigation }) {
 
             {/* FULL-WIDTH PANEL */}
             <View style={styles.panel}>
-
               <Text style={styles.panelTitle}>LOG IN ACCOUNT</Text>
 
               <TextInput
@@ -103,6 +103,7 @@ export default function LogIn({ navigation }) {
                 placeholder="Username"
                 placeholderTextColor={COLORS.placeholder}
                 value={username}
+                autoCapitalize="none"
                 onChangeText={(t) =>
                   setUsername(sanitizeInput(t.trimStart()))
                 }
@@ -138,8 +139,8 @@ export default function LogIn({ navigation }) {
                   SIGN UP
                 </Text>
               </TouchableOpacity>
-
             </View>
+
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

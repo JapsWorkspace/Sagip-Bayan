@@ -313,12 +313,18 @@ export default function MainCenter({ navigation }) {
                 />
               )}
 
-              <View style={styles.gridWrap}>
-                <View style={styles.row}>
-                  <TouchableOpacity style={styles.tile}><Text>A</Text></TouchableOpacity>
-                  <TouchableOpacity style={styles.tile}><Text>B</Text></TouchableOpacity>
-                </View>
-              </View>
+             <View style={styles.gridWrap}>
+  <View style={styles.row}>
+    {/* PROFILE TILE */}
+    <TouchableOpacity
+      style={styles.tile}
+      onPress={() => navigation.navigate("Profile")}
+    >
+      <Text style={styles.tileText}>Profile</Text>
+    </TouchableOpacity>
+  </View>
+</View>
+
             </ScrollView>
 
           </View>

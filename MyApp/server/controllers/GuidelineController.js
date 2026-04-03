@@ -21,6 +21,35 @@ const createGuideline = async (req, res) => {
   }
 };
 
+// GET /published
+const getPublishedGuidelines = async (req, res) => {
+  try {
+    const guidelines = await PostingGuideline.find({ status: "published" })
+      .sort({ priorityLevel: -1, createdAt: -1 });
+
+    res.json(guidelines);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// controllers/GuidelineController.js
+const incrementViews = async (req, res) => {
+  try {
+    const guideline = await PostingGuideline.findByIdAndUpdate(
+      req.params.id,
+      { $inc: { views: 1 } },
+      { new: true }
+    );
+    if (!guideline) return res.status(404).json({ message: "Guideline not found" });
+    res.json(guideline);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 // ✅ Get all guidelines
 const getGuidelines = async (req, res) => {
 
@@ -99,4 +128,5 @@ module.exports = {
   getGuidelineById,
   updateGuideline,
   deleteGuideline,
+  incrementViews,
 };

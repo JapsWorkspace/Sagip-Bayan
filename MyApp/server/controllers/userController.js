@@ -1,23 +1,24 @@
+
 const UserModel = require("../models/User");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const sendOTP = require("../utils/sendOTP");
 const bcrypt = require("bcryptjs");
 
-
+/* =========================
+   REGISTER
+========================= */
 const registerUser = async (req, res) => {
   try {
     const verificationToken = crypto.randomBytes(32).toString("hex");
-
-    // 🔐 HASH PASSWORD
     const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
     const newUser = new UserModel({
       ...req.body,
-      password: hashedPassword, // 👈 replace plain password
+      password: hashedPassword,
       isVerified: false,
-      verificationToken: verificationToken,
-      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000
+      verificationToken,
+      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
     });
 
     const user = await newUser.save();
@@ -28,24 +29,25 @@ const registerUser = async (req, res) => {
     await sendVerificationEmail(user.email, verificationLink);
 
     res.status(201).json({
-      message: "Registration successful. Please verify your email."
+      message: "Registration successful. Please verify your email.",
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Registration failed" });
   }
 };
 
-
+/* =========================
+   VERIFY EMAIL
+========================= */
 const verifyEmail = (req, res) => {
   const { token } = req.params;
 
   UserModel.findOne({
     verificationToken: token,
-    verificationTokenExpires: { $gt: Date.now() }
+    verificationTokenExpires: { $gt: Date.now() },
   })
-    .then(user => {
+    .then((user) => {
       if (!user) {
         return res.status(400).send("Invalid or expired verification link");
       }
@@ -59,27 +61,34 @@ const verifyEmail = (req, res) => {
     .then(() => {
       res.send("Email verified successfully. You can now log in.");
     })
-    .catch(err => {
+    .catch((err) => {
       console.error(err);
       res.status(500).send("Verification error");
     });
 };
 
+/* =========================
+   USERS
+========================= */
 const getUsers = (req, res) => {
-     UserModel.find() 
-     .then(users => res.json(users)) 
-     .catch(err =>{ 
-        console.log(err) 
-        res.status(500).json({error: "Internal Server Error"}); 
+  UserModel.find()
+    .then((users) => res.json(users))
+    .catch((err) => {
+      console.log(err);
+      res.status(500).json({ error: "Internal Server Error" });
     });
- };
-const loginUser = async (req, res) => {
-   console.log("BODY:", req.body);
+};
 
+/* =========================
+   LOGIN
+========================= */
+const loginUser = async (req, res) => {
   const { username, password } = req.body || {};
 
   if (!username || !password) {
-    return res.status(400).json({ message: "Username and password are required" });
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
   }
 
   try {
@@ -89,27 +98,24 @@ const loginUser = async (req, res) => {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // 🔐 bcrypt password comparison
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid username or password" });
     }
 
-    // Restore archived account
     if (user.isArchived) {
       user.isArchived = false;
       user.archivedAt = null;
       user.deleteAfter = null;
     }
 
-    // Two-factor flow
     if (user.twoFactorEnabled) {
       await user.save();
       return res.json({
         twoFactor: true,
         userId: user._id,
         email: user.email,
-        restored: true
+        restored: true,
       });
     }
 
@@ -118,25 +124,23 @@ const loginUser = async (req, res) => {
     res.json({
       twoFactor: false,
       user,
-      restored: true
+      restored: true,
     });
-
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-
- const updateUser = async (req, res) => {
+/* =========================
+   UPDATE USER
+========================= */
+const updateUser = async (req, res) => {
   try {
     const updateData = { ...req.body };
-    console.log("Update data received:", updateData);
 
-    // If password is being updated, hash it first
     if (req.body.password) {
-      const hashedPassword = await bcrypt.hash(req.body.password, 10);
-      updateData.password = hashedPassword;
+      updateData.password = await bcrypt.hash(req.body.password, 10);
     }
 
     const user = await UserModel.findByIdAndUpdate(
@@ -149,9 +153,7 @@ const loginUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Never send password back to frontend
     const { password, ...safeUser } = user.toObject();
-
     res.json(safeUser);
   } catch (err) {
     console.error(err);
@@ -159,6 +161,41 @@ const loginUser = async (req, res) => {
   }
 };
 
+
+updateLocation = async (req, res) => {
+  try {
+    const userId = req.params.id; // ✅ THIS WAS MISSING
+    const { lat, lng } = req.body;
+   console.log("📍 Location update:", userId, lat, lng);
+    if (!userId) {
+      return res.status(400).json({ message: "Missing user id" });
+    }
+
+    if (typeof lat !== "number" || typeof lng !== "number") {
+      return res.status(400).json({
+        message: "Latitude and longitude must be numbers",
+      });
+    }
+
+    await UserModel.findByIdAndUpdate(
+      userId,
+      {
+        location: {
+          lat,
+          lng,
+          updatedAt: new Date(),
+          share: true,
+        },
+      },
+      { new: true }
+    );
+
+    res.json({ message: "Location updated successfully" });
+  } catch (err) {
+    console.error("Update location error:", err);
+    res.status(500).json({ message: "Failed to update location" });
+  }
+};
 
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
@@ -322,6 +359,24 @@ const toggleTwoFactor = (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 };
+/* =========================
+   GET USER BY ID (for app state)
+========================= */
+const getUserById = async (req, res) => {
+  try {
+    const user = await UserModel.findById(req.params.id)
+      .select("-password -otp -otpExpires");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.json(user);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
 
 
 
@@ -329,5 +384,4 @@ const toggleTwoFactor = (req, res) => {
 
 
 
-
-module.exports = { registerUser, verifyEmail, getUsers, updateUser, sendOtp, verifyOtp, archiveUser, restoreUser, permanentlyDeleteArchivedUsers, toggleTwoFactor, loginUser };
+module.exports = { registerUser, verifyEmail, getUsers, updateUser, sendOtp, verifyOtp, archiveUser, restoreUser, permanentlyDeleteArchivedUsers, toggleTwoFactor, loginUser, updateLocation, getUserById };

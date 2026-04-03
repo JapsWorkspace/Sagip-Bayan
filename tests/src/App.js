@@ -26,6 +26,7 @@ import UpdateGuideline from './components/guidelines/UpdateGuidelines';
 import TimeInOut from './components/timeInOut';
 import AdminLogs from './components/AdminLogs';
 import EvacuationMap from './components/map/EvacuationMap';
+import PublicGuide from './components/guidelines/PublicGuide';
 
 function App() {
   return (
@@ -72,6 +73,7 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
 
+            <Route path="/guidelines" element={<PublicGuide />} />
             <Route path="/idk" element={<HomeGuidelines/>}/>
             <Route path="/update/:id" element={<UpdateGuideline/>}/>
             <Route path="/map" element={<EvacuationMap/>}/>

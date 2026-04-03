@@ -55,6 +55,16 @@ const PostingGuidelineSchema = new mongoose.Schema(
       ref: "User",
       required: true,
     },
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+
+    views: {
+      type: Number,
+      default: 0,
+    },
   },
   { timestamps: true }
 );

@@ -1,213 +1,937 @@
 // screens/SafetyMark.jsx
-import React, { useState, useContext, useEffect } from 'react';
-import { View, Text, Button, TextInput, Alert, StyleSheet } from 'react-native';
+import React, {
+  useState,
+  useContext,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  PanResponder,
+  Dimensions,
+  Image,
+} from "react-native";
 import { UserContext } from "./UserContext";
 import api from "../lib/api";
+import * as Location from "expo-location";
+import MapView, { Marker } from "react-native-maps";
+import { useFocusEffect } from "@react-navigation/native";
+
+/* ================= CONSTANTS ================= */
+const BASE_URL = "http://192.168.1.4:8000";
+const { height } = Dimensions.get("window");
+const PANEL_COLLAPSED = height * 0.55;
+const PANEL_EXPANDED = 80;
+
+const DEFAULT_AVATAR =
+  "https://ui-avatars.com/api/?background=065F46&color=fff&rounded=true&name=User";
+
+// ✅ Phase 2 helpers (LOGIC ONLY)
+
+// Time ago, up to 7 days
+const timeAgo = (date) => {
+  if (!date) return null;
+  const diffMs = Date.now() - new Date(date).getTime();
+  const mins = Math.floor(diffMs / 60000);
+
+  if (mins < 1) return "Just now";
+  if (mins < 60) return `${mins} min ago`;
+
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs} hr ago`;
+
+  const days = Math.floor(hrs / 24);
+  if (days <= 7) return `${days} day ago`;
+
+  return "Over a week ago";
+};
+
+// Distance using Haversine (meters)
+const getDistanceMeters = (from, to) => {
+  const R = 6371e3;
+  const toRad = (v) => (v * Math.PI) / 180;
+  const dLat = toRad(to.lat - from.latitude);
+  const dLon = toRad(to.lng - from.longitude);
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(from.latitude)) *
+      Math.cos(toRad(to.lat)) *
+      Math.sin(dLon / 2) ** 2;
+
+  return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+};
 
 export default function SafetyMark() {
-  const [joinCode, setJoinCode] = useState('');
-  const { user, setUser } = useContext(UserContext);
-  const [connections, setConnections] = useState([]);
-  const [pendingMembers, setPendingMembers] = useState([]);
+  const { user } = useContext(UserContext);
+  // Requests modal
+const [showRequests, setShowRequests] = useState(false);
 
-  // Fetch all user connections
+// Pending join requests (for admin)
+const [pendingRequests, setPendingRequests] = useState([]);
+
+  const [joinCode, setJoinCode] = useState("");
+  const [connections, setConnections] = useState([]);
+  const [panelView, setPanelView] = useState("main");
+
+  /* ===== location ===== */
+  const [myLocation, setMyLocation] = useState(null);
+  const [myAddress, setMyAddress] = useState(null);
+
+  /* ✅ cache for family member addresses */
+  const [memberAddresses, setMemberAddresses] = useState({});
+  // Personal notifications (e.g. kicked, system messages)
+const [personalNotifications, setPersonalNotifications] = useState([]);
+  /* ================= SLIDEABLE PANEL ================= */
+  const translateY = useRef(new Animated.Value(PANEL_COLLAPSED)).current;
+  const lastY = useRef(PANEL_COLLAPSED);
+  const totalNotifications = pendingRequests.length + personalNotifications.length;
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 8,
+      onPanResponderMove: (_, g) => {
+        let next = lastY.current + g.dy;
+        next = Math.max(PANEL_EXPANDED, Math.min(next, PANEL_COLLAPSED));
+        translateY.setValue(next);
+      },
+      onPanResponderRelease: (_, g) => {
+        const toValue = g.dy < -60 ? PANEL_EXPANDED : PANEL_COLLAPSED;
+        Animated.spring(translateY, {
+          toValue,
+          useNativeDriver: false,
+        }).start(() => {
+          lastY.current = toValue;
+        });
+      },
+    })
+  ).current;
+
+  /* ================= FETCH CONNECTIONS ================= */
   const fetchConnections = async () => {
     try {
-      const response = await api.get(`/connection/user/${user.id}`);
-      const data = response.data;
-      setConnections(data);
+      const res = await api.get(`/connection/user/${user.id}`);
+      setConnections(res.data);
     } catch (err) {
       console.error(err);
     }
   };
 
-  useEffect(() => {
+useFocusEffect(
+  useCallback(() => {
     fetchConnections();
+
+    // ✅ Fetch user notifications
+    api.get(`/user/${user.id}`)
+      .then(res => {
+        setPersonalNotifications(
+          (res.data.notifications || []).filter(n => !n.read)
+        );
+      })
+      .catch(err => {
+        console.log("Notification fetch failed:", err?.message);
+      });
+  }, [])
+);
+
+useEffect(() => {
+  const pending = [];
+
+  connections.forEach(connection => {
+    // ✅ Only the creator should see pending requests
+    if (
+      connection.creator?.toString() === user.id &&
+      connection.pendingMembers?.length > 0
+    ) {
+      connection.pendingMembers.forEach(member => {
+        pending.push({
+          connectionId: connection._id,
+          member,
+        });
+      });
+    }
+  });
+
+  setPendingRequests(pending);
+}, [connections, user.id]);
+
+  /* ================= YOUR LOCATION ================= */
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") return;
+
+      const pos = await Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Highest,
+      });
+
+      const coords = {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+      };
+
+      setMyLocation(coords);
+
+      try {
+        const [place] = await Location.reverseGeocodeAsync(coords);
+        if (place) {
+          const street = place.street || place.name || "";
+          const city = place.city || place.region || "";
+          setMyAddress(
+            `${street}${street && city ? ", " : ""}${city}` ||
+              "Approximate area"
+          );
+        }
+      } catch {}
+
+      // ✅ FIXED: send user id
+      try {
+        await api.put(`/user/location/${user.id}`, {
+          lat: coords.latitude,
+          lng: coords.longitude,
+        });
+      } catch {
+        console.log("Location backend update failed (ignored)");
+      }
+    })();
   }, []);
 
-  const getStatusColor = (status) => {
-    if (status === "SAFE") return "green";
-    if (status === "NOT_SAFE") return "red";
-    return "gray";
-  };
-
-  // 1️⃣ Create Connection
-  const handleCreateConnection = () => {
-    api.post(`/connection/create/${user.id}`)
-      .then(res => {
-        const data = res.data;
-        console.log("Connection Created", `Your connection code: ${data.code}`);
-        fetchConnections();
-        fetchPendingMembers();
-      })
-      .catch(err => console.error(err));
-  };
-
-  // 2️⃣ Join Connection
-  const handleJoinConnection = () => {
-    api.post(`/connection/join/${user.id}`, { code: joinCode })
-      .then(res => {
-        const data = res.data;
-        console.log("Join Connection", data.message);
-        fetchConnections();
-        setJoinCode("");
-
-        // Keeping your original logs unchanged:
-        console.log(connection.creator === user.id, "2");
-        console.log(pendingMembers.length);
-      })
-      .catch(err => {
-        console.error(err);
-        Alert.alert("Error", "Failed to join connection");
-      });
-
-    // Keeping your original logs unchanged:
-    console.log(connection.creator === user.id, "1");
-    console.log(pendingMembers.length);
-  };
-
-  // Leave Connection
-  const handleLeaveConnection = (connectionId) => {
-    api.delete(`/connection/leave/${user.id}/${connectionId}`)
-      .then(res => {
-        const data = res.data;
-        Alert.alert("Connection", data.message);
-        fetchConnections();
-      })
-      .catch(err => {
-        console.error(err);
-        Alert.alert("Error", "Failed to leave connection");
-      });
-  };
-
-  // Mark SAFE
-  const handleMarkSafe = (message) => {
-    api.put(`/connection/safe/${user.id}`, { message })
-      .then(res => {
-        const data = res.data;
-        console.log("Status Updated", data);
-        Alert.alert("Status", "You are marked SAFE");
-        fetchConnections();
-      })
-      .catch(err => {
-        console.error(err);
-        Alert.alert("Error", "Failed to update status");
-      });
-  };
-
-  // Mark NOT SAFE
-  const handleMarkNotSafe = (message) => {
-    api.put(`/connection/not-safe/${user.id}`, { message })
-      .then(res => {
-        const data = res.data;
-        console.log("Status Updated", data);
-        Alert.alert("Status", "You are marked NOT SAFE");
-        fetchConnections();
-      })
-      .catch(err => {
-        console.error(err);
-        Alert.alert("Error", "Failed to update status");
-      });
-  };
-
-  // Fetch pending members for a connection (creator only)
-  const fetchPendingMembers = (connectionId) => {
-    api.get(`/connection/${connectionId}`)
-      .then(res => {
-        const data = res.data;
-        setPendingMembers(data.pendingMembers || []);
-        console.log("Pending Members for connection ID:", connectionId, data.pendingMembers);
-      })
-      .catch(err => console.error(err));
-  };
-
+  /* ================= FAMILY LOCATION RESOLVE ================= */
   useEffect(() => {
-    // Fetch pending members for each connection
-    connections.forEach(connection => {
-      fetchPendingMembers(connection._id);
+    const resolveFamilyLocations = async () => {
+      const updates = {};
+
+      for (const connection of connections) {
+        for (const member of connection.members) {
+          if (
+            member.location?.lat &&
+            member.location?.lng &&
+            !memberAddresses[member._id]
+          ) {
+            try {
+              const [place] = await Location.reverseGeocodeAsync({
+                latitude: member.location.lat,
+                longitude: member.location.lng,
+              });
+
+              if (place) {
+                const street = place.street || place.name || "";
+                const city = place.city || place.region || "";
+
+                updates[member._id] =
+                  `${street}${street && city ? ", " : ""}${city}` ||
+                  "Approximate area";
+              }
+            } catch {}
+          }
+        }
+      }
+
+      if (Object.keys(updates).length > 0) {
+        setMemberAddresses((prev) => ({ ...prev, ...updates }));
+      }
+    };
+
+    resolveFamilyLocations();
+  }, [connections]);
+
+  /* ================= SAFETY STATUS ================= */
+  const mySafetyStatus =
+    connections
+      .flatMap((c) => c.members)
+      .find((m) => m._id === user.id)?.safetyStatus ||
+    user.safetyStatus ||
+    "SAFE";
+
+  /* ================= ACTIONS ================= */
+  const handleCreateConnection = () => {
+    api.post(`/connection/create/${user.id}`).then(fetchConnections);
+  };
+
+const handleJoinConnection = () => {
+  if (!joinCode.trim()) {
+    Alert.alert("Missing Info", "Enter a connection code");
+    return;
+  }
+  api
+    .post(`/connection/join/${user.id}`, {
+      code: joinCode.trim().toUpperCase(),
+    })
+    .then(() => {
+      setJoinCode("");
+      fetchConnections();
+    })
+    .catch((err) => {
+      console.error("JOIN ERROR:", err?.response?.data || err.message);
+      Alert.alert(
+        "Join Failed",
+        err?.response?.data?.message || "Invalid or expired connection code"
+      );
     });
-  }, [connections]); // runs whenever connections change
+};
 
-  // Approve member
-  const handleApprove = (connectionId, memberId) => {
-    api.put(`/connection/approve/${connectionId}/${memberId}`, { userId: user.id })
-      .then(res => {
-        const data = res.data;
-        Alert.alert(data.message);
-        fetchConnections();
-        fetchPendingMembers(connectionId);
+  // ✅ FIXED: send message body
+  const handleMarkSafe = () => {
+    api
+      .put(`/connection/safe/${user.id}`, {
+        message: "I am safe",
       })
-      .catch(err => console.error(err));
+      .then(fetchConnections)
+      .catch(() =>
+        Alert.alert("Error", "Failed to mark SAFE")
+      );
   };
 
-  // Reject member
-  const handleReject = (connectionId, memberId) => {
-    api.put(`/connection/reject/${connectionId}/${memberId}`, { userId: user.id })
-      .then(res => {
-        const data = res.data;
-        Alert.alert(data.message);
-        fetchPendingMembers(connectionId);
+  // ✅ FIXED: send message body
+  const handleMarkNotSafe = () => {
+    api
+      .put(`/connection/not-safe/${user.id}`, {
+        message: "Need help",
       })
-      .catch(err => console.error(err));
+      .then(fetchConnections)
+      .catch(() =>
+        Alert.alert("Error", "Failed to mark NOT SAFE")
+      );
   };
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Connections</Text>
+  const handleLeaveConnection = (id) => {
+    api.delete(`/connection/leave/${user.id}/${id}`).then(fetchConnections);
+  };
+  const isAnyConnectionFull = false;
 
-      {/* Create Connection */}
-      <Button title="Create Connection" onPress={handleCreateConnection} />
+  /* ================= RENDER ================= */
+/* ================= RENDER ================= */
+return (
+  <View style={styles.container}>
+    <MapView
+      style={StyleSheet.absoluteFillObject}
+      initialRegion={{
+        latitude: myLocation?.latitude || 14.5995,
+        longitude: myLocation?.longitude || 120.9842,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }}
+    >
+      {myLocation && (
+        <Marker coordinate={myLocation}>
+          <Image
+            source={{
+              uri: user.avatar
+                ? `${BASE_URL}${user.avatar}`
+                : DEFAULT_AVATAR,
+            }}
+            style={[
+              styles.markerAvatar,
+              {
+                borderColor:
+                  mySafetyStatus === "SAFE"
+                    ? "#22C55E"
+                    : "#EF4444",
+                borderWidth: 3,
+              },
+            ]}
+          />
+        </Marker>
+      )}
+    </MapView>
 
-      {/* Join Connection */}
-      <Text style={styles.label}>Join a Connection</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Enter connection code"
-        value={joinCode}
-        onChangeText={setJoinCode}
-      />
-      <Button title="Join Connection" onPress={handleJoinConnection} />
+    <TouchableOpacity
+      style={styles.notificationBtn}
+      onPress={() => setShowRequests(true)}
+    >
+      <Text style={styles.notificationIcon}>🔔</Text>
 
-      {/* Safety Status */}
-      <Text style={{ marginTop: 20, fontWeight: "bold" }}>Update Safety Status</Text>
-      <Button title="Mark SAFE" onPress={() => handleMarkSafe("I am safe")} />
-      <Button title="Mark NOT SAFE" onPress={() => handleMarkNotSafe("Need help")} color="red" />
+      {totalNotifications > 0 && (
+        <View style={styles.notificationBadge}>
+          <Text style={styles.notificationCount}>
+            {totalNotifications}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
 
-      {/* Connections List */}
-      <Text style={{ marginTop: 30, fontSize: 18, fontWeight: "bold" }}>Your Connections</Text>
-      {connections.map((connection) => (
-        <View key={connection._id} style={{ marginTop: 15, padding: 10, borderWidth: 1 }}>
-          <Text style={{ fontWeight: "bold" }}>Code: {connection.code}</Text>
+    {showRequests && (
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalBox}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={() => setShowRequests(false)}>
+              <Text style={styles.modalBack}>←</Text>
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Request</Text>
+            <View style={{ width: 20 }} />
+          </View>
 
-          <Text style={{ marginTop: 5 }}>Members:</Text>
-          {connection.members.map((member) => (
-            <Text key={member._id} style={{ color: getStatusColor(member.safetyStatus) }}>
-              {member.username} - {member.safetyStatus}
-            </Text>
-          ))}
+          {/* pending requests */}
+          {pendingRequests.length === 0 ? (
+            <Text style={styles.emptyText}>No pending requests</Text>
+          ) : (
+            pendingRequests.map(({ connectionId, member }) => (
+              <View key={member._id} style={styles.requestRow}>
+                <Image
+                  source={{
+                    uri: member.avatar
+                      ? `${BASE_URL}${member.avatar}`
+                      : DEFAULT_AVATAR,
+                  }}
+                  style={styles.requestAvatar}
+                />
 
-          {/* Pending members */}
-          {pendingMembers.map((member) => (
-            <View key={member._id} style={{ flexDirection: "row", alignItems: "center", marginBottom: 5 }}>
-              <Text style={{ flex: 1 }}>{member.username}</Text>
-              <Button title="Approve" onPress={() => handleApprove(connection._id, member._id)} />
-              <Button title="Reject" color="red" onPress={() => handleReject(connection._id, member._id)} />
+                <Text style={styles.requestName}>
+                  {member.username}
+                </Text>
+
+                <View style={styles.requestActions}>
+                  {/* ✅ Approve */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      api.put(
+                        `/connection/approve/${connectionId}/${member._id}/${user.id}`
+                      ).then(() => {
+                        fetchConnections();
+                        setShowRequests(false);
+                      });
+                    }}
+                  >
+                    <Text style={styles.approveBtn}>✔</Text>
+                  </TouchableOpacity>
+
+                  {/* ❌ Reject */}
+                  <TouchableOpacity
+                    onPress={() => {
+                      api.put(
+                        `/connection/reject/${connectionId}/${member._id}/${user.id}`
+                      ).then(() => {
+                        fetchConnections();
+                        setShowRequests(false);
+                      });
+                    }}
+                  >
+                    <Text style={styles.rejectBtn}>✖</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))
+          )}
+
+          {/* ✅ Personal system notifications */}
+          {personalNotifications.map((notif, index) => (
+            <View key={`notif-${index}`} style={styles.requestRow}>
+              <Text style={{ color: "#fff", fontWeight: "700" }}>
+                {notif.message}
+              </Text>
+              <Text
+                style={{
+                  color: "#D1FAE5",
+                  fontSize: 11,
+                  marginTop: 4,
+                }}
+              >
+                {timeAgo(notif.createdAt)}
+              </Text>
             </View>
           ))}
-          <Button
-            title="Leave Connection"
-            color="red"
-            onPress={() => handleLeaveConnection(connection._id)}
-          />
+
+          <TouchableOpacity
+            style={styles.closeModal}
+            onPress={() => setShowRequests(false)}
+          >
+            <Text style={{ fontWeight: "700" }}>Close</Text>
+          </TouchableOpacity>
         </View>
-      ))}
+      </View>
+    )}
+
+    {/* ================= PANEL ================= */}
+    <Animated.View style={[styles.panel, { transform: [{ translateY }] }]}>
+      <View {...panResponder.panHandlers} style={styles.handle} />
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {panelView === "main" && (
+          <>
+            <Text style={styles.title}>Safety Mark</Text>
+            {myAddress && (
+              <Text style={styles.locationLabel}>{myAddress}</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.primaryBtn}
+              onPress={handleCreateConnection}
+            >
+              <Text style={styles.primaryText}>Create Connection</Text>
+            </TouchableOpacity>
+
+            <Text style={styles.label}>Join with code</Text>
+            <TextInput
+              style={styles.input}
+              value={joinCode}
+              onChangeText={setJoinCode}
+              placeholder="Enter connection code"
+            />
+
+            <TouchableOpacity
+              style={styles.secondaryBtn}
+              onPress={handleJoinConnection}
+            >
+              <Text style={styles.secondaryText}>Join Connection</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.linkBtn}
+              onPress={() => setPanelView("connections")}
+            >
+              <Text style={styles.linkText}>
+                View your connections →
+              </Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+          {panelView === "connections" && (
+            <>
+            {isAnyConnectionFull && (
+  <Text style={{ color: "#991B1B", marginTop: 6 }}>
+    Connection is full (maximum of 5 members)
+  </Text>
+)}
+              <TouchableOpacity
+                style={styles.backBtn}
+                onPress={() => setPanelView("main")}
+              >
+                <Text style={styles.backText}>← Back</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.sectionTitle}>Safety Status</Text>
+
+              <TouchableOpacity
+                style={styles.safeBtn}
+                onPress={handleMarkSafe}
+              >
+                <Text style={styles.safeText}>Mark SAFE</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.unsafeBtn}
+                onPress={handleMarkNotSafe}
+              >
+                <Text style={styles.unsafeText}>Mark NOT SAFE</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.sectionTitle}>
+                Family Account Connections
+              </Text>
+
+              {connections.map((connection) => (
+                <View key={connection._id}>
+                  <Text style={styles.codeText}>
+                    Connection Code:{" "}
+                    <Text style={{ fontWeight: "800" }}>
+                      {connection.code}
+                    </Text>
+                  </Text>
+
+
+
+
+
+
+
+
+
+{connection.members.map((member) => (
+  <View key={member._id} style={styles.connectionCard}>
+
+    {/* ✅ LEFT WRAPPER (takes all space) */}
+    <View style={{ flexDirection: "row", flex: 1, alignItems: "center" }}>
+      
+      {/* Avatar */}
+      <View style={styles.avatarWrap}>
+        <Image
+          source={{
+            uri: member.avatar
+              ? `${BASE_URL}${member.avatar}`
+              : DEFAULT_AVATAR,
+          }}
+          style={styles.avatar}
+        />
+      </View>
+
+      {/* Info */}
+      <View style={styles.infoCol}>
+        <Text style={styles.name}>
+          {member.username} ({member.safetyStatus || "UNKNOWN"})
+        </Text>
+
+        <Text style={styles.location}>
+          {memberAddresses[member._id] || "Location unavailable"}
+        </Text>
+
+        {myLocation && member.location?.lat && member.location?.lng && (
+          <Text style={styles.location}>
+            {timeAgo(member.location.updatedAt)} •{" "}
+            {(() => {
+              const meters = getDistanceMeters(myLocation, member.location);
+              return meters < 1000
+                ? `${meters} m away`
+                : `${(meters / 1000).toFixed(1)} km away`;
+            })()}
+          </Text>
+        )}
+      </View>
+    </View>
+
+    {/* ✅ RIGHT‑ALIGNED ⋮ — GUARANTEED */}
+    {connection.creator?.toString() === user.id &&
+      member._id !== user.id && (
+        <TouchableOpacity
+          onPress={() => {
+            Alert.alert(
+              "Remove Member",
+              `Remove ${member.username} from this connection?`,
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Kick",
+                  style: "destructive",
+                  onPress: () => {
+                    api
+                      .put(
+                        `/connection/kick/${connection._id}/${member._id}/${user.id}`
+                      )
+                      .then(fetchConnections)
+                      .catch(() =>
+                        Alert.alert("Error", "Failed to remove member")
+                      );
+                  },
+                },
+              ]
+            );
+          }}
+        >
+          <Text style={{ fontSize: 18, color: "#D1FAE5", paddingLeft: 8 }}>
+            ⋮
+          </Text>
+        </TouchableOpacity>
+      )}
+  </View>
+))}
+
+{/* ✅ Leave button — OUTSIDE member cards */}
+<TouchableOpacity
+  style={styles.leaveBtn}
+  onPress={() => handleLeaveConnection(connection._id)}
+>
+  <Text style={styles.leaveText}>Leave Connection</Text>
+</TouchableOpacity>
+                </View>
+              ))}
+            </>
+          )}
+        </ScrollView>
+      </Animated.View>
     </View>
   );
 }
 
+/* ================= STYLES ================= */
+/* ✅ STYLES UNCHANGED */
+/* ================= STYLES ================= */
+/* YOUR styles remain unchanged */
+
+
+/* ================= STYLES ================= */
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-  title: { fontSize: 22, fontWeight: 'bold', marginBottom: 20 },
-  label: { marginTop: 20, marginBottom: 10 },
-  input: { borderWidth: 1, borderColor: '#aaa', padding: 10, marginBottom: 10, borderRadius: 5 }
+  container: { flex: 1 },
+
+  locationLabel: {
+    color: "#047857",
+    fontSize: 14,
+    fontWeight: "600",
+    marginBottom: 12,
+  },
+
+  panel: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    height,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 20,
+    elevation: 15,
+  },
+
+  handle: {
+    width: 50,
+    height: 5,
+    backgroundColor: "#D1D5DB",
+    borderRadius: 3,
+    alignSelf: "center",
+    marginBottom: 14,
+  },
+
+  markerAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#fff",
+  },
+
+  title: { fontSize: 26, fontWeight: "800", color: "#064E3B" },
+
+  label: { marginTop: 16, fontWeight: "600" },
+
+  input: {
+    borderWidth: 1,
+    borderColor: "#D1FAE5",
+    borderRadius: 12,
+    padding: 14,
+    backgroundColor: "#F9FAFB",
+  },
+
+  primaryBtn: {
+    backgroundColor: "#10B981",
+    padding: 16,
+    borderRadius: 14,
+    marginTop: 12,
+    alignItems: "center",
+  },
+
+  primaryText: { color: "#FFF", fontWeight: "800" },
+
+  secondaryBtn: {
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#10B981",
+    alignItems: "center",
+  },
+
+  secondaryText: { color: "#047857", fontWeight: "700" },
+
+  linkBtn: { marginTop: 18, alignItems: "center" },
+
+  linkText: { color: "#047857", fontWeight: "700" },
+
+  backBtn: { marginBottom: 10 },
+
+  backText: { color: "#047857", fontWeight: "700" },
+
+  sectionTitle: {
+    marginTop: 24,
+    marginBottom: 12,
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#064E3B",
+  },
+
+  safeBtn: {
+    backgroundColor: "#ECFDF5",
+    padding: 14,
+    borderRadius: 14,
+    borderColor: "#10B981",
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+
+  unsafeBtn: {
+    backgroundColor: "#FEF2F2",
+    padding: 14,
+    borderRadius: 14,
+    borderColor: "#FCA5A5",
+    borderWidth: 1,
+  },
+
+  safeText: { textAlign: "center", fontWeight: "800", color: "#047857" },
+
+  unsafeText: { textAlign: "center", fontWeight: "800", color: "#991B1B" },
+
+  connectionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#064E3B",
+    padding: 12,
+    borderRadius: 14,
+    marginBottom: 12,
+  },
+
+  avatarWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#ECFDF5",
+    marginRight: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  avatar: { width: "100%", height: "100%", borderRadius: 21 },
+
+  statusDot: {
+    position: "absolute",
+    bottom: 1,
+    right: 1,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+
+  dotSafe: { backgroundColor: "#22C55E" },
+
+  dotUnsafe: { backgroundColor: "#EF4444" },
+
+  infoCol: { flex: 1 },
+
+  name: { color: "#FFF", fontWeight: "800", fontSize: 14 },
+
+  location: { color: "#D1FAE5", fontSize: 12, marginTop: 2 },
+
+  statusPill: {
+    backgroundColor: "#022C22",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 10,
+  },
+
+  statusText: {
+    color: "#A7F3D0",
+    fontSize: 11,
+    fontWeight: "700",
+  },
+
+  leaveBtn: {
+    marginTop: 10,
+    padding: 12,
+    borderRadius: 12,
+    backgroundColor: "#FEF2F2",
+  },
+
+  leaveText: {
+    textAlign: "center",
+    color: "#991B1B",
+    fontWeight: "700",
+  },
+  notificationBtn: {
+  position: "absolute",
+  top: 40,
+  right: 20,
+  zIndex: 20,
+},
+
+notificationIcon: {
+  fontSize: 26,
+},
+
+
+modalOverlay: {
+  position: "absolute",
+  top: 0,
+  left: 0,
+  right: 0,
+  bottom: 0,
+  backgroundColor: "rgba(0,0,0,0.4)",
+  justifyContent: "center",
+  alignItems: "center",
+  zIndex: 999,
+  elevation: 999,   // ✅ THIS is the missing piece
+},
+
+modalBox: {
+  width: "85%",
+  backgroundColor: "#E5E7EB",
+  borderRadius: 16,
+  padding: 20,
+},
+
+modalTitle: {
+  fontSize: 20,
+  fontWeight: "800",
+  marginBottom: 16,
+  textAlign: "center",
+},
+
+requestRow: {
+  flexDirection: "row",
+  alignItems: "center",
+  backgroundColor: "#064E3B",
+  padding: 12,
+  borderRadius: 12,
+  marginBottom: 10,
+},
+
+requestAvatar: {
+  width: 36,
+  height: 36,
+  borderRadius: 18,
+  marginRight: 10,
+},
+
+requestName: {
+  flex: 1,
+  color: "#fff",
+  fontWeight: "700",
+},
+
+requestActions: {
+  flexDirection: "row",
+  gap: 12,
+},
+
+approveBtn: {
+  fontSize: 20,
+  color: "#22C55E",
+},
+
+rejectBtn: {
+  fontSize: 20,
+  color: "#EF4444",
+},
+
+closeModal: {
+  marginTop: 10,
+  alignItems: "center",
+},
+
+emptyText: {
+  textAlign: "center",
+  color: "#374151",
+  marginVertical: 20,
+},
+notificationBadge: {
+  position: "absolute",
+  top: -4,
+  right: -4,
+  minWidth: 18,
+  height: 18,
+  borderRadius: 9,
+  backgroundColor: "#EF4444",
+  justifyContent: "center",
+  alignItems: "center",
+  paddingHorizontal: 4,
+},
+
+notificationCount: {
+  color: "#fff",
+  fontSize: 11,
+  fontWeight: "800",
+},
+modalHeader: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginBottom: 16,
+},
+
+modalBack: {
+  fontSize: 18,
+  fontWeight: "800",
+},
 });

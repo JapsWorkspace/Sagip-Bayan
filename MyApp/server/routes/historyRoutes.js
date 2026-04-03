@@ -2,7 +2,14 @@ const express = require('express');
 const router = express.Router();
 const historyController = require('../controllers/historyController');
 
-router.post('/registerHistory', historyController.registerHistory);
-router.get('/getHistory', historyController.getHistory);
+/* =========================
+   HISTORY ROUTES
+========================= */
+
+// ✅ Register a new history entry (SAFE / NOT SAFE / etc.)
+router.post('/', historyController.registerHistory);
+
+// ✅ Get history for a specific family / connection
+router.get('/:placeName', historyController.getHistory);
 
 module.exports = router;
