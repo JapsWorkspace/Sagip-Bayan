@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const inventoryController = require('../controllers/inventoryController');
 const { uploadProof } = require('../middleware/upload');
-const { requireLogin, requireAdminOrDrrmo } = require('../middleware/auth');
+const { requireLogin, requireAdminOrDrrmo } = require('../middleware/adminMiddleware');
 
 
 router.get('/categories', inventoryController.getInventoryCategories);
