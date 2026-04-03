@@ -23,7 +23,12 @@ const toBoolean = (value) => {
   return Boolean(value);
 };
 
-const buildHistoryMeta = (req, place = null, fallbackBarangayId = null, fallbackBarangayName = "") => {
+const buildHistoryMeta = (
+  req,
+  place = null,
+  fallbackBarangayId = null,
+  fallbackBarangayName = ""
+) => {
   return {
     barangayId: place?.barangayId || fallbackBarangayId || req.session?.userId || null,
     barangayName:
@@ -41,26 +46,20 @@ const createPlace = async (req, res) => {
     const {
       name,
       location,
-
       barangayId,
       barangayName,
-      barangay, // fallback for old frontend
-
+      barangay,
       latitude,
       longitude,
-
       capacityIndividual,
       capacityFamily,
       bedCapacity,
       floorArea,
-
       femaleCR,
       maleCR,
       commonCR,
-
       potableWater,
       nonPotableWater,
-
       foodPackCapacity,
       isPermanent,
       isCovidFacility,
@@ -111,30 +110,22 @@ const createPlace = async (req, res) => {
     const newPlace = new Place({
       name: sanitizeText(name),
       location: sanitizeText(location),
-
       barangayId: finalBarangayId,
       barangayName: finalBarangayName,
-
       latitude: latNum,
       longitude: lngNum,
-
       capacityIndividual: toNumber(capacityIndividual, 0),
       capacityFamily: toNumber(capacityFamily, 0),
       bedCapacity: toNumber(bedCapacity, 0),
       floorArea: toNumber(floorArea, 0),
-
       femaleCR: toBoolean(femaleCR),
       maleCR: toBoolean(maleCR),
       commonCR: toBoolean(commonCR),
-
       potableWater: toBoolean(potableWater),
       nonPotableWater: toBoolean(nonPotableWater),
-
       foodPackCapacity: toNumber(foodPackCapacity, 0),
-
       isPermanent: toBoolean(isPermanent),
       isCovidFacility: toBoolean(isCovidFacility),
-
       remarks: sanitizeText(remarks),
       capacityStatus: "available",
     });
@@ -235,7 +226,7 @@ const getHistory = async (req, res) => {
   }
 };
 
-// UPDATE PLACE (FULL EDIT)
+// UPDATE PLACE
 const updatePlace = async (req, res) => {
   try {
     const { id } = req.params;
@@ -292,39 +283,19 @@ const updatePlace = async (req, res) => {
       existing.longitude = lngNum;
     }
 
-    if (capacityIndividual !== undefined) {
-      existing.capacityIndividual = toNumber(capacityIndividual, 0);
-    }
-
-    if (capacityFamily !== undefined) {
-      existing.capacityFamily = toNumber(capacityFamily, 0);
-    }
-
-    if (bedCapacity !== undefined) {
-      existing.bedCapacity = toNumber(bedCapacity, 0);
-    }
-
-    if (floorArea !== undefined) {
-      existing.floorArea = toNumber(floorArea, 0);
-    }
-
-    if (foodPackCapacity !== undefined) {
-      existing.foodPackCapacity = toNumber(foodPackCapacity, 0);
-    }
+    if (capacityIndividual !== undefined) existing.capacityIndividual = toNumber(capacityIndividual, 0);
+    if (capacityFamily !== undefined) existing.capacityFamily = toNumber(capacityFamily, 0);
+    if (bedCapacity !== undefined) existing.bedCapacity = toNumber(bedCapacity, 0);
+    if (floorArea !== undefined) existing.floorArea = toNumber(floorArea, 0);
+    if (foodPackCapacity !== undefined) existing.foodPackCapacity = toNumber(foodPackCapacity, 0);
 
     if (femaleCR !== undefined) existing.femaleCR = toBoolean(femaleCR);
     if (maleCR !== undefined) existing.maleCR = toBoolean(maleCR);
     if (commonCR !== undefined) existing.commonCR = toBoolean(commonCR);
     if (potableWater !== undefined) existing.potableWater = toBoolean(potableWater);
-    if (nonPotableWater !== undefined) {
-      existing.nonPotableWater = toBoolean(nonPotableWater);
-    }
-
+    if (nonPotableWater !== undefined) existing.nonPotableWater = toBoolean(nonPotableWater);
     if (isPermanent !== undefined) existing.isPermanent = toBoolean(isPermanent);
-    if (isCovidFacility !== undefined) {
-      existing.isCovidFacility = toBoolean(isCovidFacility);
-    }
-
+    if (isCovidFacility !== undefined) existing.isCovidFacility = toBoolean(isCovidFacility);
     if (remarks !== undefined) existing.remarks = sanitizeText(remarks);
 
     await existing.save();
@@ -387,7 +358,7 @@ const updateCapacityStatus = async (req, res) => {
   }
 };
 
-// DELETE PLACE (SOFT DELETE)
+// DELETE PLACE
 const deletePlace = async (req, res) => {
   try {
     const { id } = req.params;
@@ -495,9 +466,16 @@ const getAnalyticsSummary = async (req, res) => {
 // ALLOCATE STOCK TO EVAC PLACE
 const allocateStockToPlace = async (req, res) => {
   try {
+    const role = req.session?.role;
+
+    if (role !== "barangay") {
+      return res.status(403).json({
+        message: "Only barangay accounts can allocate stock to evacuation places",
+      });
+    }
+
     const { id } = req.params;
     const { stockId, quantity } = req.body;
-
     const username = req.session?.username || "unknown";
 
     if (!stockId || !quantity) {
@@ -521,6 +499,14 @@ const allocateStockToPlace = async (req, res) => {
     const stock = await BarangayStock.findById(stockId);
     if (!stock) {
       return res.status(404).json({ message: "Stock not found" });
+    }
+
+    // extra security: barangay can only allocate from its own stock
+    const sessionBarangayId = req.session?.userId;
+    if (sessionBarangayId && String(stock.barangayId) !== String(sessionBarangayId)) {
+      return res.status(403).json({
+        message: "You can only allocate stock from your own barangay storage",
+      });
     }
 
     if (String(stock.barangayId) !== String(place.barangayId)) {
