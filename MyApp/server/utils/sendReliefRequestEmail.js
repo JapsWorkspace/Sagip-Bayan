@@ -33,6 +33,10 @@ function generateReliefRequestPdf(request) {
       const absoluteFilePath = path.join(uploadDir, fileName);
       const relativeFilePath = `/uploads/relief-requests/${fileName}`;
 
+      console.log("PDF DEBUG: uploadDir =", uploadDir);
+      console.log("PDF DEBUG: absoluteFilePath =", absoluteFilePath);
+      console.log("PDF DEBUG: relativeFilePath =", relativeFilePath);
+
       const doc = new PDFDocument({
         margin: 40,
         size: "A4",
@@ -84,7 +88,7 @@ function generateReliefRequestPdf(request) {
       headers.forEach((header, index) => {
         doc.fontSize(8).text(header, colX[index], y, {
           width: index === 1 ? 130 : 40,
-          align: index === 1 ? "left" : "center",
+          align: index === 1 ? "left" : 'center',
         });
       });
 
@@ -163,27 +167,51 @@ function generateReliefRequestPdf(request) {
       doc.end();
 
       stream.on("finish", () => {
+        console.log("PDF DEBUG: file created successfully");
         resolve({
           absoluteFilePath,
           relativeFilePath,
         });
       });
 
-      stream.on("error", reject);
+      stream.on("error", (err) => {
+        console.error("PDF STREAM ERROR:", err);
+        reject(err);
+      });
     } catch (error) {
+      console.error("PDF GENERATION ERROR:", error);
       reject(error);
     }
   });
 }
 
 const sendReliefRequestEmail = async (request) => {
+  console.log("EMAIL DEBUG START");
+  console.log("EMAIL DEBUG request id:", request?._id);
+  console.log("EMAIL DEBUG requestNo:", request?.requestNo);
+  console.log("EMAIL DEBUG EMAIL_USER exists:", !!process.env.EMAIL_USER);
+  console.log("EMAIL DEBUG EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
+  console.log("EMAIL DEBUG DRRMO_EMAIL raw:", process.env.DRRMO_EMAIL || "");
+
   const recipients = String(process.env.DRRMO_EMAIL || "")
     .split(",")
     .map((email) => email.trim())
     .filter(Boolean);
 
+  console.log("EMAIL DEBUG parsed recipients:", recipients);
+
   if (!recipients.length) {
     throw new Error("No DRRMO_EMAIL recipients found in environment variables.");
+  }
+
+  let pdfResult;
+
+  try {
+    pdfResult = await generateReliefRequestPdf(request);
+    console.log("EMAIL DEBUG pdfResult:", pdfResult);
+  } catch (pdfErr) {
+    console.error("EMAIL DEBUG PDF FAILED:", pdfErr);
+    throw pdfErr;
   }
 
   const rowsHtml = (request.rows || [])
@@ -206,75 +234,109 @@ const sendReliefRequestEmail = async (request) => {
     )
     .join("");
 
-  const pdfResult = await generateReliefRequestPdf(request);
+  try {
+    await transporter.verify();
+    console.log("EMAIL DEBUG transporter verified successfully");
+  } catch (verifyErr) {
+    console.error("EMAIL VERIFY FAILED:", verifyErr);
+    console.error("EMAIL VERIFY CODE:", verifyErr?.code);
+    console.error("EMAIL VERIFY RESPONSE:", verifyErr?.response);
+    console.error("EMAIL VERIFY COMMAND:", verifyErr?.command);
+    throw verifyErr;
+  }
 
-  await transporter.sendMail({
-    from: process.env.EMAIL_USER,
-    to: recipients,
-    subject: `New Relief Request - ${request.requestNo}`,
-    html: `
-      <h2>New Relief Request Submitted</h2>
-      <p><strong>Request No:</strong> ${safeText(request.requestNo)}</p>
-      <p><strong>Barangay:</strong> ${safeText(request.barangayName)}</p>
-      <p><strong>Disaster:</strong> ${safeText(request.disaster)}</p>
-      <p><strong>Date:</strong> ${
-        request.requestDate
-          ? new Date(request.requestDate).toLocaleDateString()
-          : "-"
-      }</p>
-      <p><strong>Remarks:</strong> ${safeText(request.remarks) || "-"}</p>
+  try {
+    const info = await transporter.sendMail({
+      from: process.env.EMAIL_USER,
+      to: recipients,
+      subject: `New Relief Request - ${request.requestNo}`,
+      html: `
+        <h2>New Relief Request Submitted</h2>
+        <p><strong>Request No:</strong> ${safeText(request.requestNo)}</p>
+        <p><strong>Barangay:</strong> ${safeText(request.barangayName)}</p>
+        <p><strong>Disaster:</strong> ${safeText(request.disaster)}</p>
+        <p><strong>Date:</strong> ${
+          request.requestDate
+            ? new Date(request.requestDate).toLocaleDateString()
+            : "-"
+        }</p>
+        <p><strong>Remarks:</strong> ${safeText(request.remarks) || "-"}</p>
 
-      <h3>Evacuation Details</h3>
-      <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%;">
-        <thead>
-          <tr>
-            <th>No.</th>
-            <th>Evacuation Center</th>
-            <th>Households</th>
-            <th>Families</th>
-            <th>Male</th>
-            <th>Female</th>
-            <th>LGBTQ</th>
-            <th>PWD</th>
-            <th>Pregnant</th>
-            <th>Senior</th>
-            <th>Requested Food Packs</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHtml}
-        </tbody>
-      </table>
+        <h3>Evacuation Details</h3>
+        <table border="1" cellpadding="6" cellspacing="0" style="border-collapse: collapse; width: 100%;">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Evacuation Center</th>
+              <th>Households</th>
+              <th>Families</th>
+              <th>Male</th>
+              <th>Female</th>
+              <th>LGBTQ</th>
+              <th>PWD</th>
+              <th>Pregnant</th>
+              <th>Senior</th>
+              <th>Requested Food Packs</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
 
-      <h3>Totals</h3>
-      <ul>
-        <li>Households: ${Number(request.totals?.households) || 0}</li>
-        <li>Families: ${Number(request.totals?.families) || 0}</li>
-        <li>Male: ${Number(request.totals?.male) || 0}</li>
-        <li>Female: ${Number(request.totals?.female) || 0}</li>
-        <li>LGBTQ: ${Number(request.totals?.lgbtq) || 0}</li>
-        <li>PWD: ${Number(request.totals?.pwd) || 0}</li>
-        <li>Pregnant: ${Number(request.totals?.pregnant) || 0}</li>
-        <li>Senior: ${Number(request.totals?.senior) || 0}</li>
-        <li>Requested Food Packs: ${Number(request.totals?.requestedFoodPacks) || 0}</li>
-      </ul>
+        <h3>Totals</h3>
+        <ul>
+          <li>Households: ${Number(request.totals?.households) || 0}</li>
+          <li>Families: ${Number(request.totals?.families) || 0}</li>
+          <li>Male: ${Number(request.totals?.male) || 0}</li>
+          <li>Female: ${Number(request.totals?.female) || 0}</li>
+          <li>LGBTQ: ${Number(request.totals?.lgbtq) || 0}</li>
+          <li>PWD: ${Number(request.totals?.pwd) || 0}</li>
+          <li>Pregnant: ${Number(request.totals?.pregnant) || 0}</li>
+          <li>Senior: ${Number(request.totals?.senior) || 0}</li>
+          <li>Requested Food Packs: ${Number(request.totals?.requestedFoodPacks) || 0}</li>
+        </ul>
 
-      <p><strong>Attached:</strong> PDF copy of the relief request</p>
-    `,
-    attachments: [
-      {
-        filename: `${request.requestNo}.pdf`,
-        path: pdfResult.absoluteFilePath,
-        contentType: "application/pdf",
-      },
-    ],
-  });
+        <p><strong>Attached:</strong> PDF copy of the relief request</p>
+      `,
+      attachments: [
+        {
+          filename: `${request.requestNo}.pdf`,
+          path: pdfResult.absoluteFilePath,
+          contentType: "application/pdf",
+        },
+      ],
+    });
 
-  await ReliefRequest.findByIdAndUpdate(request._id, {
-    pdfFile: pdfResult.relativeFilePath,
-    pdfGeneratedAt: new Date(),
-    emailSent: true,
-  });
+    console.log("EMAIL SENT SUCCESSFULLY");
+    console.log("EMAIL SEND INFO:", info);
+
+    await ReliefRequest.findByIdAndUpdate(request._id, {
+      pdfFile: pdfResult.relativeFilePath,
+      pdfGeneratedAt: new Date(),
+      emailSent: true,
+    });
+
+    console.log("EMAIL DEBUG DB UPDATED AFTER SEND");
+  } catch (sendErr) {
+    console.error("SENDMAIL FULL ERROR:", sendErr);
+    console.error("SENDMAIL CODE:", sendErr?.code);
+    console.error("SENDMAIL RESPONSE:", sendErr?.response);
+    console.error("SENDMAIL COMMAND:", sendErr?.command);
+
+    try {
+      await ReliefRequest.findByIdAndUpdate(request._id, {
+        pdfFile: pdfResult?.relativeFilePath || "",
+        pdfGeneratedAt: new Date(),
+        emailSent: false,
+      });
+      console.log("EMAIL DEBUG DB UPDATED AFTER SEND FAILURE");
+    } catch (dbErr) {
+      console.error("EMAIL DEBUG FAILED TO UPDATE DB AFTER SEND FAILURE:", dbErr);
+    }
+
+    throw sendErr;
+  }
 };
 
 module.exports = sendReliefRequestEmail;
