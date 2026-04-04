@@ -93,7 +93,7 @@ function generateReliefRequestPdf(request) {
       headers.forEach((header, index) => {
         doc.fontSize(8).text(header, colX[index], y, {
           width: index === 1 ? 130 : 40,
-          align: index === 1 ? "left" : 'center',
+          align: index === 1 ? "left" : "center",
         });
       });
 
@@ -209,15 +209,14 @@ const sendReliefRequestEmail = async (request) => {
     throw new Error("No DRRMO_EMAIL recipients found in environment variables.");
   }
 
-  let pdfResult;
+  const pdfResult = await generateReliefRequestPdf(request);
 
-  try {
-    pdfResult = await generateReliefRequestPdf(request);
-    console.log("EMAIL DEBUG pdfResult:", pdfResult);
-  } catch (pdfErr) {
-    console.error("EMAIL DEBUG PDF FAILED:", pdfErr);
-    throw pdfErr;
-  }
+  // Save PDF path immediately so frontend can preview even if email fails
+  await ReliefRequest.findByIdAndUpdate(request._id, {
+    pdfFile: pdfResult.relativeFilePath,
+    pdfGeneratedAt: new Date(),
+    emailSent: false,
+  });
 
   const rowsHtml = (request.rows || [])
     .map(
@@ -242,15 +241,7 @@ const sendReliefRequestEmail = async (request) => {
   try {
     await transporter.verify();
     console.log("EMAIL DEBUG transporter verified successfully");
-  } catch (verifyErr) {
-    console.error("EMAIL VERIFY FAILED:", verifyErr);
-    console.error("EMAIL VERIFY CODE:", verifyErr?.code);
-    console.error("EMAIL VERIFY RESPONSE:", verifyErr?.response);
-    console.error("EMAIL VERIFY COMMAND:", verifyErr?.command);
-    throw verifyErr;
-  }
 
-  try {
     const info = await transporter.sendMail({
       from: process.env.EMAIL_USER,
       to: recipients,
@@ -317,29 +308,13 @@ const sendReliefRequestEmail = async (request) => {
     console.log("EMAIL SEND INFO:", info);
 
     await ReliefRequest.findByIdAndUpdate(request._id, {
-      pdfFile: pdfResult.relativeFilePath,
-      pdfGeneratedAt: new Date(),
       emailSent: true,
     });
-
-    console.log("EMAIL DEBUG DB UPDATED AFTER SEND");
   } catch (sendErr) {
     console.error("SENDMAIL FULL ERROR:", sendErr);
     console.error("SENDMAIL CODE:", sendErr?.code);
     console.error("SENDMAIL RESPONSE:", sendErr?.response);
     console.error("SENDMAIL COMMAND:", sendErr?.command);
-
-    try {
-      await ReliefRequest.findByIdAndUpdate(request._id, {
-        pdfFile: pdfResult?.relativeFilePath || "",
-        pdfGeneratedAt: new Date(),
-        emailSent: false,
-      });
-      console.log("EMAIL DEBUG DB UPDATED AFTER SEND FAILURE");
-    } catch (dbErr) {
-      console.error("EMAIL DEBUG FAILED TO UPDATE DB AFTER SEND FAILURE:", dbErr);
-    }
-
     throw sendErr;
   }
 };
