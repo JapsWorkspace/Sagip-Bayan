@@ -23,143 +23,6 @@ function safeText(value) {
   return String(value);
 }
 
-function drawLabelValue(doc, label, value, x, y, labelWidth = 120, valueWidth = 380) {
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(10)
-    .text(label, x, y, { width: labelWidth, continued: false });
-
-  doc
-    .font("Helvetica")
-    .fontSize(10)
-    .text(value || "-", x + labelWidth, y, { width: valueWidth });
-}
-
-function drawTableHeader(doc, y) {
-  const columns = [
-    { label: "No.", x: 40, width: 28, align: "center" },
-    { label: "Evacuation Center", x: 68, width: 150, align: "left" },
-    { label: "Households", x: 218, width: 48, align: "center" },
-    { label: "Families", x: 266, width: 45, align: "center" },
-    { label: "Male", x: 311, width: 38, align: "center" },
-    { label: "Female", x: 349, width: 42, align: "center" },
-    { label: "LGBTQ", x: 391, width: 38, align: "center" },
-    { label: "PWD", x: 429, width: 34, align: "center" },
-    { label: "Preg.", x: 463, width: 40, align: "center" },
-    { label: "Senior", x: 503, width: 38, align: "center" },
-    { label: "Food Packs", x: 541, width: 40, align: "center" },
-  ];
-
-  doc.save();
-  doc.rect(40, y, 541, 22).stroke();
-  doc.font("Helvetica-Bold").fontSize(8);
-
-  columns.forEach((col) => {
-    doc.text(col.label, col.x + 2, y + 7, {
-      width: col.width - 4,
-      align: col.align,
-    });
-  });
-
-  doc.restore();
-  return columns;
-}
-
-function drawTableRow(doc, row, index, y, columns) {
-  const values = [
-    String(index + 1),
-    safeText(row.evacuationCenterName),
-    String(Number(row.households) || 0),
-    String(Number(row.families) || 0),
-    String(Number(row.male) || 0),
-    String(Number(row.female) || 0),
-    String(Number(row.lgbtq) || 0),
-    String(Number(row.pwd) || 0),
-    String(Number(row.pregnant) || 0),
-    String(Number(row.senior) || 0),
-    String(Number(row.requestedFoodPacks) || 0),
-  ];
-
-  const rowHeight = 22;
-
-  doc.rect(40, y, 541, rowHeight).stroke();
-  doc.font("Helvetica").fontSize(8);
-
-  columns.forEach((col, i) => {
-    doc.text(values[i], col.x + 2, y + 7, {
-      width: col.width - 4,
-      align: col.align,
-    });
-  });
-
-  return rowHeight;
-}
-
-function addPdfHeader(doc, request) {
-  doc
-    .font("Helvetica-Bold")
-    .fontSize(16)
-    .text("MUNICIPAL DISASTER RISK REDUCTION AND MANAGEMENT OFFICE", 40, 40, {
-      align: "center",
-      width: 520,
-    });
-
-  doc
-    .font("Helvetica")
-    .fontSize(10)
-    .text("Relief Assistance Request Report", 40, 62, {
-      align: "center",
-      width: 520,
-    });
-
-  doc.moveTo(40, 82).lineTo(570, 82).stroke();
-
-  let y = 98;
-
-  drawLabelValue(doc, "Request No:", safeText(request.requestNo), 40, y);
-  y += 18;
-  drawLabelValue(doc, "Barangay:", safeText(request.barangayName), 40, y);
-  y += 18;
-  drawLabelValue(doc, "Disaster:", safeText(request.disaster), 40, y);
-  y += 18;
-  drawLabelValue(
-    doc,
-    "Request Date:",
-    request.requestDate ? new Date(request.requestDate).toLocaleString() : "-",
-    40,
-    y
-  );
-  y += 18;
-  drawLabelValue(doc, "Status:", safeText(request.status), 40, y);
-  y += 18;
-  drawLabelValue(doc, "Remarks:", safeText(request.remarks) || "-", 40, y, 120, 400);
-  y += 28;
-
-  return y;
-}
-
-function addPdfFooter(doc) {
-  const bottomY = 740;
-
-  doc
-    .font("Helvetica")
-    .fontSize(9)
-    .text("Prepared by: ________________________________", 40, bottomY);
-
-  doc
-    .font("Helvetica")
-    .fontSize(9)
-    .text("Received by: ________________________________", 320, bottomY);
-
-  doc
-    .font("Helvetica-Oblique")
-    .fontSize(8)
-    .text("System Generated Document", 40, bottomY + 24, {
-      align: "center",
-      width: 520,
-    });
-}
-
 function generateReliefRequestPdf(request) {
   return new Promise((resolve, reject) => {
     try {
@@ -178,68 +41,125 @@ function generateReliefRequestPdf(request) {
       const stream = fs.createWriteStream(absoluteFilePath);
       doc.pipe(stream);
 
-      let y = addPdfHeader(doc, request);
-
       doc
-        .font("Helvetica-Bold")
-        .fontSize(11)
-        .text("Evacuation Details", 40, y);
+        .fontSize(18)
+        .text("Relief Request Report", { align: "center" })
+        .moveDown(1);
 
-      y += 18;
+      doc.fontSize(11);
+      doc.text(`Request No: ${safeText(request.requestNo)}`);
+      doc.text(`Barangay: ${safeText(request.barangayName)}`);
+      doc.text(`Disaster: ${safeText(request.disaster)}`);
+      doc.text(
+        `Request Date: ${
+          request.requestDate
+            ? new Date(request.requestDate).toLocaleString()
+            : "-"
+        }`
+      );
+      doc.text(`Status: ${safeText(request.status)}`);
+      doc.text(`Remarks: ${safeText(request.remarks) || "-"}`);
+      doc.moveDown();
 
-      let columns = drawTableHeader(doc, y);
-      y += 22;
+      doc.fontSize(12).text("Evacuation Details", { underline: true });
+      doc.moveDown(0.5);
 
-      (request.rows || []).forEach((row, index) => {
-        if (y > 680) {
-          addPdfFooter(doc);
-          doc.addPage();
-          y = addPdfHeader(doc, request);
-          doc
-            .font("Helvetica-Bold")
-            .fontSize(11)
-            .text("Evacuation Details (continued)", 40, y);
-          y += 18;
-          columns = drawTableHeader(doc, y);
-          y += 22;
-        }
+      const headers = [
+        "No",
+        "Evacuation Center",
+        "Households",
+        "Families",
+        "Male",
+        "Female",
+        "LGBTQ",
+        "PWD",
+        "Pregnant",
+        "Senior",
+        "Food Packs",
+      ];
 
-        y += drawTableRow(doc, row, index, y, columns);
+      const colX = [40, 75, 210, 255, 300, 340, 380, 420, 455, 500, 545];
+      let y = doc.y;
+
+      headers.forEach((header, index) => {
+        doc.fontSize(8).text(header, colX[index], y, {
+          width: index === 1 ? 130 : 40,
+          align: index === 1 ? "left" : "center",
+        });
       });
 
       y += 20;
+      doc.moveTo(40, y - 5).lineTo(570, y - 5).stroke();
 
-      if (y > 640) {
-        addPdfFooter(doc);
+      (request.rows || []).forEach((row, index) => {
+        const values = [
+          index + 1,
+          safeText(row.evacuationCenterName),
+          Number(row.households) || 0,
+          Number(row.families) || 0,
+          Number(row.male) || 0,
+          Number(row.female) || 0,
+          Number(row.lgbtq) || 0,
+          Number(row.pwd) || 0,
+          Number(row.pregnant) || 0,
+          Number(row.senior) || 0,
+          Number(row.requestedFoodPacks) || 0,
+        ];
+
+        const rowHeight = 22;
+
+        if (y > 720) {
+          doc.addPage();
+          y = 50;
+        }
+
+        values.forEach((value, colIndex) => {
+          doc.fontSize(8).text(String(value), colX[colIndex], y, {
+            width: colIndex === 1 ? 130 : 40,
+            align: colIndex === 1 ? "left" : "center",
+          });
+        });
+
+        y += rowHeight;
+      });
+
+      y += 10;
+
+      if (y > 680) {
         doc.addPage();
-        y = addPdfHeader(doc, request);
+        y = 50;
       }
+
+      doc.moveTo(40, y).lineTo(570, y).stroke();
+      y += 15;
 
       const totals = request.totals || {};
 
-      doc.font("Helvetica-Bold").fontSize(11).text("Totals Summary", 40, y);
-      y += 18;
+      doc.fontSize(12).text("Totals", 40, y, { underline: true });
+      y += 20;
 
-      doc.font("Helvetica").fontSize(10);
+      doc.fontSize(10);
       doc.text(`Households: ${Number(totals.households) || 0}`, 40, y);
       doc.text(`Families: ${Number(totals.families) || 0}`, 200, y);
-      doc.text(`Male: ${Number(totals.male) || 0}`, 360, y);
+      doc.text(`Male: ${Number(totals.male) || 0}`, 350, y);
       y += 18;
 
       doc.text(`Female: ${Number(totals.female) || 0}`, 40, y);
       doc.text(`LGBTQ: ${Number(totals.lgbtq) || 0}`, 200, y);
-      doc.text(`PWD: ${Number(totals.pwd) || 0}`, 360, y);
+      doc.text(`PWD: ${Number(totals.pwd) || 0}`, 350, y);
       y += 18;
 
       doc.text(`Pregnant: ${Number(totals.pregnant) || 0}`, 40, y);
       doc.text(`Senior: ${Number(totals.senior) || 0}`, 200, y);
       doc.text(
         `Requested Food Packs: ${Number(totals.requestedFoodPacks) || 0}`,
-        360,
+        350,
         y
       );
 
-      addPdfFooter(doc);
+      doc.moveDown(2);
+      doc.text("System Generated Document", { align: "center" });
+
       doc.end();
 
       stream.on("finish", () => {
@@ -286,20 +206,7 @@ const sendReliefRequestEmail = async (request) => {
     )
     .join("");
 
-  let pdfResult;
-
-  try {
-    pdfResult = await generateReliefRequestPdf(request);
-  } catch (err) {
-    console.error("PDF generation failed:", err);
-    throw new Error("Failed to generate relief request PDF.");
-  }
-
-  await ReliefRequest.findByIdAndUpdate(request._id, {
-    pdfFile: pdfResult.relativeFilePath,
-    pdfGeneratedAt: new Date(),
-    emailSent: true,
-  });
+  const pdfResult = await generateReliefRequestPdf(request);
 
   await transporter.sendMail({
     from: process.env.EMAIL_USER,
@@ -361,6 +268,12 @@ const sendReliefRequestEmail = async (request) => {
         contentType: "application/pdf",
       },
     ],
+  });
+
+  await ReliefRequest.findByIdAndUpdate(request._id, {
+    pdfFile: pdfResult.relativeFilePath,
+    pdfGeneratedAt: new Date(),
+    emailSent: true,
   });
 };
 
