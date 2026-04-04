@@ -26,12 +26,12 @@ const guidelineRoutes = require("./routes/GuidelineRoutes");
 const connectionRoutes = require("./routes/connectionRoutes");
 const timeInOutRoutes = require('./routes/timeInOutRoutes');
 const editRoutes = require('./routes/editRoutes');
+const barangayStockRoutes = require('./routes/barangayStockRoutes');
 
 // NEW donation & inventory routes
 const inventoryRoutes = require('./routes/inventoryRoutes');
 const reliefRequestRoutes = require('./routes/reliefRequestRoutes');
 const reliefReleaseRoutes = require('./routes/reliefReleaseRoutes');
-const barangayStockRoutes = require('./routes/barangayStockRoutes');
 
 const app = express();
 app.set('trust proxy', 1);
@@ -56,6 +56,11 @@ if (!fs.existsSync(monetaryDir)) fs.mkdirSync(monetaryDir, { recursive: true });
 
 const proofsDir = path.join(uploadDir, "proofs");
 if (!fs.existsSync(proofsDir)) fs.mkdirSync(proofsDir, { recursive: true });
+
+const reliefRequestsDir = path.join(uploadDir, "relief-requests");
+if (!fs.existsSync(reliefRequestsDir)) {
+  fs.mkdirSync(reliefRequestsDir, { recursive: true });
+}
 
 // --------------------
 // Body parsers
@@ -132,6 +137,7 @@ app.use("/uploads/inventory", express.static(inventoryDir));
 app.use("/uploads/goods", express.static(goodsDir));
 app.use("/uploads/monetary", express.static(monetaryDir));
 app.use("/uploads/proofs", express.static(proofsDir));
+app.use("/uploads/relief-requests", express.static(reliefRequestsDir));
 
 // --------------------
 // API Routes
@@ -155,7 +161,6 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/relief-requests', reliefRequestRoutes);
 app.use('/api/relief-releases', reliefReleaseRoutes);
 app.use('/api/barangay-stock', barangayStockRoutes);
-
 
 // --------------------
 // Hazard proxy
