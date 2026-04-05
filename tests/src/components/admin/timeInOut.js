@@ -1,11 +1,12 @@
 // src/components/timeInOut.js
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import './css/timeInOut.css';
-import DashboardShell from './layout/DashboardShell';
+import '../css/timeInOut.css';
+import DashboardShell from '../layout/DashboardShell';
 
 export default function TimeInOut() {
   const navigate = useNavigate();
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
   // ---- CONSTANT: Fixed page size ----
   const PAGE_SIZE = 18;
 
@@ -96,7 +97,7 @@ export default function TimeInOut() {
         limit: String(PAGE_SIZE)   // fixed page size (18)
       });
 
-      const res = await fetch(`http://localhost:8000/api/timeinout?${qs}`, {
+      const res = await fetch(`${BASE_URL}/api/timeinout?${qs}`, {
         credentials: 'include'
       });
       const data = await res.json();

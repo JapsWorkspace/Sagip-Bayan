@@ -120,11 +120,25 @@ function FlyToOnClickMarker({ place, icon, onSelectLocation }) {
       <Popup>
         <strong>{place.name}</strong>
         <br />
-        {place.location}
+        {place.location} — {place.barangay}
         <br />
-        Capacity: {place.capacity}
+        <em>Capacity:</em> Individual {place.capacityIndividual}, Family {place.capacityFamily}, Bed {place.bedCapacity}
         <br />
-        Status: {place.capacityStatus}
+        <em>Floor Area:</em> {place.floorArea ?? 0} m²
+        <br />
+        <em>Facilities:</em>
+        {place.femaleCR && " Female CR"}
+        {place.maleCR && " Male CR"}
+        {place.commonCR && " Common CR"}
+        {place.potableWater && " Potable Water"}
+        {place.nonPotableWater && " Non-potable Water"}
+        {place.foodPackCapacity ? ` | Food Packs: ${place.foodPackCapacity}` : ""}
+        <br />
+        <em>Flags:</em> {place.isPermanent ? "Permanent " : ""}{place.isCovidFacility ? "COVID Facility" : ""}
+        <br />
+        <em>Status:</em> {place.capacityStatus}
+        <br />
+        Lat: {lat.toFixed(6)}, Lng: {lng.toFixed(6)}
       </Popup>
     </Marker>
   );

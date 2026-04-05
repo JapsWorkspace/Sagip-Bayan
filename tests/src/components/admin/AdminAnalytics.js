@@ -5,6 +5,8 @@ import { useNavigate } from 'react-router-dom';
 import DashboardShell from '../layout/DashboardShell';
 import './AdminDashboard.css';
 
+const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+
 import {
   Chart as ChartJS,
   CategoryScale, LinearScale, BarElement, LineElement, PointElement,
@@ -51,7 +53,7 @@ export default function AdminAnalytics() {
   useEffect(() => {
     const fetchEvacAnalytics = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/evacs/analytics/summary');
+        const res = await axios.get(`${BASE_URL}/evacs/analytics/summary`);
         setEvacAnalytics(res.data);
       } catch (err) { console.error(err); }
     };
@@ -63,7 +65,7 @@ export default function AdminAnalytics() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/incident/stats');
+        const res = await axios.get(`${BASE_URL}/incident/stats`);
         setStats(res.data);
       } catch (err) { console.error(err); }
     };
@@ -75,7 +77,7 @@ export default function AdminAnalytics() {
   useEffect(() => {
     const fetchTrend = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/incident/trend');
+        const res = await axios.get(`${BASE_URL}/incident/trend`);
         setTrendData(res.data || []);
       } catch (err) { console.error(err); }
     };
@@ -87,7 +89,7 @@ export default function AdminAnalytics() {
   useEffect(() => {
     const fetchTypeStats = async () => {
       try {
-        const res = await axios.get('http://localhost:8000/incident/typeStats');
+        const res = await axios.get(`${BASE_URL}/incident/typeStats`);
         setTypeStats(res.data || {});
       } catch (err) { console.error(err); }
     };
