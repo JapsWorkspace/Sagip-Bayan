@@ -19,9 +19,8 @@ export default function SidebarDRRMO({ collapsed, onToggle, onLogout }) {
   const links = [
     { to: "/drrmo/relief-lists",        label: "Relief Requests List",  icon: dark ? analyticswhite : analyticsgreen },
     { to: "/drrmo/evacuation-centers",  label: "Evacuation Management", icon: dark ? evacuationwhite: evacuationgreen },
-    { to: "/drrmo/incidents",           label: "Incident Reports",      icon: dark ? analyticswhite : analyticsgreen },
     { to: "/drrmo/guidelines",          label: "Guidelines",            icon: dark ? analyticswhite : analyticsgreen },
-    { to: "/drrmo/audit-trail",         label: "Audit Trail",           icon: dark ? analyticswhite : analyticsgreen },
+    { to: "/drrmo/inventory",           label: "Inventory",             icon: dark ? analyticswhite : analyticsgreen },
   ];
 
   const themeIcon  = dark ? sunwhite : nightgreen;

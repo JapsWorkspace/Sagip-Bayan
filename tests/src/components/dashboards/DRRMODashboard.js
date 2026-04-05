@@ -4,6 +4,8 @@ import DashboardShell from '../layout/DashboardShell';
 
 function DRRMODashboard() {
   const navigate = useNavigate();
+
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
   
   useEffect(() => {
     const storedRole = localStorage.getItem('role');

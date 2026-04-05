@@ -6,6 +6,7 @@ import SidebarAdmin from "./Sidebar";
 import SidebarDRRMO from "./SidebarDRRMO";
 import SidebarBarangay from "./SidebarBarangay";
 
+
 import "../css/sidebar.css";
 import Confirm from "../common/Confirm";
 import SplashScreen from "../splashscreen/SplashScreen";
@@ -17,6 +18,8 @@ export default function DashboardShell({ children, variant }) {
   const [collapsed, setCollapsed] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [showSplash, setShowSplash] = useState(false);
+
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
 
   // Pick which sidebar to render (or override with `variant` prop)
   const resolved =
@@ -41,7 +44,7 @@ export default function DashboardShell({ children, variant }) {
     setShowSplash(true);
 
     try {
-      await fetch("http://localhost:8000/api/auth/logout", {
+      await fetch(`${BASE_URL}/api/auth/logout`, {
         method: "POST",
         credentials: "include",
       }).catch(() => {});
