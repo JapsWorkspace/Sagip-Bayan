@@ -28,6 +28,208 @@ function safeText(value) {
   return String(value);
 }
 
+function drawText(doc, text, x, y, options = {}) {
+  doc.text(text, x, y, options);
+}
+
+function drawField(doc, label, value, x, y, width = 240) {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(10)
+    .fillColor("#16331f")
+    .text(label, x, y, { width: 95, continued: false });
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#111827")
+    .text(value || "-", x + 95, y, { width });
+}
+
+function drawSectionTitle(doc, title, y) {
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor("#14532d")
+    .text(title, 40, y);
+
+  doc
+    .moveTo(40, y + 16)
+    .lineTo(555, y + 16)
+    .lineWidth(1)
+    .strokeColor("#b7d1bb")
+    .stroke();
+}
+
+function drawHeader(doc, request) {
+  doc
+    .rect(40, 36, 515, 64)
+    .fillAndStroke("#f0f9f2", "#cfe0d1");
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(18)
+    .fillColor("#14532d")
+    .text("RELIEF REQUEST REPORT", 40, 52, {
+      width: 515,
+      align: "center",
+    });
+
+  doc
+    .font("Helvetica")
+    .fontSize(10)
+    .fillColor("#374151")
+    .text("Municipal Disaster Risk Reduction and Management Office", 40, 76, {
+      width: 515,
+      align: "center",
+    });
+
+  let y = 122;
+
+  drawField(doc, "Request No:", safeText(request.requestNo), 40, y);
+  drawField(doc, "Status:", safeText(request.status), 320, y, 140);
+  y += 20;
+
+  drawField(doc, "Barangay:", safeText(request.barangayName), 40, y);
+  drawField(doc, "Date:", request.requestDate ? new Date(request.requestDate).toLocaleString() : "-", 320, y, 180);
+  y += 20;
+
+  drawField(doc, "Disaster:", safeText(request.disaster), 40, y, 420);
+  y += 26;
+
+  drawField(doc, "Remarks:", safeText(request.remarks) || "-", 40, y, 420);
+  y += 34;
+
+  return y;
+}
+
+function drawTableHeader(doc, y) {
+  const headers = [
+    { label: "No.", x: 40, width: 28, align: "center" },
+    { label: "Evacuation Center", x: 68, width: 150, align: "left" },
+    { label: "Households", x: 218, width: 48, align: "center" },
+    { label: "Families", x: 266, width: 45, align: "center" },
+    { label: "Male", x: 311, width: 38, align: "center" },
+    { label: "Female", x: 349, width: 42, align: "center" },
+    { label: "LGBTQ", x: 391, width: 38, align: "center" },
+    { label: "PWD", x: 429, width: 34, align: "center" },
+    { label: "Preg.", x: 463, width: 40, align: "center" },
+    { label: "Senior", x: 503, width: 38, align: "center" },
+    { label: "Food Packs", x: 541, width: 40, align: "center" },
+  ];
+
+  doc
+    .rect(40, y, 541, 24)
+    .fillAndStroke("#14532d", "#14532d");
+
+  doc.font("Helvetica-Bold").fontSize(8).fillColor("#ffffff");
+
+  headers.forEach((col) => {
+    doc.text(col.label, col.x + 2, y + 8, {
+      width: col.width - 4,
+      align: col.align,
+    });
+  });
+
+  return headers;
+}
+
+function drawTableRow(doc, row, index, y, headers) {
+  const rowHeight = 24;
+
+  doc
+    .rect(40, y, 541, rowHeight)
+    .fillAndStroke(index % 2 === 0 ? "#ffffff" : "#f8fbf8", "#dce9de");
+
+  const values = [
+    String(index + 1),
+    safeText(row.evacuationCenterName),
+    String(Number(row.households) || 0),
+    String(Number(row.families) || 0),
+    String(Number(row.male) || 0),
+    String(Number(row.female) || 0),
+    String(Number(row.lgbtq) || 0),
+    String(Number(row.pwd) || 0),
+    String(Number(row.pregnant) || 0),
+    String(Number(row.senior) || 0),
+    String(Number(row.requestedFoodPacks) || 0),
+  ];
+
+  doc.font("Helvetica").fontSize(8).fillColor("#111827");
+
+  headers.forEach((col, i) => {
+    doc.text(values[i], col.x + 2, y + 8, {
+      width: col.width - 4,
+      align: col.align,
+    });
+  });
+
+  return rowHeight;
+}
+
+function drawTotalsCard(doc, request, y) {
+  const totals = request.totals || {};
+
+  doc
+    .roundedRect(40, y, 515, 104, 12)
+    .fillAndStroke("#f8fbf8", "#cfe0d1");
+
+  doc
+    .font("Helvetica-Bold")
+    .fontSize(12)
+    .fillColor("#14532d")
+    .text("Totals Summary", 56, y + 16);
+
+  doc.font("Helvetica").fontSize(10).fillColor("#111827");
+
+  doc.text(`Households: ${Number(totals.households) || 0}`, 56, y + 42);
+  doc.text(`Families: ${Number(totals.families) || 0}`, 206, y + 42);
+  doc.text(`Male: ${Number(totals.male) || 0}`, 356, y + 42);
+
+  doc.text(`Female: ${Number(totals.female) || 0}`, 56, y + 64);
+  doc.text(`LGBTQ: ${Number(totals.lgbtq) || 0}`, 206, y + 64);
+  doc.text(`PWD: ${Number(totals.pwd) || 0}`, 356, y + 64);
+
+  doc.text(`Pregnant: ${Number(totals.pregnant) || 0}`, 56, y + 86);
+  doc.text(`Senior: ${Number(totals.senior) || 0}`, 206, y + 86);
+  doc.text(
+    `Requested Food Packs: ${Number(totals.requestedFoodPacks) || 0}`,
+    356,
+    y + 86
+  );
+
+  return y + 118;
+}
+
+function drawFooter(doc) {
+  const footerY = 760;
+
+  doc
+    .moveTo(40, footerY - 12)
+    .lineTo(555, footerY - 12)
+    .lineWidth(1)
+    .strokeColor("#dce9de")
+    .stroke();
+
+  doc
+    .font("Helvetica")
+    .fontSize(9)
+    .fillColor("#4b5563")
+    .text("Prepared by: ____________________________", 40, footerY);
+
+  doc
+    .text("Received by: ____________________________", 320, footerY);
+
+  doc
+    .font("Helvetica-Oblique")
+    .fontSize(8)
+    .fillColor("#6b7280")
+    .text("System Generated Document", 40, footerY + 22, {
+      width: 515,
+      align: "center",
+    });
+}
+
 function generateReliefRequestPdf(request) {
   return new Promise((resolve, reject) => {
     try {
@@ -50,124 +252,38 @@ function generateReliefRequestPdf(request) {
       const stream = fs.createWriteStream(absoluteFilePath);
       doc.pipe(stream);
 
-      doc
-        .fontSize(18)
-        .text("Relief Request Report", { align: "center" })
-        .moveDown(1);
+      let y = drawHeader(doc, request);
 
-      doc.fontSize(11);
-      doc.text(`Request No: ${safeText(request.requestNo)}`);
-      doc.text(`Barangay: ${safeText(request.barangayName)}`);
-      doc.text(`Disaster: ${safeText(request.disaster)}`);
-      doc.text(
-        `Request Date: ${
-          request.requestDate
-            ? new Date(request.requestDate).toLocaleString()
-            : "-"
-        }`
-      );
-      doc.text(`Status: ${safeText(request.status)}`);
-      doc.text(`Remarks: ${safeText(request.remarks) || "-"}`);
-      doc.moveDown();
+      drawSectionTitle(doc, "Evacuation Details", y);
+      y += 28;
 
-      doc.fontSize(12).text("Evacuation Details", { underline: true });
-      doc.moveDown(0.5);
-
-      const headers = [
-        "No",
-        "Evacuation Center",
-        "Households",
-        "Families",
-        "Male",
-        "Female",
-        "LGBTQ",
-        "PWD",
-        "Pregnant",
-        "Senior",
-        "Food Packs",
-      ];
-
-      const colX = [40, 75, 210, 255, 300, 340, 380, 420, 455, 500, 545];
-      let y = doc.y;
-
-      headers.forEach((header, index) => {
-        doc.fontSize(8).text(header, colX[index], y, {
-          width: index === 1 ? 130 : 40,
-          align: index === 1 ? "left" : "center",
-        });
-      });
-
-      y += 20;
-      doc.moveTo(40, y - 5).lineTo(570, y - 5).stroke();
+      let headers = drawTableHeader(doc, y);
+      y += 24;
 
       (request.rows || []).forEach((row, index) => {
-        const values = [
-          index + 1,
-          safeText(row.evacuationCenterName),
-          Number(row.households) || 0,
-          Number(row.families) || 0,
-          Number(row.male) || 0,
-          Number(row.female) || 0,
-          Number(row.lgbtq) || 0,
-          Number(row.pwd) || 0,
-          Number(row.pregnant) || 0,
-          Number(row.senior) || 0,
-          Number(row.requestedFoodPacks) || 0,
-        ];
-
-        const rowHeight = 22;
-
-        if (y > 720) {
+        if (y > 690) {
+          drawFooter(doc);
           doc.addPage();
-          y = 50;
+          y = drawHeader(doc, request);
+          drawSectionTitle(doc, "Evacuation Details (continued)", y);
+          y += 28;
+          headers = drawTableHeader(doc, y);
+          y += 24;
         }
 
-        values.forEach((value, colIndex) => {
-          doc.fontSize(8).text(String(value), colX[colIndex], y, {
-            width: colIndex === 1 ? 130 : 40,
-            align: colIndex === 1 ? "left" : "center",
-          });
-        });
-
-        y += rowHeight;
+        y += drawTableRow(doc, row, index, y, headers);
       });
 
-      y += 10;
+      y += 18;
 
-      if (y > 680) {
+      if (y > 620) {
+        drawFooter(doc);
         doc.addPage();
-        y = 50;
+        y = drawHeader(doc, request);
       }
 
-      doc.moveTo(40, y).lineTo(570, y).stroke();
-      y += 15;
-
-      const totals = request.totals || {};
-
-      doc.fontSize(12).text("Totals", 40, y, { underline: true });
-      y += 20;
-
-      doc.fontSize(10);
-      doc.text(`Households: ${Number(totals.households) || 0}`, 40, y);
-      doc.text(`Families: ${Number(totals.families) || 0}`, 200, y);
-      doc.text(`Male: ${Number(totals.male) || 0}`, 350, y);
-      y += 18;
-
-      doc.text(`Female: ${Number(totals.female) || 0}`, 40, y);
-      doc.text(`LGBTQ: ${Number(totals.lgbtq) || 0}`, 200, y);
-      doc.text(`PWD: ${Number(totals.pwd) || 0}`, 350, y);
-      y += 18;
-
-      doc.text(`Pregnant: ${Number(totals.pregnant) || 0}`, 40, y);
-      doc.text(`Senior: ${Number(totals.senior) || 0}`, 200, y);
-      doc.text(
-        `Requested Food Packs: ${Number(totals.requestedFoodPacks) || 0}`,
-        350,
-        y
-      );
-
-      doc.moveDown(2);
-      doc.text("System Generated Document", { align: "center" });
+      y = drawTotalsCard(doc, request, y);
+      drawFooter(doc);
 
       doc.end();
 
@@ -211,7 +327,6 @@ const sendReliefRequestEmail = async (request) => {
 
   const pdfResult = await generateReliefRequestPdf(request);
 
-  // Save PDF path immediately so frontend can preview even if email fails
   await ReliefRequest.findByIdAndUpdate(request._id, {
     pdfFile: pdfResult.relativeFilePath,
     pdfGeneratedAt: new Date(),
