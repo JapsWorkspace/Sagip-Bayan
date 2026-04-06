@@ -228,7 +228,10 @@ if (process.env.NODE_ENV === "production") {
     res.sendFile(path.join(buildPath, "index.html"));
   });
 }
-
+const avatarsDir = path.join(__dirname, "uploads", "avatars");
+if (!fs.existsSync(avatarsDir)) {
+  fs.mkdirSync(avatarsDir, { recursive: true });
+}
 // --------------------
 // MongoDB
 // --------------------

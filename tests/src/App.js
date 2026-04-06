@@ -82,6 +82,7 @@ function App() {
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
 
+            <Route path="/guidelines" element={<PublicGuide />} />
             <Route path="/idk" element={<HomeGuidelines/>}/>
             <Route path="/update/:id" element={<UpdateGuideline/>}/>
             <Route path="/map" element={<EvacuationMap/>}/>

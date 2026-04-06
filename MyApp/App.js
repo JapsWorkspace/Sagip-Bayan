@@ -57,6 +57,7 @@ export default function App() {
           {/* SETTINGS (NO BOTTOM NAV) */}
           <Stack.Screen name="PasswordSecurity" component={PasswordSecurity} />
           <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
+
         </Stack.Navigator>
       </NavigationContainer>
     </UserProvider>

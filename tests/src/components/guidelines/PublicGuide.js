@@ -10,9 +10,6 @@ export default function PublicGuide() {
   const [searchText, setSearchText] = useState("");
   const [suggestions, setSuggestions] = useState([]);
 
-  // ✅ NEW: modal state
-  const [selectedGuideline, setSelectedGuideline] = useState(null);
-
   const BASE_URL = "http://localhost:8000/api/guidelines/";
   const categories = ["all", "earthquake", "flood", "typhoon", "general"];
 
@@ -59,19 +56,16 @@ export default function PublicGuide() {
     setSuggestions([]);
   };
 
-  // ✅ UPDATED: open modal + increment views
+  // ---------- View count handler ----------
   const handleViewGuideline = async (item) => {
     try {
       await axios.patch(`${BASE_URL}view/${item._id}`);
-
-      // update local state
       setGuidelines((prev) =>
         prev.map((g) =>
           g._id === item._id ? { ...g, views: (g.views || 0) + 1 } : g
         )
       );
-
-      setSelectedGuideline(item); // open modal
+      alert(`Viewing guideline: ${item.title}`);
     } catch (err) {
       console.error("Error incrementing view:", err.message);
     }
@@ -95,6 +89,34 @@ export default function PublicGuide() {
       <p>Category: {item.category}</p>
       <p>Status: {item.status}</p>
       <p>Priority: {item.priorityLevel}</p>
+      {item.description && <p>{item.description}</p>}
+
+      {item.attachments?.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <strong>Attachments:</strong>
+          {item.attachments.map((file, idx) =>
+            /\.(jpg|jpeg|png|gif)$/i.test(file.fileUrl) ? (
+              <img
+                key={idx}
+                src={file.fileUrl}
+                alt=""
+                style={{ width: 120, height: 120, marginTop: 6, borderRadius: 8 }}
+              />
+            ) : (
+              <div key={idx}>
+                <a
+                  href={file.fileUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ color: "#007bff", textDecoration: "underline" }}
+                >
+                  {file.fileName}
+                </a>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 
@@ -112,13 +134,7 @@ export default function PublicGuide() {
         placeholder="Search by title..."
         value={searchText}
         onChange={(e) => handleSearch(e.target.value)}
-        style={{
-          width: "100%",
-          padding: 10,
-          marginBottom: 10,
-          borderRadius: 6,
-          border: "1px solid #ccc",
-        }}
+        style={{ width: "100%", padding: 10, marginBottom: 10, borderRadius: 6, border: "1px solid #ccc" }}
       />
 
       {/* Suggestions */}
@@ -160,102 +176,10 @@ export default function PublicGuide() {
         })}
       </div>
 
-      {/* List */}
+      {/* Guidelines List */}
       <div>
         {filteredGuidelines.map((item) => renderCard(item))}
       </div>
-
-      {/* ================= MODAL ================= */}
-      {selectedGuideline && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: 20,
-              borderRadius: 10,
-              width: "90%",
-              maxWidth: 500,
-              maxHeight: "80%",
-              overflowY: "auto",
-            }}
-          >
-            <h2>{selectedGuideline.title}</h2>
-
-            <p><strong>Views:</strong> {selectedGuideline.views || 0}</p>
-            <p><strong>Category:</strong> {selectedGuideline.category}</p>
-            <p><strong>Status:</strong> {selectedGuideline.status}</p>
-            <p><strong>Priority:</strong> {selectedGuideline.priorityLevel}</p>
-
-            {selectedGuideline.description && (
-              <p>{selectedGuideline.description}</p>
-            )}
-
-            {/* Attachments */}
-            {selectedGuideline.attachments?.length > 0 && (
-              <div style={{ marginTop: 10 }}>
-                <strong>Attachments:</strong>
-                {selectedGuideline.attachments.map((file, idx) =>
-                  file?.fileUrl && /\.(jpg|jpeg|png|gif)$/i.test(file.fileUrl) ? (
-                    <div key={idx}>
-                      <img
-                        src={file.fileUrl}
-                        alt=""
-                        style={{
-                          width: 120, // ✅ same as old logic
-                          height: 120,
-                          marginTop: 6,
-                          borderRadius: 8,
-                          objectFit: "cover",
-                        }}
-                      />
-                    </div>
-                  ) : file?.fileUrl ? (
-                    <div key={idx}>
-                      <a
-                        href={file.fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#007bff", textDecoration: "underline" }}
-                      >
-                        {file.fileName}
-                      </a>
-                    </div>
-                  ) : null
-                )}
-              </div>
-            )}
-
-            {/* Close Button */}
-            <button
-              onClick={() => setSelectedGuideline(null)}
-              style={{
-                marginTop: 15,
-                padding: "10px 15px",
-                backgroundColor: "#dc3545",
-                color: "#fff",
-                border: "none",
-                borderRadius: 6,
-                cursor: "pointer",
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -10,15 +10,51 @@ const userSchema = new mongoose.Schema({
   dateOfBirth: Date,
   phone: String,
   address: String,
+  
   location: {
-    lat: Number,
-    lng: Number
-  },
+  lat: Number,
+  lng: Number,
+  updatedAt: Date,
+  share: {
+    type: Boolean,
+    default: true
+  }
+},
 
     connections: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: "Connection"
   }],
+  notifications: [
+  {
+    type: {
+      type: String, // e.g. "KICKED"
+      required: true,
+    },
+
+    message: {
+      type: String,
+      required: true,
+    },
+
+    connectionId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Connection",
+      default: null,
+    },
+
+    read: {
+      type: Boolean,
+      default: false,
+    },
+
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+],
+
 
   safetyStatus: {
     type: String,
@@ -55,6 +91,10 @@ const userSchema = new mongoose.Schema({
     type: Date,
     default: null,
   },
+  avatar: {
+  type: String,
+  default: ""
+},
 
   deleteAfter: {
     type: Date,
