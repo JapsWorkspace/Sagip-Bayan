@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-import DashboardShell from '../layout/DashboardShell';
-=======
->>>>>>> upstream/myapp-update
 import '../css/ArchivedAccounts.css';
 
 export default function ArchivedAccounts() {
@@ -15,16 +11,11 @@ export default function ArchivedAccounts() {
   const [loading, setLoading] = useState(true);
   const [restoringId, setRestoringId] = useState(null);
 
-<<<<<<< HEAD
-  // measure app header height only if you still render a top header elsewhere
-  const appRef = useRef(null);
-=======
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [page, setPage] = useState(1);
 
   const PAGE_SIZE = 8;
->>>>>>> upstream/myapp-update
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
@@ -36,29 +27,8 @@ export default function ArchivedAccounts() {
   }, []);
 
   useEffect(() => {
-<<<<<<< HEAD
-    const syncHeaderHeight = () => {
-      const headerEl = document.querySelector('.app-header');
-      const h = headerEl ? headerEl.getBoundingClientRect().height : 0;
-      if (appRef.current) {
-        appRef.current.style.setProperty('--app-header-h', `${Math.round(h)}px`);
-      }
-    };
-    syncHeaderHeight();
-
-    window.addEventListener('resize', syncHeaderHeight);
-    const ro = new ResizeObserver(syncHeaderHeight);
-    const headerEl = document.querySelector('.app-header');
-    if (headerEl) ro.observe(headerEl);
-    return () => {
-      window.removeEventListener('resize', syncHeaderHeight);
-      ro.disconnect();
-    };
-  }, []);
-=======
     setPage(1);
   }, [search, roleFilter]);
->>>>>>> upstream/myapp-update
 
   const fetchArchivedAccounts = async () => {
     try {
@@ -103,33 +73,6 @@ export default function ArchivedAccounts() {
     }
   };
 
-<<<<<<< HEAD
-  return (
-    <DashboardShell>
-      {/* NOTE: we add tio-no-toolbar to switch height calc to “no toolbar” mode */}
-      <div className="tio-app tio-no-toolbar" ref={appRef}>
-        {/* ❌ Toolbar removed — we show a slim count bar inside main instead */}
-
-        <main className="tio-main">
-          {/* thin count bar (like Edit view’s countbar) */}
-          <div className="tio-headbar">
-            <span>
-              {loading ? 'Loading…' : `${archived.length} record${archived.length === 1 ? '' : 's'}`}
-            </span>
-          </div>
-
-          <div className="tio-table-region">
-            <div className="tio-table-wrap">
-              <table className="tio-table">
-                <thead>
-                  <tr>
-                    <th style={{ width: '18ch' }}>Username</th>
-                    <th style={{ width: '26ch' }}>Email</th>
-                    <th style={{ width: '14ch' }}>Phone</th>
-                    <th>Address</th>
-                    <th style={{ width: '12ch' }}>Role</th>
-                    <th style={{ width: '12ch' }}></th>
-=======
   const filteredArchived = useMemo(() => {
     const term = search.trim().toLowerCase();
 
@@ -254,31 +197,10 @@ export default function ArchivedAccounts() {
                     <th>Address</th>
                     <th>Role</th>
                     <th>Action</th>
->>>>>>> upstream/myapp-update
                   </tr>
                 </thead>
 
                 <tbody>
-<<<<<<< HEAD
-                  {/* Probe row for column sizing */}
-                  <tr className="tio-probe-row">
-                    <td>username_example</td>
-                    <td>name@example.com</td>
-                    <td>09123456789</td>
-                    <td>Barangay San Nicolas, Jaen</td>
-                    <td>DRRMO</td>
-                    <td></td>
-                  </tr>
-
-                  {loading && (
-                    <tr className="tio-empty-row">
-                      <td colSpan={6}>
-                        <div className="tio-empty-inline">
-                          <span className="tio-empty-emoji">⏳</span>
-                          <div className="tio-empty-text">
-                            <strong>Loading archived accounts…</strong>
-                            <span className="tio-muted">Please wait</span>
-=======
                   {loading ? (
                     <tr>
                       <td colSpan="6" className="archived-empty-cell">
@@ -287,25 +209,10 @@ export default function ArchivedAccounts() {
                           <div>
                             <strong>Loading archived accounts...</strong>
                             <p>Please wait while records are being fetched.</p>
->>>>>>> upstream/myapp-update
                           </div>
                         </div>
                       </td>
                     </tr>
-<<<<<<< HEAD
-                  )}
-
-                  {!loading && archived.length === 0 && (
-                    <tr className="tio-empty-row">
-                      <td colSpan={6}>
-                        <div className="tio-empty-inline">
-                          <span className="tio-empty-emoji">📂</span>
-                          <div className="tio-empty-text">
-                            <strong>No Archived Accounts</strong>
-                            <span className="tio-muted">
-                              Accounts that are archived will appear here.
-                            </span>
-=======
                   ) : paginatedArchived.length === 0 ? (
                     <tr>
                       <td colSpan="6" className="archived-empty-cell">
@@ -317,43 +224,10 @@ export default function ArchivedAccounts() {
                               Archived users will appear here. Try adjusting your
                               search or role filter.
                             </p>
->>>>>>> upstream/myapp-update
                           </div>
                         </div>
                       </td>
                     </tr>
-<<<<<<< HEAD
-                  )}
-
-                  {!loading && archived.length > 0 && archived.map(acc => (
-                    <tr key={acc._id}>
-                      <td title={acc.username ?? ''}>{acc.username}</td>
-                      <td
-                        title={acc.email ?? ''}
-                        style={{ color: '#0b4dbb', fontWeight: 700, cursor: 'pointer' }}
-                      >
-                        {acc.email}
-                      </td>
-                      <td title={acc.phoneNumber ?? ''}>{acc.phoneNumber}</td>
-                      <td title={acc.address ?? ''}>{acc.address}</td>
-                      <td title={acc.role ?? ''}>{acc.role}</td>
-                      <td>
-                        <button
-                          className="tio-btn"
-                          style={{
-                            background: '#2e7d32',
-                            color: '#fff',
-                            borderColor: '#2e7d32',
-                            fontWeight: 800
-                          }}
-                          onClick={() => restoreAccount(acc._id)}
-                        >
-                          Restore
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-=======
                   ) : (
                     paginatedArchived.map((acc) => (
                       <tr key={acc._id}>
@@ -386,23 +260,10 @@ export default function ArchivedAccounts() {
                       </tr>
                     ))
                   )}
->>>>>>> upstream/myapp-update
                 </tbody>
               </table>
             </div>
 
-<<<<<<< HEAD
-            {/* Pagination row */}
-            <div className="tio-pagination">
-              <button className="tio-btn" disabled>Prev</button>
-              <span className="tio-page">Page 1</span>
-              <button className="tio-btn" disabled>Next</button>
-            </div>
-          </div>
-        </main>
-      </div>
-    </DashboardShell>
-=======
             <div className="archived-pagination">
               <button
                 className="archived-page-btn"
@@ -427,6 +288,5 @@ export default function ArchivedAccounts() {
           </section>
         </div>
       </div>
->>>>>>> upstream/myapp-update
   );
 }

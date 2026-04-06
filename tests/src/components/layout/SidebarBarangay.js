@@ -4,13 +4,10 @@ import { useTheme } from "../../context/ThemeContext";
 import logo from "../../assets/images/sagipbayanlogo.png";
 import reliefwhite from "../../assets/images/reliefwhite.png";
 import reliefgreen from "../../assets/images/reliefgreen.png";
-<<<<<<< HEAD
-import messagewhite from "../../assets/images/messagewhite.png";
-import messagegreen from "../../assets/images/messagegreen.png";
-=======
+
 import evacuationwhite from "../../assets/images/evacuationwhite.png";
 import evacuationgreen from "../../assets/images/evacuationgreen.png";
->>>>>>> upstream/myapp-update
+
 import analyticswhite from "../../assets/images/analyticswhite.png";
 import analyticsgreen from "../../assets/images/analyticsgreen.png";
 import logoutwhite from "../../assets/images/logoutwhite.png";
@@ -24,14 +21,11 @@ export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
 
   const links = [
     { to: "/barangay/relief-request",  label: "Relief Request",             icon: dark ? reliefwhite   : reliefgreen },
-<<<<<<< HEAD
-    { to: "/barangay/messages",        label: "Messages & Announcements",   icon: dark ? messagewhite  : messagegreen },
-    { to: "/barangay/relief-status",   label: "Relief Distribution Status", icon: dark ? analyticswhite: analyticsgreen },
-=======
+
     { to: "/barangay/relief-status",   label: "Relief Status", icon: dark ? analyticswhite: analyticsgreen },
     { to: "/barangay/inventory",        label: "Stock",             icon: dark ? analyticswhite : analyticsgreen },
     { to: "/barangay/evacuation-centers",  label: "Evacuation Management", icon: dark ? evacuationwhite: evacuationgreen },
->>>>>>> upstream/myapp-update
+
   ];
 
   const themeIcon  = dark ? sunwhite    : nightgreen;

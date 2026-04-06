@@ -1,9 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-=======
 import DashboardShell from '../layout/DashboardShell';
->>>>>>> upstream/myapp-update
 import '../css/ReliefTracking.css';
 
 const BASE_URL =
@@ -217,119 +214,6 @@ export default function ReliefTracking() {
   };
 
   return (
-<<<<<<< HEAD
-    <div className="rt-app" ref={appRef}>
-
-
-      {/* Sticky toolbar */}
-      <div className="rt-toolbar">
-        <div className="rt-toolbar-left">
-          <h2 className="rt-title">Relief Tracking</h2>
-          {!loading && (
-            <span className="rt-meta">
-              {total} record{total === 1 ? '' : 's'} • Page {page} of {totalPages}
-            </span>
-          )}
-        </div>
-        <div className="rt-toolbar-right">
-          <button className="rt-btn" onClick={() => navigate(-1)}>← Back</button>
-        </div>
-      </div>
-
-      {/* Main region (fills viewport; panel owns the height) */}
-      <main className="rt-main">
-        <section className="rt-panel">
-          {/* Table region = scrollable table + pinned pagination */}
-          <div className="rt-table-region">
-            <div className="rt-table-wrap">
-              {loading ? (
-                <div className="rt-state">
-                  <div className="rt-emoji">⏳</div>
-                  <div className="rt-state-text">
-                    <strong>Loading relief tracking…</strong>
-                    <span className="rt-muted">Please wait</span>
-                  </div>
-                </div>
-              ) : total === 0 ? (
-                <div className="rt-state">
-                  <div className="rt-emoji">📦</div>
-                  <div className="rt-state-text">
-                    <strong>No active requests</strong>
-                    <span className="rt-muted">New requests will appear here.</span>
-                  </div>
-                </div>
-              ) : (
-                <table className="rt-table">
-                  <thead>
-                    <tr>
-                      <th>Barangay</th>
-                      <th>Category</th>
-                      <th>People Range</th>
-                      <th>Status</th>
-                      <th>Requested At</th>
-                      <th>Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {pageRows.map((r) => (
-                      <tr key={`${r.barangayId}-${r.categoryKey}`}>
-                        <td title={r.barangayName ?? ''}>{r.barangayName}</td>
-                        <td title={categoryLabels[r.categoryKey] ?? ''}>
-                          {categoryLabels[r.categoryKey] || r.categoryKey}
-                        </td>
-                        <td title={r.peopleRange ?? ''}>{r.peopleRange}</td>
-                        <td>
-                          <span
-                            className={
-                              'rt-pill ' +
-                              (r.status === 'requested'
-                                ? 'rt-pill-gray'
-                                : r.status === 'approved'
-                                ? 'rt-pill-green'
-                                : r.status === 'received'
-                                ? 'rt-pill-blue'
-                                : 'rt-pill-amber')
-                            }
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td>{fmtDate(r.requestedAt)}</td>
-                        <td>
-                          {/* BARANGAY */}
-                          {viewerType === 'barangay' && r.status === 'requested' && (
-                            <button
-                              className="rt-action rt-danger"
-                              onClick={() => handleBarangayAction(r.categoryKey, 'cancel')}
-                            >
-                              Cancel Request
-                            </button>
-                          )}
-                          {viewerType === 'barangay' && r.status === 'approved' && (
-                            <button
-                              className="rt-action rt-primary"
-                              onClick={() => handleBarangayAction(r.categoryKey, 'received')}
-                            >
-                              Relief Goods Received
-                            </button>
-                          )}
-
-                          {/* DRRMO */}
-                          {viewerType === 'drrmo' && r.status === 'approved' && (
-                            <button
-                              className="rt-action rt-warning"
-                              onClick={() => handleCancelApproval(r.barangayId, r.categoryKey)}
-                            >
-                              Cancel Approval
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-=======
     <DashboardShell>
       <div className="rtk-page">
         <div className="rtk-shell">
@@ -341,7 +225,6 @@ export default function ReliefTracking() {
                 Monitor the status of your submitted relief requests, review request
                 details, and manage requests that are still pending.
               </p>
->>>>>>> upstream/myapp-update
             </div>
 
             <div className="rtk-header-actions">

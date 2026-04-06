@@ -33,13 +33,11 @@ export default function Login() {
   const [countdown, setCountdown] = useState(0);
   const countdownRef = useRef(null);
 
-<<<<<<< HEAD
-  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
-  const local = "http://localhost:8000";
-=======
-  const BASE_URL =
+
+  const BASE_URL = "http://localhost:8000";
+  const local =
     process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
->>>>>>> upstream/myapp-update
+
 
   useEffect(() => {
     const lockInfo = JSON.parse(localStorage.getItem('loginLock')) || {};
@@ -71,70 +69,6 @@ export default function Login() {
     return () => clearInterval(countdownRef.current);
   }, []);
 
-<<<<<<< HEAD
-  const handleLogin = async () => {
-    const trimmedEmail = email.trim();
-    const trimmedPassword = password.trim();
-    if (!trimmedEmail || !trimmedPassword) return alert('Please fill all fields');
-    if (role === 'admin' && isLocked) return;
-
-  const payload = { email: trimmedEmail, password: trimmedPassword };
-
-  console.log("Attempting login with:", payload);
-
-  try {
-    const res = await fetch(`${local}/api/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-
-    // DEBUG: log raw response
-    console.log("Login response status:", res.status, res.statusText);
-
-      let data;
-      try {
-        data = await res.json();
-      } catch {
-        data = { message: "Invalid JSON response from server" };
-      }
-
-      if (!res.ok) {
-        if (role === 'admin') {
-          const attempts = adminAttempts + 1;
-          setAdminAttempts(attempts);
-
-          if (attempts >= MAX_ATTEMPTS) {
-            const expiresAt = Date.now() + LOCK_DURATION;
-            setIsLocked(true);
-            setLockMessage(`Too many failed attempts. Try again in:`);
-            setCountdown(Math.ceil(LOCK_DURATION / 1000));
-            localStorage.setItem('adminLock', JSON.stringify({ attempts: MAX_ATTEMPTS, expiresAt }));
-          } else {
-            alert(`Login failed. Attempts left: ${MAX_ATTEMPTS - attempts}`);
-          }
-        } else {
-          alert(data.message || 'Login failed');
-        }
-        return;
-      }
-
-      setUser(data);
-      localStorage.setItem('role', data.role);
-
-      if (data.role === 'admin') navigate('/admin/dashboard');
-      else if (data.role === 'drrmo') navigate('/drrmo/dashboard');
-      else navigate('/barangay/dashboard');
-
-    } catch (err) {
-      console.error("Login fetch error:", err);
-      alert("Login failed. Check server or network.");
-    }
-  };
-
-=======
->>>>>>> upstream/myapp-update
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 4000);
     return () => clearTimeout(timer);
@@ -298,10 +232,6 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-split">
-<<<<<<< HEAD
-        {/* LEFT: CAROUSEL (NEVER CHANGES WITH ROLE) */}
-=======
->>>>>>> upstream/myapp-update
         <aside className="login-left-carousel" aria-label="Highlights">
           <div className="carousel-stack">
             {slides.map((src, i) => (
@@ -314,97 +244,6 @@ export default function Login() {
               />
             ))}
           </div>
-<<<<<<< HEAD
-
-          <div className="carousel-overlay">
-            <div className="carousel-logos" aria-hidden="true">
-              <img src={jaenlogo} alt="Jaen Logo" />
-              <img src={sagipbayanlogo} alt="SagipBayan Logo" className="logo-sagip" />
-            </div>
-            <h1 className="carousel-title">Jaen MDRRMO Portal</h1>
-            <p className="carousel-tag">Connecting Communities. Protecting Lives.</p>
-          </div>
-        </aside>
-
-        {/* RIGHT: LOGIN FORM */}
-        <main className={`login-right-form ${role === 'admin' ? 'admin-mode' : ''}`}>
-          <form
-            className="form-card"
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleLogin();
-            }}
-          >
-            {/* Government header strip */}
-            <div className="gov-strip" aria-hidden="true">
-              <div className="gov-brand">
-                <img src={jaenlogo} alt="Jaen Seal" className="gov-seal" />
-                <div className="gov-label">
-                  <div className="gov-name">JAEN, NUEVA ECIJA</div>
-                  <div className="gov-sub">MUNICIPAL DISASTER RISK REDUCTION &amp; MANAGEMENT OFFICE</div>
-                </div>
-              </div>
-            </div>
-
-            {/* Title */}
-            <h3 className="card-title">Login</h3>
-            <div className="card-divider" aria-hidden="true" />
-
-          {/* Form */}
-          <div className="form-container">
-            {/* <div className="field">
-              <label className="field-label">Role</label>
-              <div className="select-wrap">
-                <select value={role} onChange={e => setRole(e.target.value)}>
-                  <option value="barangay">Barangay</option>
-                  <option value="drrmo">DRRMO</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            </div> */}
-
-            <div className="field">
-              <label className="field-label">Email</label>
-              <input
-                placeholder="name@example.com"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-              />
-            </div>
-
-              <div className="field">
-                <label className="field-label">Password</label>
-                <input
-                  placeholder="Enter your password"
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                />
-              </div>
-
-              {role === 'admin' && !isLocked && (
-                <p className="attempts-text">Attempts left: {MAX_ATTEMPTS - adminAttempts}</p>
-              )}
-
-              {isLocked && (
-                <p className="locked-message">
-                  🔒 {lockMessage} {Math.floor(countdown / 60)}:{('0' + (countdown % 60)).slice(-2)}
-                </p>
-              )}
-
-              <button type="submit" disabled={isLocked}>
-                {isLocked ? 'ACCOUNT LOCKED' : 'LOGIN'}
-              </button>
-
-              {/* Disclaimer */}
-              <div className="gov-disclaimer">
-                Authorized access only. Actions may be logged and audited under applicable laws and policies.
-              </div>
-
-              <div className="security-line" aria-hidden="true">
-                <span>Secured</span><span className="dot">•</span>
-                <span>Encrypted Connection</span><span className="dot">•</span>
-=======
 
           <div className="carousel-overlay">
             <div className="carousel-logos" aria-hidden="true">
@@ -533,7 +372,6 @@ export default function Login() {
                 <span className="dot">•</span>
                 <span>Encrypted Connection</span>
                 <span className="dot">•</span>
->>>>>>> upstream/myapp-update
                 <span>Official Use Only</span>
               </div>
             </div>

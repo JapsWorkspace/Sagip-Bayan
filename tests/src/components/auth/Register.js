@@ -1,9 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import '../css/Register.css';
-<<<<<<< HEAD
-import DashboardShell from '../layout/DashboardShell';
-=======
 
 const OFFICIAL_BARANGAYS = [
   "Bagong Sikat",
@@ -29,7 +26,6 @@ const OFFICIAL_BARANGAYS = [
   "Sapang Putik",
   "Ulanin-Pitak"
 ];
->>>>>>> upstream/myapp-update
 
 export default function Register() {
   const navigate = useNavigate();
@@ -62,12 +58,6 @@ export default function Register() {
   const [successMessage, setSuccessMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-<<<<<<< HEAD
-  const [touched, setTouched] = useState({});
-
-  const barangays = Array.from({ length: 25 }, (_, i) => `Brgy ${i + 1}`);
-
-=======
   const [availableBarangays, setAvailableBarangays] = useState(OFFICIAL_BARANGAYS);
   const [barangayLoading, setBarangayLoading] = useState(false);
 
@@ -117,7 +107,6 @@ export default function Register() {
     setSuccessMessage('');
   }, [role]);
 
->>>>>>> upstream/myapp-update
   // ---------- VALIDATORS ----------
   function validatePassword(pw) {
     if (!pw) return 'Password is required';
@@ -163,38 +152,6 @@ export default function Register() {
   useEffect(() => {
     const nextErrors = {};
 
-<<<<<<< HEAD
-    if (touched.username && !username)
-      nextErrors.username = 'Username is required';
-
-    if (touched.email) {
-      const emailError = validateEmail(email);
-      if (emailError) nextErrors.email = emailError;
-    }
-
-    if (touched.phoneNumber) {
-      if (!phoneNumber)
-        nextErrors.phoneNumber = 'Phone number is required';
-      else {
-        const phoneErr = validatePhone(phoneNumber);
-        if (phoneErr) nextErrors.phoneNumber = phoneErr;
-      }
-    }
-
-    if (touched.address && !address)
-      nextErrors.address = 'Address is required';
-
-    if (touched.password) {
-      const pwError = validatePassword(password);
-      if (pwError) nextErrors.password = pwError;
-    }
-
-    if (touched.confirmPassword && password !== confirmPassword)
-      nextErrors.confirmPassword = 'Passwords do not match';
-
-    setErrors(nextErrors);
-  }, [username, email, password, confirmPassword, phoneNumber, address, role, touched]);
-=======
     if (touched.username) {
       const error = validateUsername(username);
       if (error) nextErrors.username = error;
@@ -241,78 +198,11 @@ export default function Register() {
     role,
     touched
   ]);
->>>>>>> upstream/myapp-update
 
   // ---------- SUBMIT VALIDATION ----------
   function computeErrors() {
     const nextErrors = {};
 
-<<<<<<< HEAD
-    if (touched.username && !username)
-      nextErrors.username = 'Username is required';
-
-    if (touched.email) {
-      const emailError = validateEmail(email);
-      if (emailError) nextErrors.email = emailError;
-    }
-
-    if (touched.phoneNumber) {
-      if (!phoneNumber)
-        nextErrors.phoneNumber = 'Phone number is required';
-      else {
-        const phoneErr = validatePhone(phoneNumber);
-        if (phoneErr) nextErrors.phoneNumber = phoneErr;
-      }
-    }
-
-    if (touched.address && !address)
-      nextErrors.address = 'Address is required';
-
-    if (touched.password) {
-      const pwError = validatePassword(password);
-      if (pwError) nextErrors.password = pwError;
-    }
-
-    if (touched.confirmPassword && password !== confirmPassword)
-      nextErrors.confirmPassword = 'Passwords do not match';
-
-    setErrors(nextErrors);
-  }
-
-  // ---------- SUBMIT VALIDATION ----------
-  function computeErrors() {
-    const nextErrors = {};
-
-    if (touched.username && !username)
-      nextErrors.username = 'Username is required';
-
-    if (touched.email) {
-      const emailError = validateEmail(email);
-      if (emailError) nextErrors.email = emailError;
-    }
-
-    if (touched.phoneNumber) {
-      if (!phoneNumber)
-        nextErrors.phoneNumber = 'Phone number is required';
-      else {
-        const phoneErr = validatePhone(phoneNumber);
-        if (phoneErr) nextErrors.phoneNumber = phoneErr;
-      }
-    }
-
-    if (touched.address && !address)
-      nextErrors.address = 'Address is required';
-
-    if (touched.password) {
-      const pwError = validatePassword(password);
-      if (pwError) nextErrors.password = pwError;
-    }
-
-    if (touched.confirmPassword && password !== confirmPassword)
-      nextErrors.confirmPassword = 'Passwords do not match';
-
-    
-=======
     const usernameError = validateUsername(username);
     if (usernameError) nextErrors.username = usernameError;
 
@@ -335,7 +225,6 @@ export default function Register() {
       nextErrors.barangay = 'Barangay is required';
     }
 
->>>>>>> upstream/myapp-update
     return nextErrors;
   }
 
@@ -343,8 +232,6 @@ export default function Register() {
   async function handleRegister() {
     const freshErrors = computeErrors();
     setErrors(freshErrors);
-<<<<<<< HEAD
-=======
     setSubmitError('');
     setSuccessMessage('');
 
@@ -357,7 +244,6 @@ export default function Register() {
       confirmPassword: true,
       barangay: role === 'barangay'
     });
->>>>>>> upstream/myapp-update
 
     if (Object.keys(freshErrors).length > 0) {
       setSubmitError('Please fix the highlighted fields first.');
@@ -368,18 +254,11 @@ export default function Register() {
       username: username.trim(),
       password,
       role,
-<<<<<<< HEAD
-      email,
-      phoneNumber,
-      hotline: hotline || undefined,
-      address
-=======
       email: email.trim(),
       phoneNumber: phoneNumber.trim(),
       hotline: hotline.trim() || undefined,
       address: address.trim(),
       ...(role === 'barangay' ? { barangay } : {})
->>>>>>> upstream/myapp-update
     };
 
     try {
@@ -431,26 +310,6 @@ export default function Register() {
     }
   }
 
-<<<<<<< HEAD
-  // ---------- UI ----------
-  return (
-    <DashboardShell>
-      <div className="register-page">
-        {/* Content area only; no left panel; no white card */}
-        <div className="shell" style={{ padding: 16, justifyContent: 'center' }}>
-          <main className="content" style={{ maxWidth: 1200, width: '100%' }}>
-            {/* Simple header */}
-            <header className="panel-header" style={{ border: 'none', padding: 0, marginBottom: 16 }}>
-              <h2 style={{ margin: '0 0 6px' }}>Create Admin account</h2>
-              <p className="panel-desc" style={{ margin: 0 }}>
-                Use this form to create an administrator account. Each admin is assigned a role and
-                specific permissions that define what parts of the system they can access.
-              </p>
-            </header>
-
-            {/* Form */}
-            <div className="form-body">
-=======
   const statItems = useMemo(() => {
     const usedCount = OFFICIAL_BARANGAYS.length - availableBarangays.length;
 
@@ -529,7 +388,6 @@ export default function Register() {
                 </button>
               </div>
 
->>>>>>> upstream/myapp-update
               <form
                 className="register-form-grid"
                 onSubmit={(e) => {
@@ -537,51 +395,6 @@ export default function Register() {
                   handleRegister();
                 }}
               >
-<<<<<<< HEAD
-                {/* Username */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Username</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        className={`input ${errors.username ? 'invalid' : ''}`}
-                        placeholder="Username"
-                        value={username}
-                        onChange={e => {
-                          setUsername(e.target.value);
-                          setTouched(prev => ({ ...prev, username: true }));
-                        }}
-                        // onChange={e => {
-                        //   setUsername(e.target.value);
-                        //   setTouched(prev => ({ ...prev, username: true }));
-                        // }}
-                      />
-                      {errors.username && <span className="error">{errors.username}</span>}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Email */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Email Address</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        className={`input ${errors.email ? 'invalid' : ''}`}
-                        placeholder="Email"
-                        value={email}
-                        onChange={e => {
-                          setEmail(e.target.value);
-                          setTouched(prev => ({ ...prev, email: true }));
-                        }}
-                      />
-                      {errors.email && <span className="error">{errors.email}</span>}
-                    </div>
-=======
                 {role === 'barangay' && (
                   <div className="form-block form-block-full">
                     <label className="input-label">Barangay</label>
@@ -628,31 +441,10 @@ export default function Register() {
                         setSubmitError('');
                       }}
                     />
->>>>>>> upstream/myapp-update
                   </div>
                   {renderFieldError('username')}
                 </div>
 
-<<<<<<< HEAD
-                {/* Phone */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Phone Number</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        className={`input ${errors.phoneNumber ? 'invalid' : ''}`}
-                        placeholder="Phone Number"
-                        value={phoneNumber}
-                        onChange={e => {
-                          setPhoneNumber(e.target.value);
-                          setTouched(prev => ({ ...prev, phoneNumber: true }));
-                        }}
-                      />
-                      {errors.phoneNumber && <span className="error">{errors.phoneNumber}</span>}
-                    </div>
-=======
                 <div className="form-block">
                   <label className="input-label">Email Address</label>
                   <div className={`input-shell ${errors.email ? 'has-error' : ''}`}>
@@ -666,30 +458,10 @@ export default function Register() {
                         setSubmitError('');
                       }}
                     />
->>>>>>> upstream/myapp-update
                   </div>
                   {renderFieldError('email')}
                 </div>
 
-<<<<<<< HEAD
-                {/* Hotline */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Hotline (optional)</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        className="input"
-                        placeholder="Hotline (optional)"
-                        value={hotline}
-                        onChange={e => {
-                          setHotline(e.target.value);
-                          setTouched(prev => ({ ...prev, hotline: true }));
-                        }}
-                      />
-                    </div>
-=======
                 <div className="form-block">
                   <label className="input-label">Phone Number</label>
                   <div className={`input-shell ${errors.phoneNumber ? 'has-error' : ''}`}>
@@ -703,29 +475,10 @@ export default function Register() {
                         setSubmitError('');
                       }}
                     />
->>>>>>> upstream/myapp-update
                   </div>
                   {renderFieldError('phoneNumber')}
                 </div>
 
-<<<<<<< HEAD
-                {/* Address */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Address</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        className={`input ${errors.address ? 'invalid' : ''}`}
-                        placeholder="Address"
-                        value={address}
-                        onChange={e => setAddress(e.target.value)}
-                        onBlur={() => setTouched(prev => ({ ...prev, address: true }))}
-                      />
-                      {errors.address && <span className="error">{errors.address}</span>}
-                    </div>
-=======
                 <div className="form-block">
                   <label className="input-label">Hotline (optional)</label>
                   <div className="input-shell">
@@ -738,32 +491,10 @@ export default function Register() {
                         setSubmitError('');
                       }}
                     />
->>>>>>> upstream/myapp-update
                   </div>
                   <div className="field-message">{' '}</div>
                 </div>
 
-<<<<<<< HEAD
-                {/* Password */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Password</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        type="password"
-                        className={`input ${errors.password ? 'invalid' : ''}`}
-                        placeholder="Password"
-                        value={password}
-                        onChange={e => {
-                          setPassword(e.target.value);
-                          setTouched(prev => ({ ...prev, password: true }));
-                        }}
-                      />
-                      {errors.password && <span className="error">{errors.password}</span>}
-                    </div>
-=======
                 <div className="form-block form-block-full">
                   <label className="input-label">Address</label>
                   <div className={`input-shell ${errors.address ? 'has-error' : ''}`}>
@@ -777,48 +508,10 @@ export default function Register() {
                         setSubmitError('');
                       }}
                     />
->>>>>>> upstream/myapp-update
                   </div>
                   {renderFieldError('address')}
                 </div>
 
-<<<<<<< HEAD
-                {/* Confirm Password */}
-                <div className="section">
-                  <div className="section-head">
-                    <div className="section-title">Confirm Password</div>
-                  </div>
-                  <div className="section-control">
-                    <div className="field">
-                      <input
-                        type="password"
-                        className={`input ${errors.confirmPassword ? 'invalid' : ''}`}
-                        placeholder="Confirm Password"
-                        value={confirmPassword}
-                        onChange={e => {
-                          setConfirmPassword(e.target.value);
-                          setTouched(prev => ({ ...prev, confirmPassword: true }));
-                        }}
-                      />
-                      {errors.confirmPassword && (
-                        <span className="error">{errors.confirmPassword}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Submit */}
-                <div className="section">
-                  <div className="section-control actions-right">
-                    <button type="submit" className="btn btn-commit">Create Account</button>
-                  </div>
-                </div>
-
-                {/* Back */}
-                <div className="section">
-                  <div className="section-control actions-right">
-                  
-=======
                 <div className="form-block">
                   <label className="input-label">Password</label>
                   <div className={`input-shell ${errors.password ? 'has-error' : ''}`}>
@@ -840,7 +533,6 @@ export default function Register() {
                     >
                       {showPassword ? 'Hide' : 'Show'}
                     </button>
->>>>>>> upstream/myapp-update
                   </div>
                   {renderFieldError('password')}
                 </div>
@@ -898,12 +590,6 @@ export default function Register() {
 
               </form>
             </div>
-<<<<<<< HEAD
-          </main>
-        </div>
-      </div>
-    </DashboardShell>
-=======
 
             <aside className="register-panel register-panel-side">
               <div className="register-panel-head">
@@ -952,6 +638,5 @@ export default function Register() {
           </div>
         </div>
       </div>
->>>>>>> upstream/myapp-update
   );
 }

@@ -1,13 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-<<<<<<< HEAD
-=======
 import DashboardShell from '../layout/DashboardShell';
 import '../css/ReliefRequestList.css';
 
 const BASE_URL =
   process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
->>>>>>> upstream/myapp-update
 
 export default function ReliefRequestsList() {
   const navigate = useNavigate();
@@ -184,43 +181,6 @@ export default function ReliefRequestsList() {
     : 0;
 
   return (
-<<<<<<< HEAD
-    <div>
-      <h2>Pending Relief Requests</h2>
-      {rows.length === 0 ? (
-        <p>No pending requests.</p>
-      ) : (
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 16 }}>
-          <thead>
-            <tr>
-              <th style={th}>Barangay</th>
-              <th style={th}>Category</th>
-              <th style={th}>People Range</th>
-              <th style={th}>Requested At</th>
-              <th style={th}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(r => (
-              <tr key={`${r.barangayId}-${r.categoryKey}`}>
-                <td style={td}>{r.barangayName}</td>
-                <td style={td}>{r.category}</td>
-                <td style={td}>{r.peopleRange}</td>
-                <td style={td}>{r.requestedAt ? new Date(r.requestedAt).toLocaleString() : '-'}</td>
-                <td style={td}>
-                  <button onClick={() => handleAccept(r.barangayId, r.categoryKey)}>Approve</button>
-                  <button style={{ marginLeft: 8 }} onClick={() => handleCancel(r.barangayId, r.categoryKey)}>Reject</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-      <button style={{ marginTop: 20 }} onClick={() => navigate(-1)}>Go Back to Dashboard</button>
-    </div>
-  );
-}
-=======
     <DashboardShell>
       <div className="rrl-page">
         <div className="rrl-shell">
@@ -233,7 +193,6 @@ export default function ReliefRequestsList() {
                 relief requests before release processing.
               </p>
             </div>
->>>>>>> upstream/myapp-update
 
             <div className="rrl-header-actions">
               <button
