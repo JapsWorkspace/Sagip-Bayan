@@ -1,8 +1,8 @@
 const express = require('express');
-const drrmoController = require('../controllers/drrmoController');
 const router = express.Router();
+const controller = require('../controllers/drrmoController');
 
-router.get('/pending-requests', drrmoController.getPendingRequests);
-router.put('/relief-request-status/:barangayId', drrmoController.updateReliefStatus);
+router.get('/requests/pending', controller.getPendingRequests);
+router.put('/requests/:requestId/status', controller.updateReliefStatus);
 
 module.exports = router;

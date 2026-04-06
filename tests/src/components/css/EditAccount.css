@@ -1,529 +1,635 @@
-/* ===========================================
-   EDIT ACCOUNT — TWO-PANEL + MOBILE BOTTOM SHEET (FINAL)
-   - Desktop: clean two-panel, no stray top line
-   - Mobile: bottom sheet resizes via --sheet-open (handle drag), inner form scrolls
-   - Buttons colored correctly
-   =========================================== */
-
 .edit-account {
-  --bg: #f7f9fc;
-  --panel: #ffffff;
-  --panel-alt: #fbfdff;
-  --text: #0f172a;
-  --muted: #475569;
-  --border: #e5e7eb;
-  --border-strong: #d1d5db;
-  --accent: #2e7d32;      /* Update */
-  --accent-press: #256d27;
-  --danger: #ef4444;      /* Archive */
-  --danger-press: #dc2626;
-  --ring: 0 0 0 6px rgba(46,125,50,0.18);
+  --ea-bg: #f3f8f4;
+  --ea-surface: #ffffff;
+  --ea-surface-soft: #f8fcf9;
+  --ea-border: #d7e6d9;
+  --ea-border-strong: #bfd4c2;
+  --ea-text: #173122;
+  --ea-muted: #607667;
+  --ea-primary: #0f5a20;
+  --ea-primary-strong: #063a12;
+  --ea-primary-soft: #eef8ef;
+  --ea-shadow: 0 18px 42px rgba(15, 90, 32, 0.08);
+  --ea-radius-xl: 26px;
+  --ea-radius-lg: 18px;
+  --ea-radius-md: 14px;
+  --ea-success: #2e7d32;
+  --ea-danger: #dc2626;
 
-  width: 100vw;
-  height: calc(var(--vh, 1vh) * 100); /* set in JS for mobile correctness */
-  background: var(--bg);
-  color: var(--text);
+  min-height: 100%;
+  background:
+    radial-gradient(circle at top right, rgba(15, 90, 32, 0.08), transparent 24%),
+    linear-gradient(180deg, #f5faf6 0%, #edf5ef 100%);
+  padding: 24px;
+  box-sizing: border-box;
+}
 
+.ea-page-shell {
+  max-width: 1380px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;   /* panels scroll internally */
-  min-height: 0;
-
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  gap: 22px;
 }
-@supports (height: 100dvh) { .edit-account { height: 100dvh; } }
 
-/* ===== Toolbar (Dark, Sticky, Compact, Edge-to-Edge) ===== */
-.ea-toolbar {
-  position: sticky;
-  top: 0;                        /* sticks just under your app header; set offset if header is fixed */
-  z-index: 20;
+/* HERO */
+.ea-hero-card {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.85fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.ea-hero-copy,
+.ea-hero-stats {
+  background: var(--ea-surface);
+  border: 1px solid var(--ea-border);
+  border-radius: var(--ea-radius-xl);
+  box-shadow: var(--ea-shadow);
+}
+
+.ea-hero-copy {
+  padding: 28px 30px;
+}
+
+.ea-kicker {
+  display: inline-block;
+  margin-bottom: 10px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ea-primary);
+}
+
+.ea-page-title {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.08;
+  color: var(--ea-primary-strong);
+}
+
+.ea-page-subtitle {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ea-muted);
+}
+
+.ea-hero-stats {
+  display: grid;
+  gap: 12px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
+}
+
+.ea-stat-card {
+  border: 1px solid var(--ea-border);
+  background: var(--ea-surface-soft);
+  border-radius: 16px;
+  padding: 15px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.ea-stat-card span {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ea-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.ea-stat-card strong {
+  font-size: 22px;
+  color: var(--ea-primary);
+}
+
+.ea-stat-card.emphasis {
+  background: linear-gradient(180deg, #eef8ef 0%, #e7f4e9 100%);
+  border-color: #b9d3be;
+}
+
+/* WORKSPACE */
+.ea-workspace {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.ea-sidebar-card,
+.ea-editor-card {
+  background: var(--ea-surface);
+  border: 1px solid var(--ea-border);
+  border-radius: var(--ea-radius-xl);
+  box-shadow: var(--ea-shadow);
+  min-height: 640px;
+}
+
+.ea-sidebar-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ea-editor-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ea-sidebar-head {
+  padding: 20px 20px 14px;
+  border-bottom: 1px solid var(--ea-border);
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
+}
+
+.ea-sidebar-head h2 {
+  margin: 0 0 6px;
+  font-size: 21px;
+  color: var(--ea-primary-strong);
+}
+
+.ea-sidebar-head p {
+  margin: 0;
+  color: var(--ea-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.ea-listbar {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--ea-border);
+  background: #fff;
+}
+
+.ea-list-search {
+  width: 100%;
+  min-height: 44px;
+  border-radius: 12px;
+  border: 1px solid var(--ea-border-strong);
+  padding: 0 14px;
+  outline: none;
+  background: #fff;
+  color: var(--ea-text);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  box-sizing: border-box;
+}
+
+.ea-list-search::placeholder {
+  color: #87a08d;
+}
+
+.ea-list-search:focus {
+  border-color: var(--ea-primary);
+  box-shadow: 0 0 0 4px rgba(15, 90, 32, 0.1);
+}
+
+.ea-list {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ea-list-empty {
+  border: 1px dashed var(--ea-border-strong);
+  border-radius: 14px;
+  background: var(--ea-surface-soft);
+  padding: 18px;
+  text-align: center;
+  color: var(--ea-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ea-item {
+  width: 100%;
+}
+
+.ea-head {
+  width: 100%;
+  border: 1px solid var(--ea-border);
+  background: linear-gradient(180deg, #ffffff, var(--ea-surface-soft));
+  border-radius: 14px;
+  padding: 12px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(2, 6, 23, 0.05);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  text-align: left;
+}
+
+.ea-head:hover {
+  transform: translateY(-1px);
+  border-color: var(--ea-border-strong);
+  box-shadow: 0 10px 18px rgba(2, 6, 23, 0.08);
+}
+
+.ea-head.is-active {
+  border-color: var(--ea-primary);
+  box-shadow: 0 12px 22px rgba(15, 90, 32, 0.12);
+  background: linear-gradient(180deg, #ffffff 0%, #eef8ef 100%);
+}
+
+.ea-head-main {
+  display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  background: #015203;           /* dark toolbar */
-  color: #e5e7eb;
-  border-bottom: 1px solid #1f2937;
-}
-
-.ea-title {
-  font-size: 16px;
-  font-weight: 800;
-  margin: 0;
-  color: #ffffff;
-  letter-spacing: 0.2px;
-}
-.ea-meta {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-left: 8px;
-}
-
-.ea-toolbar-left {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
   min-width: 0;
 }
-.ea-toolbar-right {
+
+.ea-head-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--ea-primary);
+  color: #fff;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  font-weight: 800;
+  flex-shrink: 0;
 }
 
-/* Compact inputs that sit nicely inside the dark toolbar */
-.ea-input,
-.ea-select {
-  height: 32px;
-  padding: 0 10px;
-  font-size: 13px;
-  color: #e5e7eb;
-  background: #1f2937;
-  border: 1px solid #374151;
-  border-radius: 8px;
-  outline: none;
-}
-.ea-input::placeholder { color: #9ca3af; }
-.ea-input:focus,
-.ea-select:focus {
-  box-shadow: 0 0 0 2px rgba(59,130,246,.35);
-}
-
-/* Buttons that match the toolbar density and contrast */
-.ea-back,
-.ea-btn-ghost,
-.ea-btn-outline {
-  height: 32px;
-  padding: 0 12px;
-  font-size: 13px;
-  font-weight: 600;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background .15s ease, transform .02s ease, border-color .15s ease, color .15s ease;
-  border: 1px solid transparent;
-  color: #e5e7eb;
-}
-.ea-back {
-  background: #1f2937;
-  border-color: #374151;
-}
-.ea-back:hover { background: #273244; }
-.ea-btn-outline {
-  background: transparent;
-  border-color: #475569;
-}
-.ea-btn-outline:hover { background: #1f2937; }
-.ea-btn-ghost { background: transparent; }
-.ea-btn-ghost:hover { background: rgba(255,255,255,0.06); }
-.ea-back:active,
-.ea-btn-outline:active,
-.ea-btn-ghost:active { transform: translateY(1px); }
-.ea-back:focus-visible,
-.ea-btn-outline:focus-visible,
-.ea-btn-ghost:focus-visible {
-  box-shadow: 0 0 0 2px rgba(59,130,246,.35);
-}
-
-/* ===== Two-panel grid ===== */
-.ea-two-col {
-  display: grid;
-  grid-template-columns: 340px minmax(0, 1fr);
-  gap: 0;
-  flex: 1 1 auto;
-  width: 100%;
-  min-height: 0; /* allow children to scroll */
-}
-
-/* ===== LEFT PANEL ===== */
-.ea-sidebar {
-  border-right: 1px solid var(--border);
-  background: var(--panel);
-  padding: 12px;
-
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-  min-height: 0;
-}
-
-.ea-item { margin-bottom: 10px; }
-.ea-head {
-  background: linear-gradient(180deg, #ffffff, var(--panel-alt));
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  color: var(--text);
-  padding: 12px 14px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-
-  box-shadow: 0 4px 12px rgba(2,6,23,0.06);
-  transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease;
-}
-.ea-head strong { font-weight: 700; letter-spacing: 0.2px; }
-.ea-head:hover { background: #fff; border-color: var(--border-strong); transform: translateY(-1px); box-shadow: 0 10px 18px rgba(2,6,23,0.08); }
-.ea-head.is-active { border-color: var(--accent); box-shadow: 0 10px 18px rgba(46,125,50,0.12); }
-
-/* ===== RIGHT PANEL container ===== */
-.ea-editor {
-  position: relative;        /* anchor for sheet & handle */
-  background: var(--bg);
-  overflow: hidden;          /* sheet owns scroll on mobile */
-  min-height: 0;
-}
-
-/* ===== SHEET (Desktop: normal fill card) ===== */
-.ea-sheet {
-  height: 100%;
+.ea-head-copy {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  padding: 16px;
-  background: var(--panel);
-  min-height: 0;            /* allow inner scroll */
-
-  /* Kill the “long line” on desktop */
-  border-top: none !important;
-  outline: 0 !important;
-  box-shadow: none !important;
-  background-image: none !important;
-
-  /* keep only a subtle left divider between columns */
-  border-left: 1px solid var(--border);
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-.ea-editor hr,
-.ea-sheet hr,
-.ea-sheet::before,
-.ea-sheet::after { display: none; }
-
-/* Shared content: card look */
-.ea-placeholder,
-.ea-form {
-  background: #fff;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-
-  flex: 1 1 auto;
-  min-height: 0;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
-
-  box-shadow: 0 6px 16px rgba(2,6,23,0.06);
+  gap: 2px;
 }
 
-/* Empty state (Select an account) */
-.ea-placeholder--centered {
-  display: grid;
-  place-items: center;
-  text-align: center;
-}
-.ea-empty-title {
-  font-size: clamp(22px, 4.6vw, 28px);
+.ea-username {
+  color: var(--ea-text);
+  font-size: 15px;
   font-weight: 800;
-  margin: 6px 0 6px;
-  letter-spacing: 0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+
+.ea-email {
+  color: var(--ea-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ea-role,
+.ea-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.ea-role-drrmo {
+  background: #eef5ff;
+  color: #2563eb;
+}
+
+.ea-role-barangay {
+  background: #eef8ef;
+  color: var(--ea-primary);
+}
+
+/* RIGHT SIDE */
+.ea-countbar {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-bottom: 1px solid var(--ea-border);
+  color: #8aa093;
+  font-size: 13px;
+  font-weight: 700;
+  background: #ffffff;
+}
+
+.ea-placeholder {
+  flex: 1;
+  margin: 18px;
+  border: 1px dashed var(--ea-border-strong);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fcf9 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ea-placeholder--centered {
+  text-align: center;
+  padding: 24px;
+}
+
+.ea-empty-illustration {
+  font-size: 42px;
+  margin-bottom: 14px;
+}
+
+.ea-empty-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ea-primary-strong);
+  margin-bottom: 6px;
+}
+
 .ea-empty-sub {
-  color: var(--muted);
+  color: var(--ea-muted);
   font-size: 14px;
   max-width: 34ch;
+  line-height: 1.55;
   margin: 0 auto;
 }
 
-/* Form grid & inputs */
-.ea-form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  align-content: start;
-}
-.ea-form > label {
-  color: var(--muted);
-  font-size: 13px;
-  align-self: end;
-}
-.ea-form > input {
-  background: #fff;
-  color: var(--text);
-  border: 1px solid var(--border-strong);
-  border-radius: 10px;
-  padding: 10px 12px;
-  outline: none;
-  transition: border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
-}
-.ea-form > input::placeholder { color: #94a3b8; }
-.ea-form > input:focus { border-color: var(--accent); box-shadow: var(--ring); }
-
-/* Buttons row */
-.ea-actions {
-  grid-column: 1 / -1;
+.ea-editor-scroll {
+  padding: 18px;
   display: flex;
-  gap: 10px;
-  margin-top: 6px;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.ea-profile-card,
+.ea-section-block {
+  border: 1px solid var(--ea-border);
+  border-radius: 20px;
+  background: var(--ea-surface);
+  box-shadow: 0 8px 18px rgba(2, 6, 23, 0.04);
+}
+
+.ea-profile-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbf8 100%);
+}
+
+.ea-profile-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--ea-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 900;
+  flex-shrink: 0;
+}
+
+.ea-profile-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.ea-profile-copy h3 {
+  margin: 0 0 5px;
+  font-size: 22px;
+  color: var(--ea-primary-strong);
+}
+
+.ea-profile-copy p {
+  margin: 0;
+  color: var(--ea-muted);
+  font-size: 14px;
+  word-break: break-word;
+}
+
+.ea-section-block {
+  padding: 18px;
+}
+
+.ea-section-header {
+  margin-bottom: 14px;
+}
+
+.ea-section-header h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: var(--ea-primary-strong);
+}
+
+.ea-section-header p {
+  margin: 0;
+  color: var(--ea-muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.ea-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
+}
+
+.ea-field {
+  min-width: 0;
+}
+
+.ea-field-full {
+  grid-column: 1 / -1;
+}
+
+.ea-field label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ea-primary);
+}
+
+.ea-field input {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid var(--ea-border-strong);
+  padding: 0 14px;
+  outline: none;
+  background: #fff;
+  color: var(--ea-text);
+  box-sizing: border-box;
+  transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+}
+
+.ea-field input::placeholder {
+  color: #87a08d;
+}
+
+.ea-field input:focus {
+  border-color: var(--ea-primary);
+  box-shadow: 0 0 0 4px rgba(15, 90, 32, 0.1);
+  transform: translateY(-1px);
+}
+
+.ea-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .ea-btn {
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-weight: 700;
+  min-height: 48px;
+  padding: 0 18px;
+  border-radius: 14px;
+  border: none;
+  font-size: 14px;
+  font-weight: 800;
   cursor: pointer;
-  border: 1px solid rgba(2,6,23,0.08);
-  transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease, border-color 120ms ease;
+  transition: transform 0.16s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
-.ea-btn-primary { background: var(--accent) !important; color: #fff !important; box-shadow: 0 10px 22px rgba(46,125,50,0.18); }
-.ea-btn-primary:hover { transform: translateY(-1px); filter: brightness(1.02); }
-.ea-btn-primary:active { background: var(--accent-press) !important; }
-.ea-btn-danger  { background: var(--danger)  !important; color: #fff !important; box-shadow: 0 10px 22px rgba(239,68,68,0.16); }
-.ea-btn-danger:hover { transform: translateY(-1px); filter: brightness(1.02); }
-.ea-btn-danger:active { background: var(--danger-press) !important; }
 
-/* ===== MOBILE: sheet resizes via --sheet-open + inner content scroll ===== */
-@media (max-width: 960px) {
-  .ea-two-col {
+.ea-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.ea-btn:disabled {
+  opacity: 0.72;
+  cursor: not-allowed;
+}
+
+.ea-btn-primary {
+  background: linear-gradient(180deg, var(--ea-success) 0%, #1f6a27 100%);
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(46, 125, 50, 0.18);
+}
+
+.ea-btn-danger {
+  background: linear-gradient(180deg, #ef4444 0%, var(--ea-danger) 100%);
+  color: #fff;
+  box-shadow: 0 14px 26px rgba(220, 38, 38, 0.16);
+}
+
+/* ANIMATION */
+.ea-hero-copy,
+.ea-hero-stats,
+.ea-sidebar-card,
+.ea-editor-card,
+.ea-profile-card,
+.ea-section-block,
+.ea-placeholder {
+  animation: eaFadeUp 0.38s ease;
+}
+
+@keyframes eaFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* RESPONSIVE */
+@media (max-width: 1180px) {
+  .ea-hero-card {
     grid-template-columns: 1fr;
-    /* give the right region height (sheet sits inside and resizes) */
-    grid-template-rows: calc(var(--vh, 1vh) * 36) 1fr;
-    min-height: 0;
   }
 
-  .ea-editor { padding: 0; min-height: 0; }
-
-  /* Bottom sheet pinned to bottom.
-     HEIGHT is driven by --sheet-open (set by JS when dragging). */
-  .ea-sheet {
-    position: absolute;
-    left: 0; right: 0; bottom: 0;
-
-    height: calc(var(--sheet-open, 0.96) * 100%);  /* default 96% */
-    max-height: 100%;
-    transition: height 220ms ease;
-
-    border-top-left-radius: 16px;
-    border-top-right-radius: 16px;
-    border: 1px solid var(--border);
-    border-bottom: none;
-    box-shadow: 0 -12px 28px rgba(2,6,23,0.16);
-
-    overflow: hidden;                 /* content scrolls below */
-    padding: 16px;
-    padding-top: 96px;                /* reserve space so handle doesn't cover inputs */
-    z-index: 2;
-  }
-
-  /* REAL handle inside the sheet (attached), extends above edge, high z-index */
-  .ea-sheet-handle {
-    position: absolute;
-    left: 50%;
-    top: 0;
-    transform: translate(-50%, -70%);
-    height: 56px;
-    width: 160px;
+  .ea-hero-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     display: grid;
-    place-items: center;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    box-shadow: 0 14px 28px rgba(2,6,23,0.20);
-    z-index: 1000;
-
-    touch-action: none;       /* JS will call preventDefault during drag */
-    -webkit-user-select: none;
-    user-select: none;
-    cursor: ns-resize;
-  }
-  .ea-sheet-handle::before {
-    content: "";
-    width: 72px;
-    height: 8px;
-    border-radius: 999px;
-    background: #cbd5e1;
-    box-shadow: inset 0 1px 0 rgba(0,0,0,0.06);
   }
 
-  /* Content itself scrolls; add safe padding for bottom buttons */
-  .ea-placeholder,
-  .ea-form {
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
-    max-height: none;
-    padding-bottom: max(56px, env(safe-area-inset-bottom, 0px));
-  }
-
-  .ea-form { grid-template-columns: 1fr; }
-  .ea-actions { flex-direction: column; }
-  .ea-actions .ea-btn { width: 100%; }
-}
-
-/***** === UNIFY BACKGROUND TO PURE WHITE === *****/
-/* Make the whole work area white so nothing shows a different tint while dragging */
-.edit-account,
-.ea-two-col,
-.ea-sidebar,
-.ea-editor {
-  background: #fff !important;
-}
-
-/* The sheet is white. Remove any inner gradient/tint. */
-.ea-sheet {
-  background: #fff !important;
-  background-image: none !important;
-}
-
-/* If any pseudo overlays or hairlines were left by global styles, kill them */
-.ea-editor::before,
-.ea-editor::after,
-.ea-sheet::before,
-.ea-sheet::after {
-  content: none !important;
-}
-
-/***** === REMOVE THE STRAY “LINE” ABOVE THE FORM ON WEB (DESKTOP) ===*****/
-@media (min-width: 961px) {
-  /* Ensure the panel doesn't draw a top border/line */
-  .ea-sheet {
-    border-top: 0 !important;
-    outline: 0 !important;
-    box-shadow: none !important;  /* prevents an inset top line from shadows */
-  }
-  /* First card inside panel should not show its top hairline */
-  .ea-sheet > .ea-form,
-  .ea-sheet > .ea-placeholder {
-    border-top-color: transparent !important;
-  }
-  /* Hide any hr that might be injected by a global reset */
-  .ea-editor hr,
-  .ea-sheet hr {
-    display: none !important;
+  .ea-workspace {
+    grid-template-columns: 280px minmax(0, 1fr);
   }
 }
 
-/***** === KEEP CARDS, LIST, AND BUTTONS LOOKING GOOD (NO COLOR CASTS) ===*****/
-/* Left list items keep their existing look—no green halo bleed */
-.ea-head {
-  background: #fff !important;
-}
-.ea-head:hover {
-  background: #fff !important;
-}
-
-/* Buttons: enforce correct colors */
-.ea-btn-primary {
-  background: #2e7d32 !important; /* Update = green */
-  color: #fff !important;
-}
-.ea-btn-danger {
-  background: #ef4444 !important; /* Archive = red */
-  color: #fff !important;
-}
-
-/***** === MOBILE SHEET: WHITE BEHIND & ABOVE WHILE DRAGGING ===*****/
-@media (max-width: 960px) {
-  /* The right region under the sheet is white */
-  .ea-editor {
-    background: #fff !important;
+@media (max-width: 920px) {
+  .edit-account {
+    padding: 16px;
   }
-  /* The sheet is white, no tint */
-  .ea-sheet {
-    background: #fff !important;
-    border-color: #e5e7eb !important;   /* soft border only */
-    box-shadow: 0 -8px 24px rgba(0,0,0,0.10) !important; /* subtle, neutral shadow */
+
+  .ea-workspace {
+    grid-template-columns: 1fr;
   }
-  /* The handle pill remains white and on top (no blue/grey halos) */
-  .ea-sheet-handle {
-    background: #fff !important;
-    border-color: #e5e7eb !important;
-    box-shadow: 0 10px 22px rgba(0,0,0,0.12) !important;
-    z-index: 1000 !important;
+
+  .ea-sidebar-card,
+  .ea-editor-card {
+    min-height: auto;
+  }
+
+  .ea-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ea-field-full {
+    grid-column: auto;
+  }
+
+  .ea-hero-copy,
+  .ea-sidebar-head,
+  .ea-editor-scroll,
+  .ea-section-block,
+  .ea-profile-card {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .ea-hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-/***** FINAL FIX — REMOVE GRAY LINE ABOVE FIRST FIELD (DESKTOP) *****/
-
-/* Make sure the right half is pure white (no tint shows through) */
-.ea-editor,
-.ea-sheet {
-  background: #fff !important;
-}
-
-/* Kill any top borders/outlines/shadows that can render a hairline */
-@media (min-width: 961px) {
-  .ea-sheet {
-    border-top: 0 !important;
-    outline: 0 !important;
-    box-shadow: none !important;            /* remove inset hairlines */
-    background-image: none !important;
+@media (max-width: 560px) {
+  .edit-account {
+    padding: 12px;
   }
 
-  /* If a layout wrapper/card adds a top hairline, hide it on the first stack item */
-  .ea-sheet > *:first-child {
-    border-top: 0 !important;
-    background-image: none !important;
-    box-shadow: 0 6px 16px rgba(2,6,23,0.06);  /* keep depth without a top edge */
+  .ea-page-shell {
+    gap: 16px;
   }
 
-  /* Hide any <hr> or "separator" elements inside the right panel */
-  .ea-editor hr,
-  .ea-sheet hr,
-  .ea-editor [role="separator"],
-  .ea-sheet [role="separator"] {
-    display: none !important;
+  .ea-page-title {
+    font-size: 26px;
   }
 
-  /* Some UI libs draw separators with pseudo-elements: kill them */
-  .ea-editor::before,
-  .ea-editor::after,
-  .ea-sheet::before,
-  .ea-sheet::after {
-    content: none !important;
+  .ea-hero-copy,
+  .ea-sidebar-card,
+  .ea-editor-card {
+    border-radius: 20px;
   }
 
-  /* If a global rule adds a top border on the immediate container under the toolbar,
-     this selector zaps it (the container right under the toolbar row). */
-  .ea-two-col > :nth-child(2) {
-    border-top: 0 !important;
-    box-shadow: none !important;
-    background-image: none !important;
-  }
-}
-
-/***** KEEP LEFT LIST + BUTTONS LOOKING RIGHT (no color casts) *****/
-
-/* Left list active row: no unexpected halo—use neutral border */
-.ea-head.is-active {
-  border-color: #0f2942 !important;                 /* matches your header/nav */
-  box-shadow: 0 0 0 2px rgba(15,41,66,0.20), 0 8px 18px rgba(2,6,23,0.08) !important;
-}
-
-/* Buttons: enforce your colors */
-.ea-btn-primary {
-  background: #2e7d32 !important; /* Update = green */
-  color: #fff !important;
-}
-.ea-btn-danger {
-  background: #ef4444 !important; /* Archive = red */
-  color: #fff !important;
-}
-
-/***** MOBILE: keep white behind the sheet while dragging *****/
-@media (max-width: 960px) {
-  .ea-editor,
-  .ea-sheet {
-    background: #fff !important;
+  .ea-hero-stats {
+    grid-template-columns: 1fr;
   }
 
-  /* Keep handle clean white, no halo */
-  .ea-sheet-handle {
-    background: #fff !important;
-    border-color: #e5e7eb !important;
-    box-shadow: 0 10px 22px rgba(0,0,0,0.12) !important;
-    z-index: 1000 !important;
+  .ea-actions {
+    flex-direction: column;
+  }
+
+  .ea-btn {
+    width: 100%;
+  }
+
+  .ea-profile-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
   }
 }
 /* === Move toolbar into right panel: hide the old top bar === */

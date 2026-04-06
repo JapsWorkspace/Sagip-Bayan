@@ -1,8 +1,7 @@
 const express = require('express');
-const { getReliefTracking } = require('../controllers/reliefTrackingController.js');
-
 const router = express.Router();
+const controller = require('../controllers/reliefTrackingController');
 
-router.get('/', getReliefTracking);
+router.get('/', controller.getReliefTracking);
 
 module.exports = router;

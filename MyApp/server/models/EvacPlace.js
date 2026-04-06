@@ -2,20 +2,31 @@ const mongoose = require("mongoose");
 
 const placeSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    location: { type: String, required: true }, // e.g. "Elementary School"
-    barangay: { type: String, required: true },
+    name: { type: String, required: true, trim: true },
+    location: { type: String, required: true, trim: true },
+
+    barangayId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Barangay",
+      required: true,
+    },
+
+    barangayName: {
+      type: String,
+      required: true,
+      trim: true,
+    },
 
     latitude: { type: Number, required: true },
     longitude: { type: Number, required: true },
 
-    // Capacity (expanded)
-    capacityIndividual: { type: Number, required: true },
-    capacityFamily: { type: Number, required: true },
-    bedCapacity: { type: Number, default: 0 },
+    // Capacity
+    capacityIndividual: { type: Number, required: true, min: 0 },
+    capacityFamily: { type: Number, required: true, min: 0 },
+    bedCapacity: { type: Number, default: 0, min: 0 },
 
     // Infrastructure
-    floorArea: { type: Number }, // in sq.m.
+    floorArea: { type: Number, default: 0, min: 0 },
 
     // Facilities
     femaleCR: { type: Boolean, default: false },
@@ -25,7 +36,7 @@ const placeSchema = new mongoose.Schema(
     potableWater: { type: Boolean, default: false },
     nonPotableWater: { type: Boolean, default: false },
 
-    foodPackCapacity: { type: Number, default: 0 },
+    foodPackCapacity: { type: Number, default: 0, min: 0 },
 
     // Flags
     isPermanent: { type: Boolean, default: false },
@@ -37,9 +48,32 @@ const placeSchema = new mongoose.Schema(
       enum: ["available", "limited", "full"],
       default: "available",
     },
+
+    remarks: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
+
+    archivedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
+placeSchema.index(
+  { barangayId: 1, name: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { isArchived: false },
+  }
+);
 
 module.exports = mongoose.model("EvacPlace", placeSchema);

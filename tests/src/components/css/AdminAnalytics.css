@@ -1,5 +1,6 @@
 /* src/components/css/AdminAnalytics.css */
 
+<<<<<<< HEAD
 /* Root: fill the shell's content area and use vertical scrolling only */
 .analytics-page {
   --text: #0b1b12;          /* dark greenish text for headings/ticks */
@@ -8,12 +9,22 @@
   --ring: #14532d;          /* borders */
   --card: #f0fdf4;          /* very light green */
   --page: #ecfdf5;          /* page background */
+=======
+.analytics-page {
+  --text: #0b1b12;
+  --subtle: #14532d;
+  --muted: #166534;
+  --ring: #14532d;
+  --card: #f0fdf4;
+  --page: #ecfdf5;
+>>>>>>> upstream/myapp-update
   --shadow: 0 8px 16px rgba(16, 185, 129, 0.18);
 
   display: flex;
   flex-direction: column;
   width: 100%;
   height: 100%;
+<<<<<<< HEAD
   min-height: 0;         /* allow child to manage overflow */
   background: var(--page);
   overflow: hidden;       /* prevent sideways scroll bleed */
@@ -42,33 +53,102 @@
   justify-content: space-between;
   align-items: flex-end;
 }
+=======
+  min-height: 0;
+  background: var(--page);
+  overflow: hidden;
+}
+
+.analytics-page .analytics-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.analytics-page .analytics-container {
+  width: min(1200px, 98vw);
+  margin-inline: auto;
+  padding: 10px 8px 18px 8px;
+  color: var(--text);
+}
+
+.analytics-page .analytics-header {
+  margin: 0 0 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .analytics-title {
   font-size: 22px;
   font-weight: 800;
   margin: 0 0 2px 2px;
+<<<<<<< HEAD
   color: var(--text);      /* darker title as requested */
 }
 .analytics-page .analytics-subtitle {
   color: var(--subtle);    /* darker subtitle as requested */
+=======
+  color: var(--text);
+}
+
+.analytics-page .analytics-subtitle {
+  color: var(--subtle);
+>>>>>>> upstream/myapp-update
   margin-left: 2px;
   font-size: 13px;
   line-height: 1.2;
 }
 
+<<<<<<< HEAD
 /* KPIs grid */
+=======
+.analytics-page .analytics-header-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .analytics-metric-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
 }
+<<<<<<< HEAD
 @media (max-width: 1100px) { .analytics-page .analytics-metric-grid { grid-template-columns: repeat(4, 1fr); } }
 @media (max-width: 900px)  { .analytics-page .analytics-metric-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 640px)  { .analytics-page .analytics-metric-grid { grid-template-columns: repeat(2, 1fr); } }
+=======
+
+@media (max-width: 1100px) {
+  .analytics-page .analytics-metric-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .analytics-page .analytics-metric-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .analytics-page .analytics-metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+>>>>>>> upstream/myapp-update
 
 .analytics-page .a-metric-card {
   background: var(--card);
   border: 1px solid var(--ring);
   border-radius: 10px;
+<<<<<<< HEAD
   padding: 8px;           /* compact */
   box-shadow: var(--shadow);
 }
@@ -77,11 +157,25 @@
   color: var(--muted);
   letter-spacing: .2px;
 }
+=======
+  padding: 8px;
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+
+.analytics-page .a-metric-label {
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.2px;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .a-metric-value {
   margin-top: 2px;
   font-weight: 800;
   font-size: 19px;
   color: var(--text);
+<<<<<<< HEAD
 }
 
 /* Charts grid */
@@ -93,15 +187,39 @@
 }
 @media (max-width: 900px) {
   .analytics-page .analytics-chart-grid { grid-template-columns: 1fr; }
+=======
+  line-height: 1.1;
+  word-break: break-word;
+}
+
+.analytics-page .analytics-chart-grid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 900px) {
+  .analytics-page .analytics-chart-grid {
+    grid-template-columns: 1fr;
+  }
+>>>>>>> upstream/myapp-update
 }
 
 .analytics-page .a-card {
   background: var(--card);
   border: 1px solid var(--ring);
   border-radius: 10px;
+<<<<<<< HEAD
   padding: 8px;           /* compact */
   box-shadow: var(--shadow);
 }
+=======
+  padding: 8px;
+  box-shadow: var(--shadow);
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .a-card-title {
   font-size: 13px;
   font-weight: 700;
@@ -109,17 +227,30 @@
   color: var(--subtle);
 }
 
+<<<<<<< HEAD
 /* ✅ Ensure charts always render and never cause horizontal overflow */
 .analytics-page .a-chart-body {
   position: relative;
   height: 260px;          /* more compact height; adjust if needed */
   width: 100%;
 }
+=======
+.analytics-page .a-chart-body {
+  position: relative;
+  height: 260px;
+  width: 100%;
+  min-width: 0;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .a-chart-card--full .a-chart-body {
   height: 300px;
 }
 
+<<<<<<< HEAD
 /* Legends under charts (kept, compact, no extra white space) */
+=======
+>>>>>>> upstream/myapp-update
 .analytics-page .a-legend-inline {
   display: flex;
   flex-wrap: wrap;
@@ -129,7 +260,15 @@
   color: var(--subtle);
   font-size: 12px;
 }
+<<<<<<< HEAD
 .analytics-page .a-legend-inline--tight { margin-bottom: 2px; } /* keep cards tight to next section */
+=======
+
+.analytics-page .a-legend-inline--tight {
+  margin-bottom: 2px;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page .a-legend-dot {
   width: 10px;
   height: 10px;
@@ -137,6 +276,7 @@
   display: inline-block;
   margin: 0 6px 0 2px;
 }
+<<<<<<< HEAD
 /* ===========================
    ANALYTICS: LAST-RESORT FIX
    Paste at the very end of your CSS bundle
@@ -295,6 +435,20 @@ html, body {
 }
 
 /* If some global rule is adding margins/paddings to sections/cards, neutralize them here */
+=======
+
+html,
+body {
+  height: 100% !important;
+}
+
+.analytics-page,
+.analytics-page * {
+  box-sizing: border-box !important;
+  max-width: 100%;
+}
+
+>>>>>>> upstream/myapp-update
 .analytics-page section,
 .analytics-page .card,
 .analytics-page .a-card {
@@ -302,9 +456,21 @@ html, body {
   margin-right: 0 !important;
 }
 
+<<<<<<< HEAD
 /* Optional: if your shell injects inner padding around content, pull the analytics out to edges */
 .analytics-page .analytics-container {
   /* Uncomment if you still see left/right gutters you don’t want */
   /* padding-left: 0 !important;
      padding-right: 0 !important; */
+=======
+@media (max-width: 768px) {
+  .analytics-page .analytics-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .analytics-page .analytics-header-actions {
+    justify-content: flex-start;
+  }
+>>>>>>> upstream/myapp-update
 }

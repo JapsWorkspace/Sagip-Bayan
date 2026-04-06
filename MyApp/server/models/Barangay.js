@@ -1,46 +1,61 @@
 const mongoose = require('mongoose');
 
-const categorySchema = new mongoose.Schema({
-  active: { type: Boolean, default: false },
-  status: {
-    type: String,
-    enum: ['requested', 'approved', 'received'],
-    default: null
+const BARANGAY_OPTIONS = [
+  "Bagong Sikat",
+  "Bagong Silang",
+  "Calabasa",
+  "Don Mariano Marcos",
+  "Dampulan",
+  "Hilera",
+  "Imelda Poblacion",
+  "Ibunia",
+  "Lambakin",
+  "Langla",
+  "Magsalisi",
+  "Malabon Kaingin",
+  "Marawa",
+  "Niyugan",
+  "Putlod",
+  "San Jose",
+  "San Pablo",
+  "San Roque",
+  "Santo Tomas Norte",
+  "Santo Tomas Sur",
+  "Sapang Putik",
+  "Ulanin-Pitak"
+];
+
+const barangaySchema = new mongoose.Schema(
+  {
+    username: { type: String, required: true, trim: true },
+    email: { type: String, unique: true, required: true, trim: true, lowercase: true },
+    password: { type: String, required: true },
+
+    barangayName: {
+      type: String,
+      required: true,
+      trim: true,
+      enum: BARANGAY_OPTIONS
+    },
+
+    verified: { type: Boolean, default: true },
+
+    phoneNumber: { type: String, required: true, trim: true },
+    hotline: { type: String, default: '', trim: true },
+    address: { type: String, required: true, trim: true },
+
+    archived: { type: Boolean, default: false },
+    archivedAt: { type: Date, default: null }
   },
-  peopleRange: String,
-  requestedAt: Date
-});
+  { timestamps: true }
+);
 
-const barangaySchema = new mongoose.Schema({
-  username: { type: String, required: true },
-  email: { type: String, unique: true, required: true },
-  password: { type: String, required: true },
-  barangayName: { type: String, required: true },
-  verified: { type: Boolean, default: true },
-  phoneNumber: { type: String, required: true },
-  hotline: String,
-  address: { type: String, required: true },
-  archived: { type: Boolean, default: false },
-  archivedAt: { type: Date },
-
-  reliefReq: {
-    food: { type: categorySchema, default: () => ({}) },
-    hygiene: { type: categorySchema, default: () => ({}) },
-    clothing: { type: categorySchema, default: () => ({}) },
-    furniture: { type: categorySchema, default: () => ({}) },
-    medicine: { type: categorySchema, default: () => ({}) },
-  },
-
-  history: [
-    {
-      category: String,
-      peopleRange: String,
-      status: String,
-      actionBy: String,
-      actionByName: String,
-      actionAt: { type: Date, default: Date.now }
-    }
-  ]
-});
+barangaySchema.index(
+  { barangayName: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { archived: false }
+  }
+);
 
 module.exports = mongoose.model('Barangay', barangaySchema);

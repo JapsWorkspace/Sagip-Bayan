@@ -1,12 +1,8 @@
 const express = require('express');
-
-const barangayController = require('../controllers/barangayController');
-
 const router = express.Router();
+const controller = require('../controllers/barangayController');
 
-router.get('/me', barangayController.getMe);
-router.get('/', barangayController.getBarangays);
-router.put('/relief-request', barangayController.submitReliefRequest);
-router.put('/relief-request-action', barangayController.updateOwnReliefRequest);
+router.get('/me', controller.getMe);
+router.get('/', controller.getBarangays);
 
 module.exports = router;

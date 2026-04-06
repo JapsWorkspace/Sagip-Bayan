@@ -4,6 +4,32 @@ const Barangay = require('../models/Barangay.js');
 const ArchivedAccount = require('../models/ArchivedAccount.js');
 const TimeLog = require('../models/TimeLog');
 const AdminLog = require('../models/AdminLog');
+const UserStaff = require('../models/UserStaff.js');
+
+const BARANGAY_OPTIONS = [
+  "Bagong Sikat",
+  "Bagong Silang",
+  "Calabasa",
+  "Don Mariano Marcos",
+  "Dampulan",
+  "Hilera",
+  "Imelda Poblacion",
+  "Ibunia",
+  "Lambakin",
+  "Langla",
+  "Magsalisi",
+  "Malabon Kaingin",
+  "Marawa",
+  "Niyugan",
+  "Putlod",
+  "San Jose",
+  "San Pablo",
+  "San Roque",
+  "Santo Tomas Norte",
+  "Santo Tomas Sur",
+  "Sapang Putik",
+  "Ulanin-Pitak"
+];
 
 /* INIT ADMIN */
 const initAdmin = async (req, res) => {
@@ -37,9 +63,7 @@ const initAdmin = async (req, res) => {
 
 /* REGISTER */
 const register = async (req, res) => {
-
   try {
-
     const {
       role,
       email,
@@ -57,24 +81,40 @@ const register = async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-
     /* BARANGAY ACCOUNT */
     if (role === 'barangay') {
-
       if (!email || !barangay) {
         return res.status(400).json({ message: 'Missing barangay details' });
       }
 
-      const existing = await Barangay.findOne({ email });
+      const normalizedBarangay = String(barangay).trim();
 
-      if (existing)
-        return res.status(400).json({ message: 'Barangay already exists' });
+      if (!BARANGAY_OPTIONS.includes(normalizedBarangay)) {
+        return res.status(400).json({ message: 'Invalid barangay selected' });
+      }
+
+      const existingEmail = await Barangay.findOne({ email });
+
+      if (existingEmail) {
+        return res.status(400).json({ message: 'Barangay email already exists' });
+      }
+
+      const existingBarangay = await Barangay.findOne({
+        barangayName: normalizedBarangay,
+        archived: false
+      });
+
+      if (existingBarangay) {
+        return res.status(400).json({
+          message: 'An active account for this barangay already exists'
+        });
+      }
 
       const barangayUser = await Barangay.create({
         username,
         email,
         password: hashedPassword,
-        barangayName: barangay,
+        barangayName: normalizedBarangay,
         verified: true,
         phoneNumber,
         hotline,
@@ -100,19 +140,18 @@ const register = async (req, res) => {
         hotline,
         address
       });
-
     }
 
-
     /* ADMIN / DRRMO ACCOUNT */
-
-    if (!email)
+    if (!email) {
       return res.status(400).json({ message: 'Email required' });
+    }
 
     const existingUser = await User.findOne({ email });
 
-    if (existingUser)
+    if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
+    }
 
     const user = await User.create({
       username,
@@ -142,12 +181,22 @@ const register = async (req, res) => {
       hotline,
       address
     });
-
   } catch (err) {
-
     console.error(err);
-    res.status(500).json({ message: err.message });
 
+    if (err.code === 11000 && err.keyPattern?.barangayName) {
+      return res.status(400).json({
+        message: 'An active account for this barangay already exists'
+      });
+    }
+
+    if (err.code === 11000 && err.keyPattern?.email) {
+      return res.status(400).json({
+        message: 'Email already exists'
+      });
+    }
+
+    res.status(500).json({ message: err.message });
   }
 };
 
@@ -157,7 +206,8 @@ const login = async (req, res) => {
   try {
 
     const { email, password } = req.body;
-    let account = await User.findOne({ email });
+
+    let account = await UserStaff.findOne({ email });
     let role = account ? account.role : null;
     let barangayName = null;
 
@@ -197,30 +247,43 @@ const login = async (req, res) => {
     if (!match)
       return res.status(401).json({ message: 'Invalid email or password' });
 
+console.log("LOGIN ACCOUNT:", {
+  id: account._id,
+  email: account.email,
+  username: account.username,
+  role
+});
 
-    req.session.userId = account._id;
-    req.session.role = role;
-    req.session.username = account.username;
+req.session.userId = account._id;
+req.session.role = role;
+req.session.username = account.username;
+
+console.log("SESSION BEFORE SAVE:", req.session);
 
 
-    await TimeLog.create({
+   req.session.save(async (err) => {
+  if (err) {
+    return res.status(500).json({ message: "Session save failed" });
+  }
 
-      user: account._id,
-      userModel: role === 'barangay' ? 'Barangay' : 'UserStaff',
-      username: account.username,
-      role,
-      barangay: barangayName,
-      timeIn: new Date(),
-      timeOut: null
-    });
+  await TimeLog.create({
+    user: account._id,
+    userModel: role === 'barangay' ? 'Barangay' : 'UserStaff',
+    username: account.username,
+    role,
+    barangay: barangayName,
+    timeIn: new Date(),
+    timeOut: null
+  });
 
-    res.json({
-      username: account.username,
-      email: account.email,
-      role,
-      verified: account.verified,
-      ...(role === 'barangay' && { barangay: barangayName })
-    });
+  res.json({
+    username: account.username,
+    email: account.email,
+    role,
+    verified: account.verified,
+    ...(role === 'barangay' && { barangay: barangayName })
+  });
+});
 
   } catch (err) {
 
@@ -510,6 +573,55 @@ const getAdminLogs = async (req, res) => {
   }
 };
 
+const getAvailableBarangays = async (req, res) => {
+  try {
+    const BARANGAY_OPTIONS = [
+      "Bagong Sikat",
+      "Bagong Silang",
+      "Calabasa",
+      "Don Mariano Marcos",
+      "Dampulan",
+      "Hilera",
+      "Imelda Poblacion",
+      "Ibunia",
+      "Lambakin",
+      "Langla",
+      "Magsalisi",
+      "Malabon Kaingin",
+      "Marawa",
+      "Niyugan",
+      "Putlod",
+      "San Jose",
+      "San Pablo",
+      "San Roque",
+      "Santo Tomas Norte",
+      "Santo Tomas Sur",
+      "Sapang Putik",
+      "Ulanin-Pitak"
+    ];
+
+    const existingBarangays = await Barangay.find(
+      { archived: false },
+      'barangayName'
+    ).lean();
+
+    const usedBarangays = existingBarangays.map(item => item.barangayName);
+
+    const availableBarangays = BARANGAY_OPTIONS.filter(
+      name => !usedBarangays.includes(name)
+    );
+
+    res.json({
+      all: BARANGAY_OPTIONS,
+      used: usedBarangays,
+      available: availableBarangays
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
 
 module.exports = {
 
@@ -522,6 +634,7 @@ module.exports = {
   archiveAccount,
   restoreAccount,
   getArchivedAccounts,
-  getAdminLogs
+  getAdminLogs,
+  getAvailableBarangays
 
 };

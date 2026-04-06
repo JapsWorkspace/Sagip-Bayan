@@ -4,6 +4,7 @@ import DashboardShell from '../layout/DashboardShell';
 
 function DRRMODashboard() {
   const navigate = useNavigate();
+<<<<<<< HEAD
   
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
@@ -12,6 +13,18 @@ function DRRMODashboard() {
     }
   }, [navigate]);
 
+=======
+
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+  
+  useEffect(() => {
+    const storedRole = localStorage.getItem('role');
+    if (!storedRole) {
+      navigate('/'); // redirect to login
+    }
+  }, [navigate]);
+
+>>>>>>> upstream/myapp-update
   const handleLogout = () => {
     localStorage.clear(); // clear session
     navigate('/'); // redirect to login

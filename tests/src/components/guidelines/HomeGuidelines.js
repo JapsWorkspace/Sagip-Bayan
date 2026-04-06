@@ -21,22 +21,36 @@ export default function GuidelinesScreen() {
   const [editPriority, setEditPriority] = useState("");
   const [editFiles, setEditFiles] = useState([]);
 
-  const BASE_URL = "http://localhost:8000/api/guidelines/";
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
 
   useEffect(() => {
     fetchGuidelines();
   }, []);
 
   const fetchGuidelines = async () => {
-    try {
-      const response = await axios.get(BASE_URL);
-      setGuidelines(response.data);
-    } catch (error) {
-      console.error(error.message);
-    } finally {
-      setLoading(false);
+  try {
+    const response = await axios.get(BASE_URL);
+    console.log("API response:", response.data); // 🔹 check the shape
+
+    // Safely extract the array of guidelines
+    let data = [];
+    if (Array.isArray(response.data)) {
+      data = response.data;
+    } else if (Array.isArray(response.data.guidelines)) {
+      data = response.data.guidelines;
+    } else if (Array.isArray(response.data.data)) {
+      data = response.data.data;
+    } else {
+      console.warn("Guidelines API did not return an array:", response.data);
     }
-  };
+
+    setGuidelines(data);
+  } catch (error) {
+    console.error(error.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const pickFile = (event) => {
     const selectedFiles = Array.from(event.target.files);

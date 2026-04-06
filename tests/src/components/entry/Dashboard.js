@@ -13,13 +13,7 @@ import {
 } from "react-icons/fa";
 import "../css/Dashboard.css";
 
-/**
- * NOTE on assets:
- * If any of these imports fail (wrong path / missing file), the variable will be undefined.
- * This component guards against that and shows a placeholder instead—so the app won’t crash.
- */
 import jaenlogo from "../../assets/images/jaenlogo.png";
-
 import hero1 from "../../assets/images/hero1.jpg";
 import hero2 from "../../assets/images/hero2.jpg";
 import hero3 from "../../assets/images/hero3.jpg";
@@ -32,7 +26,6 @@ import news1 from "../../assets/images/news1.png";
 import forecast from "../../assets/images/forecast.png";
 import nelogo from "../../assets/images/nelogo.png";
 
-/** Simple placeholder block you can drop in for any missing image */
 function PlaceholderImg({
   width = "100%",
   height = 280,
@@ -65,12 +58,10 @@ const heroImages = [hero2, hero1, hero3];
 function Dashboard() {
   const navigate = useNavigate();
   const [currentHero, setCurrentHero] = useState(0);
-
   const [showSplash, setShowSplash] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
   const [dotCount, setDotCount] = useState(0);
 
-  // Rotate the hero image every 3.5s
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentHero((prev) => (prev + 1) % heroImages.length);
@@ -78,12 +69,11 @@ function Dashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Splash → Login (for Account link)
   const startSplash = (e) => {
     if (e) e.preventDefault();
     setShowSplash(true);
-    let localDot = 0;
 
+    let localDot = 0;
     const dotInterval = setInterval(() => {
       localDot = localDot < 4 ? localDot + 1 : 0;
       setDotCount(localDot);
@@ -98,34 +88,28 @@ function Dashboard() {
     }, 4000);
   };
 
-  // Hotline helpers
   const call = (num) => window.open(`tel:${num}`);
   const sms = (num) => window.open(`sms:${num}`);
   const email = (addr) => window.open(`mailto:${addr}`);
 
   const heroBg = heroImages[currentHero] || null;
 
-  // ✅ Smooth scroll to the Localized Weather section
   const scrollToWeather = () => {
     const el = document.getElementById("weather");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    if (el) el.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
     <div className="dashboard-page">
       <div className="dashboard" id="home">
+
         {/* HEADER */}
         <header className="dashboard-header">
           <div className="brand-left">
-            {/* Small logo; if missing -> logo placeholder */}
             {jaenlogo ? (
               <img src={jaenlogo} alt="Jaen Logo" className="logo-img" />
             ) : (
-              <div className="logo-fallback" aria-label="Logo placeholder">
-                LOGO
-              </div>
+              <div className="logo-fallback">LOGO</div>
             )}
 
             <div className="brand-text">
@@ -140,7 +124,9 @@ function Dashboard() {
               className="header-search"
               placeholder="Search (Weather, News, Hazard Map...)"
             />
-            <nav className="nav-links" aria-label="Main">
+
+            {/* ✅ FIXED NAV */}
+            <nav className="nav-links">
               <a href="#home">Home</a>
               <a href="#account" onClick={startSplash}>
                 Account
@@ -149,65 +135,33 @@ function Dashboard() {
           </div>
         </header>
 
-        {/* HERO (full-screen; stays full-width) */}
+        {/* HERO */}
         <section
           className={`hero ${heroBg ? "hero-has-bg" : ""}`}
-          style={heroBg ? { backgroundImage: `url(${heroBg})` } : undefined}
+          style={heroBg ? { backgroundImage: `url(${heroBg})` } : {}}
         >
-          {!heroBg && (
-            <div style={{ width: "100%", maxWidth: 1140, padding: "0 24px" }}>
-              <PlaceholderImg height={460} label="Hero banner" />
-            </div>
-          )}
+          {!heroBg && <PlaceholderImg height={460} />}
 
           <div className="hero-overlay">
             <h1>Welcome to Jaen DRRMO</h1>
             <p>
-              Manage evacuation centers, relief operations, and official
-              announcements efficiently.
+              Manage evacuation centers, relief operations, and announcements.
             </p>
-            {/* ✅ Scroll to Localized Weather */}
-            <button type="button" className="hero-btn" onClick={scrollToWeather}>
+            <button className="hero-btn" onClick={scrollToWeather}>
               Learn More
             </button>
           </div>
         </section>
 
-        {/* LOCALIZED WEATHER FORECAST */}
+        {/* WEATHER */}
         <section className="weather-section" id="weather">
-          <div className="section-wrapper">
-            <div className="weather-header">
-              <h2>LOCALIZED WEATHER FORECAST</h2>
-            </div>
+          <h2>LOCALIZED WEATHER FORECAST</h2>
 
-            <div className="weather-content">
-              <div className="weather-image">
-                {forecast ? (
-                  <img src={forecast} alt="Weather Forecast Report" />
-                ) : (
-                  <PlaceholderImg height={320} />
-                )}
-              </div>
-
-              <div className="weather-text">
-                <h4>24‑Hour Public Weather Forecast</h4>
-                <span className="weather-tag">#BasyangPH</span>
-
-                <p className="weather-issued">
-                  Issued at 5:00 AM, February 7, 2026
-                </p>
-
-                <p>
-                  Northeast Monsoon is affecting the area. Expect cloudy to
-                  partly cloudy skies with light to moderate rains.
-                </p>
-
-                <p className="weather-temp">
-                  Temperature Range: <strong>22°C – 31°C</strong>
-                </p>
-              </div>
-            </div>
-          </div>
+          {forecast ? (
+            <img src={forecast} alt="Weather" />
+          ) : (
+            <PlaceholderImg />
+          )}
         </section>
 
         {/* SERVICES */}

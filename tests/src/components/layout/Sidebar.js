@@ -30,6 +30,7 @@ export default function Sidebar({ collapsed, onToggle, onLogout }) {
   const useDark = theme === "dark";
 
   const links = [
+<<<<<<< HEAD
     { to: "/admin/dashboard", label: "Analytics", icon: useDark ? analyticswhite : analyticsgreen },
 
     { to: "/admin/register", label: "Register Account", icon: useDark ? registerwhite : registergreen },
@@ -43,6 +44,17 @@ export default function Sidebar({ collapsed, onToggle, onLogout }) {
     { to: "/admin/logs", label: "Admin Logs", icon: useDark ? auditwhite : auditgreen },
 
     { to: "/admin/relief", label: "Relief Request", icon: useDark ? reliefwhite : reliefgreen },
+=======
+    { to: "/admin/analytics", label: "Analytics", icon: useDark ? analyticswhite : analyticsgreen },
+
+    { to: "/admin/accounts", label: "Account Management", icon: useDark ? registerwhite : registergreen },
+
+    { to: "/evacuation", label: "Evacuation Center Management", icon: useDark ? evacuationwhite : evacuationgreen },
+    { to: "/Incident-Report", label: "Incident Reports", icon: useDark ? auditwhite : auditgreen },
+    { to: "/admin/inventory",           label: "Inventory",             icon: useDark ? analyticswhite : analyticsgreen },
+    { to: "/admin/inventory/add",       label: "Add Donations",         icon: useDark ? analyticswhite : analyticsgreen },
+    { to: "/admin/time-in-time-out", label: "Time in & Time out", icon: useDark ? timewhite : timegreen },
+>>>>>>> upstream/myapp-update
 
   ];
 
