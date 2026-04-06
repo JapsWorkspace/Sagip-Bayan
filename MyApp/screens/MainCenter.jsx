@@ -1,7 +1,8 @@
 // screens/MainCenter.jsx
 import React, { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
-import AppShell from './AppShell';
+import AppLayout from './AppLayout';
+
 import {
   View,
   Text,
@@ -19,6 +20,8 @@ import {
 } from 'react-native';
 import MapView, { Marker, Callout, PROVIDER_GOOGLE } from 'react-native-maps';
 import { MarkerImages /* getMarkerImageBySeverity */ } from './MapIcon';
+import useJaenPlaceSearch from "./hooks/useJaenPlaceSearch";
+
 
 
 /* ------------------------- JAEN, NUEVA ECIJA LOCK ------------------------- */
@@ -82,12 +85,38 @@ export default function MainCenter({ navigation }) {
   const { width, height } = Dimensions.get('window');
   const aspect = width / height;
 
+  
+  const {
+    query,
+    suggestions,
+    search,
+    clear,
+  } = useJaenPlaceSearch();
+
+  
+  const handleSelectSuggestion = (place) => {
+  // unified data shape from hook
+  const lat = Number(place.latitude);
+  const lon = Number(place.longitude);
+
+  const inside = isInsideBounds(lat, lon);
+  const target = inside
+    ? { latitude: lat, longitude: lon }
+    : clampToBounds(lat, lon);
+
+  setPosition([target.latitude, target.longitude]);
+  setZoom(17);
+  focusTo(target.latitude, target.longitude, 17, 350);
+
+  // use normalized label
+  setPlaceName(place.label);
+
+  clear(); // ✅ close the suggestion dropdown
+};
+
   const [position, setPosition] = useState(JAEN_CENTER);
   const [zoom, setZoom] = useState(13);
-  const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
   const [placeName, setPlaceName] = useState('Jaen, Nueva Ecija');
-
   const [region, setRegion] = useState(() => {
     const latDelta = zoomToLatDelta(zoom);
     return {
@@ -131,49 +160,6 @@ export default function MainCenter({ navigation }) {
     } catch {
       setPlaceName('Unknown Location');
     }
-  };
-
-  const handleSearchChange = async (value) => {
-    setQuery(value);
-    if (value.length < 3) {
-      setSuggestions([]);
-      return;
-    }
-    try {
-      const res = await axios.get(
-        'https://nominatim.openstreetmap.org/search',
-        {
-          params: {
-            q: value,
-            format: 'json',
-            addressdetails: 1,
-            countrycodes: 'ph',
-            limit: 5,
-          },
-          headers: { 'User-Agent': 'YourAppName/1.0 (support@example.com)' },
-        }
-      );
-      const hits = (res.data || []).filter((p) =>
-        String(p.display_name || '').toLowerCase().includes('jaen')
-      );
-      setSuggestions(hits);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const selectPlace = (place) => {
-    const lat = parseFloat(place.lat);
-    const lon = parseFloat(place.lon);
-    const inside = isInsideBounds(lat, lon);
-    const target = inside ? { latitude: lat, longitude: lon } : clampToBounds(lat, lon);
-
-    setPosition([target.latitude, target.longitude]);
-    setZoom(17);
-    focusTo(target.latitude, target.longitude, 17, 350);
-    setPlaceName(place.name ? place.name : makeCityStreet(place.address));
-    setQuery(place.display_name);
-    setSuggestions([]);
   };
 
   /* ----------------------- Slideable bottom panel wiring ----------------------- */
@@ -238,6 +224,11 @@ export default function MainCenter({ navigation }) {
   }, [position]);
 
   return (
+    <AppLayout
+  onSearch={search}
+  suggestions={suggestions}
+  onSelectSuggestion={handleSelectSuggestion}
+>
     <View style={styles.screen}>
       <View style={styles.mapWrap}>
         <MapView
@@ -290,28 +281,18 @@ export default function MainCenter({ navigation }) {
               bounces
               showsVerticalScrollIndicator={false}
             >
-              <TextInput
-                value={query}
-                onChangeText={handleSearchChange}
-                placeholder="Search place in Jaen"
-                placeholderTextColor="#777"
-                style={styles.searchInput}
-              />
 
-              {suggestions.length > 0 && (
-                <FlatList
-                  data={suggestions}
-                  keyExtractor={(item) => String(item.place_id)}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      style={styles.suggestionItem}
-                      onPress={() => selectPlace(item)}
-                    >
-                      <Text numberOfLines={2}>{item.display_name}</Text>
-                    </TouchableOpacity>
-                  )}
-                />
-              )}
+             <View style={styles.gridWrap}>
+  <View style={styles.row}>
+    {/* PROFILE TILE */}
+    <TouchableOpacity
+      style={styles.tile}
+      onPress={() => navigation.navigate("Profile")}
+    >
+      <Text style={styles.tileText}>Profile</Text>
+    </TouchableOpacity>
+  </View>
+</View>
 
              <View style={styles.gridWrap}>
   <View style={styles.row}>
@@ -331,6 +312,7 @@ export default function MainCenter({ navigation }) {
         </KeyboardAvoidingView>
       </Animated.View> 
     </View>
+     </AppLayout>
   );
 }
 

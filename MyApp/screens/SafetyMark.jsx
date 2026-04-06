@@ -1,4 +1,26 @@
+
+
 // screens/SafetyMark.jsx
+import React, {
+  useState,
+  useContext,
+  useEffect,
+  useRef,
+  useCallback,
+} from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  Alert,
+  StyleSheet,
+  TouchableOpacity,
+  ScrollView,
+  Animated,
+  PanResponder,
+  Dimensions,
+  Image,
+} from "react-native";
 import React, {
   useState,
   useContext,
@@ -24,6 +46,8 @@ import api from "../lib/api";
 import * as Location from "expo-location";
 import MapView, { Marker } from "react-native-maps";
 import { useFocusEffect } from "@react-navigation/native";
+import AppLayout from "./AppLayout";
+import useJaenPlaceSearch from "./hooks/useJaenPlaceSearch";
 
 /* ================= CONSTANTS ================= */
 const BASE_URL = "http://192.168.1.4:8000";
@@ -34,66 +58,72 @@ const PANEL_EXPANDED = 80;
 const DEFAULT_AVATAR =
   "https://ui-avatars.com/api/?background=065F46&color=fff&rounded=true&name=User";
 
-// ✅ Phase 2 helpers (LOGIC ONLY)
-
-// Time ago, up to 7 days
+/* ================= HELPERS ================= */
 const timeAgo = (date) => {
   if (!date) return null;
   const diffMs = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diffMs / 60000);
-
   if (mins < 1) return "Just now";
   if (mins < 60) return `${mins} min ago`;
-
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs} hr ago`;
-
   const days = Math.floor(hrs / 24);
   if (days <= 7) return `${days} day ago`;
-
   return "Over a week ago";
 };
 
-// Distance using Haversine (meters)
 const getDistanceMeters = (from, to) => {
   const R = 6371e3;
   const toRad = (v) => (v * Math.PI) / 180;
   const dLat = toRad(to.lat - from.latitude);
   const dLon = toRad(to.lng - from.longitude);
-
   const a =
     Math.sin(dLat / 2) ** 2 +
     Math.cos(toRad(from.latitude)) *
       Math.cos(toRad(to.lat)) *
       Math.sin(dLon / 2) ** 2;
-
   return Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
 };
 
+/* ================= COMPONENT ================= */
 export default function SafetyMark() {
   const { user } = useContext(UserContext);
-  // Requests modal
-const [showRequests, setShowRequests] = useState(false);
+  
+  
+  console.log("[SafetyMark] user from context:", user)
+  const { suggestions, search, clear } = useJaenPlaceSearch();
+  const mapRef = useRef(null);
 
-// Pending join requests (for admin)
-const [pendingRequests, setPendingRequests] = useState([]);
-
-  const [joinCode, setJoinCode] = useState("");
   const [connections, setConnections] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [personalNotifications, setPersonalNotifications] = useState([]);
+
+  const [showRequests, setShowRequests] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
   const [panelView, setPanelView] = useState("main");
 
-  /* ===== location ===== */
   const [myLocation, setMyLocation] = useState(null);
   const [myAddress, setMyAddress] = useState(null);
-
-  /* ✅ cache for family member addresses */
   const [memberAddresses, setMemberAddresses] = useState({});
-  // Personal notifications (e.g. kicked, system messages)
-const [personalNotifications, setPersonalNotifications] = useState([]);
-  /* ================= SLIDEABLE PANEL ================= */
+
+  /* ================= DERIVED STATE ================= */
+  const hasActiveConnection = connections.length > 0;
+  const isAnyConnectionFull = false;
+
+  const totalNotifications =
+    pendingRequests.length + personalNotifications.length;
+
+  const mySafetyStatus =
+    connections
+      .flatMap((c) => (Array.isArray(c.members) ? c.members : []))
+      .find((m) => m._id === user?._id)?.safetyStatus ||
+    user?.safetyStatus ||
+    "SAFE";
+
+  /* ================= SLIDE PANEL ================= */
   const translateY = useRef(new Animated.Value(PANEL_COLLAPSED)).current;
   const lastY = useRef(PANEL_COLLAPSED);
-  const totalNotifications = pendingRequests.length + personalNotifications.length;
+
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 8,
@@ -114,56 +144,55 @@ const [personalNotifications, setPersonalNotifications] = useState([]);
     })
   ).current;
 
-  /* ================= FETCH CONNECTIONS ================= */
+  /* ================= CONNECTIONS ================= */
   const fetchConnections = async () => {
+    if (!user?._id) return;
     try {
-      const res = await api.get(`/connection/user/${user.id}`);
-      setConnections(res.data);
+      const res = await api.get(`/connection/user/${user._id}`);
+      setConnections(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
-      console.error(err);
+      console.error("Fetch connections failed:", err?.message);
     }
   };
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?._id) return;
 
-useFocusEffect(
-  useCallback(() => {
-    fetchConnections();
+      fetchConnections();
 
-    // ✅ Fetch user notifications
-    api.get(`/user/${user.id}`)
-      .then(res => {
-        setPersonalNotifications(
-          (res.data.notifications || []).filter(n => !n.read)
-        );
-      })
-      .catch(err => {
-        console.log("Notification fetch failed:", err?.message);
-      });
-  }, [])
-);
+      api.get(`/user/${user._id}`)
+        .then((res) => {
+          setPersonalNotifications(
+            (res.data.notifications || []).filter((n) => !n.read)
+          );
+        })
+        .catch(() => {});
+    }, [!user?._id])
+  );
 
-useEffect(() => {
-  const pending = [];
-
-  connections.forEach(connection => {
-    // ✅ Only the creator should see pending requests
-    if (
-      connection.creator?.toString() === user.id &&
-      connection.pendingMembers?.length > 0
-    ) {
-      connection.pendingMembers.forEach(member => {
-        pending.push({
-          connectionId: connection._id,
-          member,
-        });
-      });
-    }
-  });
-
-  setPendingRequests(pending);
-}, [connections, user.id]);
-
-  /* ================= YOUR LOCATION ================= */
+  /* ================= PENDING REQUESTS ================= */
   useEffect(() => {
+    if (!user?._id) return;
+
+    const pending = [];
+    connections.forEach((connection) => {
+      if (
+        connection.creator?.toString() === user._id &&
+        Array.isArray(connection.pendingMembers)
+      ) {
+        connection.pendingMembers.forEach((member) => {
+          pending.push({ connectionId: connection._id, member });
+        });
+      }
+    });
+
+    setPendingRequests(pending);
+  }, [connections, !user?._id]);
+
+  /* ================= LOCATION ================= */
+  useEffect(() => {
+    if (!user?._id) return;
+
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") return;
@@ -177,6 +206,7 @@ useEffect(() => {
         longitude: pos.coords.longitude,
       };
 
+      // ✅ set immediately (old working behavior)
       setMyLocation(coords);
 
       try {
@@ -191,25 +221,54 @@ useEffect(() => {
         }
       } catch {}
 
-      // ✅ FIXED: send user id
       try {
-        await api.put(`/user/location/${user.id}`, {
+        await api.put(`/user/location/${user._id}`, {
           lat: coords.latitude,
           lng: coords.longitude,
         });
-      } catch {
-        console.log("Location backend update failed (ignored)");
-      }
+      } catch {}
     })();
-  }, []);
+  }, [user?._id]);
 
-  /* ================= FAMILY LOCATION RESOLVE ================= */
+
+
+const handleDeleteConnection = (connectionId) => {
+  Alert.alert(
+    "Delete Connection",
+    "This will permanently remove the connection and all members.\n\nAre you sure?",
+    [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: () => {
+          api
+            .delete(`/connection/delete/${connectionId}/${user._id}`)
+            .then(() => {
+              fetchConnections();
+              setPanelView("main");
+            })
+            .catch((err) => {
+              Alert.alert(
+                "Delete Failed",
+                err?.response?.data?.message ||
+                  "Failed to delete connection"
+              );
+            });
+        },
+      },
+    ]
+  );
+};
+  /* ================= FAMILY ADDRESS RESOLVE ================= */
   useEffect(() => {
     const resolveFamilyLocations = async () => {
+      if (!connections.length) return;
+
       const updates = {};
 
       for (const connection of connections) {
-        for (const member of connection.members) {
+        for (const member of connection.members || []) {
           if (
             member.location?.lat &&
             member.location?.lng &&
@@ -220,11 +279,9 @@ useEffect(() => {
                 latitude: member.location.lat,
                 longitude: member.location.lng,
               });
-
               if (place) {
                 const street = place.street || place.name || "";
                 const city = place.city || place.region || "";
-
                 updates[member._id] =
                   `${street}${street && city ? ", " : ""}${city}` ||
                   "Approximate area";
@@ -242,75 +299,97 @@ useEffect(() => {
     resolveFamilyLocations();
   }, [connections]);
 
-  /* ================= SAFETY STATUS ================= */
-  const mySafetyStatus =
-    connections
-      .flatMap((c) => c.members)
-      .find((m) => m._id === user.id)?.safetyStatus ||
-    user.safetyStatus ||
-    "SAFE";
+  /* ================= SEARCH ================= */
+  const handleSelectSuggestion = (place) => {
+    if (!mapRef.current) return;
+    mapRef.current.animateToRegion(
+      {
+        latitude: place.latitude,
+        longitude: place.longitude,
+        latitudeDelta: 0.03,
+        longitudeDelta: 0.03,
+      },
+      350
+    );
+    clear();
+  };
 
   /* ================= ACTIONS ================= */
-  const handleCreateConnection = () => {
-    api.post(`/connection/create/${user.id}`).then(fetchConnections);
-  };
-
-const handleJoinConnection = () => {
-  if (!joinCode.trim()) {
-    Alert.alert("Missing Info", "Enter a connection code");
+const handleCreateConnection = () => {
+  if (hasActiveConnection) {
+    Alert.alert(
+      "Already Connected",
+      "You can only have one family connection at a time.\n\nPlease leave your current connection first."
+    );
     return;
   }
-  api
-    .post(`/connection/join/${user.id}`, {
+
+  api.post(`/connection/create/${user._id}`)
+    .then(fetchConnections)
+    .catch(() =>
+      Alert.alert("Error", "Failed to create connection")
+    );
+};
+  const handleJoinConnection = () => {
+    if (hasActiveConnection) {
+      Alert.alert(
+        "Already Connected",
+        "You can only join one family connection."
+      );
+      return;
+    }
+    if (!joinCode.trim()) {
+      Alert.alert("Missing Info", "Enter a connection code");
+      return;
+    }
+    api.post(`/connection/join/${user._id}`, {
       code: joinCode.trim().toUpperCase(),
     })
-    .then(() => {
-      setJoinCode("");
-      fetchConnections();
-    })
-    .catch((err) => {
-      console.error("JOIN ERROR:", err?.response?.data || err.message);
-      Alert.alert(
-        "Join Failed",
-        err?.response?.data?.message || "Invalid or expired connection code"
-      );
-    });
-};
+      .then(() => {
+        setJoinCode("");
+        fetchConnections();
+      })
+      .catch((err) => {
+        Alert.alert(
+          "Join Failed",
+          err?.response?.data?.message ||
+            "Invalid or expired connection code"
+        );
+      });
+  };
 
-  // ✅ FIXED: send message body
   const handleMarkSafe = () => {
-    api
-      .put(`/connection/safe/${user.id}`, {
-        message: "I am safe",
-      })
+    if (!hasActiveConnection)
+      return Alert.alert("No Connection", "You are not connected.");
+    api.put(`/connection/safe/${user._id}`, { message: "I am safe" })
       .then(fetchConnections)
-      .catch(() =>
-        Alert.alert("Error", "Failed to mark SAFE")
-      );
+      .catch(() => Alert.alert("Error", "Failed to mark SAFE"));
   };
 
-  // ✅ FIXED: send message body
   const handleMarkNotSafe = () => {
-    api
-      .put(`/connection/not-safe/${user.id}`, {
-        message: "Need help",
-      })
+    if (!hasActiveConnection)
+      return Alert.alert("No Connection", "You are not connected.");
+    api.put(`/connection/not-safe/${user._id}`, { message: "Need help" })
       .then(fetchConnections)
-      .catch(() =>
-        Alert.alert("Error", "Failed to mark NOT SAFE")
-      );
+      .catch(() => Alert.alert("Error", "Failed to mark NOT SAFE"));
   };
-
-  const handleLeaveConnection = (id) => {
-    api.delete(`/connection/leave/${user.id}/${id}`).then(fetchConnections);
-  };
-  const isAnyConnectionFull = false;
-
-  /* ================= RENDER ================= */
+const handleLeaveConnection = (id) => {
+  api.delete(`/connection/leave/${user._id}/${id}`)
+    .then(fetchConnections)
+    .catch(() =>
+      Alert.alert("Error", "Failed to leave connection")
+    );
+};
 /* ================= RENDER ================= */
 return (
+<AppLayout
+  onSearch={search}
+  suggestions={suggestions}
+  onSelectSuggestion={handleSelectSuggestion}
+>
   <View style={styles.container}>
     <MapView
+      ref={mapRef} 
       style={StyleSheet.absoluteFillObject}
       initialRegion={{
         latitude: myLocation?.latitude || 14.5995,
@@ -392,7 +471,7 @@ return (
                   <TouchableOpacity
                     onPress={() => {
                       api.put(
-                        `/connection/approve/${connectionId}/${member._id}/${user.id}`
+                        `/connection/approve/${connectionId}/${member._id}/${user._id}`
                       ).then(() => {
                         fetchConnections();
                         setShowRequests(false);
@@ -406,7 +485,7 @@ return (
                   <TouchableOpacity
                     onPress={() => {
                       api.put(
-                        `/connection/reject/${connectionId}/${member._id}/${user.id}`
+                        `/connection/reject/${connectionId}/${member._id}/${user._id}`
                       ).then(() => {
                         fetchConnections();
                         setShowRequests(false);
@@ -459,12 +538,20 @@ return (
               <Text style={styles.locationLabel}>{myAddress}</Text>
             )}
 
-            <TouchableOpacity
-              style={styles.primaryBtn}
-              onPress={handleCreateConnection}
-            >
-              <Text style={styles.primaryText}>Create Connection</Text>
-            </TouchableOpacity>
+         <TouchableOpacity
+  style={[
+    styles.primaryBtn,
+    hasActiveConnection && { opacity: 0.5 }
+  ]}
+  disabled={hasActiveConnection}
+  onPress={handleCreateConnection}
+>
+  <Text style={styles.primaryText}>Create Connection</Text>
+</TouchableOpacity>
+
+
+
+
 
             <Text style={styles.label}>Join with code</Text>
             <TextInput
@@ -474,12 +561,16 @@ return (
               placeholder="Enter connection code"
             />
 
-            <TouchableOpacity
-              style={styles.secondaryBtn}
-              onPress={handleJoinConnection}
-            >
-              <Text style={styles.secondaryText}>Join Connection</Text>
-            </TouchableOpacity>
+         <TouchableOpacity
+  style={[
+    styles.secondaryBtn,
+    hasActiveConnection && { opacity: 0.5 }
+  ]}
+  disabled={hasActiveConnection}
+  onPress={handleJoinConnection}
+>
+  <Text style={styles.secondaryText}>Join Connection</Text>
+</TouchableOpacity>
 
             <TouchableOpacity
               style={styles.linkBtn}
@@ -526,6 +617,10 @@ return (
                 Family Account Connections
               </Text>
 
+
+
+
+
               {connections.map((connection) => (
                 <View key={connection._id}>
                   <Text style={styles.codeText}>
@@ -534,15 +629,6 @@ return (
                       {connection.code}
                     </Text>
                   </Text>
-
-
-
-
-
-
-
-
-
 {connection.members.map((member) => (
   <View key={member._id} style={styles.connectionCard}>
 
@@ -586,8 +672,8 @@ return (
     </View>
 
     {/* ✅ RIGHT‑ALIGNED ⋮ — GUARANTEED */}
-    {connection.creator?.toString() === user.id &&
-      member._id !== user.id && (
+    {connection.creator?.toString() === user._id &&
+      member._id !== user._id && (
         <TouchableOpacity
           onPress={() => {
             Alert.alert(
@@ -601,7 +687,7 @@ return (
                   onPress: () => {
                     api
                       .put(
-                        `/connection/kick/${connection._id}/${member._id}/${user.id}`
+                        `/connection/kick/${connection._id}/${member._id}/${user._id}`
                       )
                       .then(fetchConnections)
                       .catch(() =>
@@ -620,14 +706,26 @@ return (
       )}
   </View>
 ))}
+{connection.creator?.toString() === user._id ? (
+  // ✅ CREATOR: DELETE
+  <TouchableOpacity
+    style={[styles.leaveBtn, { backgroundColor: "#FEE2E2" }]}
+    onPress={() => handleDeleteConnection(connection._id)}
+  >
+    <Text style={{ color: "#991B1B", fontWeight: "700" }}>
+      Delete Connection
+    </Text>
+  </TouchableOpacity>
+) : (
+  // ✅ MEMBER: LEAVE
+  <TouchableOpacity
+    style={styles.leaveBtn}
+    onPress={() => handleLeaveConnection(connection._id)}
+  >
+    <Text style={styles.leaveText}>Leave Connection</Text>
+  </TouchableOpacity>
+)}
 
-{/* ✅ Leave button — OUTSIDE member cards */}
-<TouchableOpacity
-  style={styles.leaveBtn}
-  onPress={() => handleLeaveConnection(connection._id)}
->
-  <Text style={styles.leaveText}>Leave Connection</Text>
-</TouchableOpacity>
                 </View>
               ))}
             </>
@@ -635,9 +733,18 @@ return (
         </ScrollView>
       </Animated.View>
     </View>
-  );
+    </AppLayout>
+   
+);
 }
 
+/* ================= STYLES ================= */
+/* ✅ STYLES UNCHANGED */
+/* ================= STYLES ================= */
+/* YOUR styles remain unchanged */
+
+
+/* ================= STYLES ================= */
 /* ================= STYLES ================= */
 /* ✅ STYLES UNCHANGED */
 /* ================= STYLES ================= */
@@ -819,6 +926,7 @@ const styles = StyleSheet.create({
     color: "#991B1B",
     fontWeight: "700",
   },
+
   notificationBtn: {
   position: "absolute",
   top: 40,
@@ -827,6 +935,7 @@ const styles = StyleSheet.create({
 },
 
 notificationIcon: {
+  marginTop: 90,
   fontSize: 26,
 },
 
@@ -912,6 +1021,7 @@ notificationBadge: {
   minWidth: 18,
   height: 18,
   borderRadius: 9,
+  marginTop: 90,
   backgroundColor: "#EF4444",
   justifyContent: "center",
   alignItems: "center",

@@ -19,8 +19,9 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import api from "../lib/api";
 import { UserContext } from "./UserContext";
-
+import AppLayout from './AppLayout';
 // ✅ import the separated design file
+import useJaenPlaceSearch from "./hooks/useJaenPlaceSearch";
 import styles, { METRICS } from "../Designs/IncidentReporting";
 
 // ✅ Always import the map component (native RN Maps version)
@@ -29,6 +30,7 @@ import { socket } from "../lib/socket";
 import AppShell from "./AppShell";
 
 export default function IncidentReportScreen({ navigation }) {
+
   const { user } = useContext(UserContext);
   const [incidentReports, setIncidentReports] = useState({
     type: "",
@@ -40,10 +42,42 @@ export default function IncidentReportScreen({ navigation }) {
     usernames: user.username || "",
     phone: user.phone || "",
   });
+
+   const {
+      query,
+      suggestions,
+      search,
+      clear,
+    } = useJaenPlaceSearch();
+
+    const handleSelectSuggestion = (place) => {
+  setIncidentReports((prev) => ({
+    ...prev,
+    location: place.label,
+    latitude: place.latitude,
+    longitude: place.longitude,
+  }));
+
+  clear(); // ✅ close suggestions
+};
+
   const [image, setImage] = useState(null); // single image
   const [debuger, setDebuger] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+  useEffect(() => {
+  if (suggestions.length === 1) {
+    const place = suggestions[0];
 
+    setIncidentReports(prev => ({
+      ...prev,
+      location: place.display_name,
+      latitude: parseFloat(place.lat),
+      longitude: parseFloat(place.lon),
+    }));
+
+    clear();
+  }
+}, [suggestions]);
   // Seed initial selection pin at Jaen
   useEffect(() => {
     if (incidentReports.latitude == null || incidentReports.longitude == null) {
@@ -288,6 +322,12 @@ export default function IncidentReportScreen({ navigation }) {
   ).current;
 
   return (
+<AppLayout
+  onSearch={search}
+  suggestions={suggestions}
+  onSelectSuggestion={handleSelectSuggestion}
+>
+
     <View style={styles.webFrame}>
       <View style={styles.phone}>
         {/* Map behind */}
@@ -426,5 +466,6 @@ export default function IncidentReportScreen({ navigation }) {
 
       </View>
     </View>
+  </AppLayout>
   );
 }

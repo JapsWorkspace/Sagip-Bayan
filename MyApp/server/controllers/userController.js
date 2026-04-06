@@ -8,15 +8,54 @@ const bcrypt = require("bcryptjs");
 /* =========================
    REGISTER
 ========================= */
+/* =========================
+   REGISTER
+========================= */
 const registerUser = async (req, res) => {
   try {
+    const {
+      fname,
+      lname,
+      username,
+      password,
+      email,
+      phone,
+      address,
+      birthdate,
+      location,
+    } = req.body || {};
+
+    if (
+      !fname ||
+      !lname ||
+      !username ||
+      !password ||
+      !email ||
+      !phone
+    ) {
+      return res.status(400).json({
+        error: "Missing required fields",
+      });
+    }
+
+    /* ✅ FORMAT CHECKS */
+    if (password.length < 8) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters",
+      });
+    }
+
+    /* ✅ ✅ ✅ ONLY FIX */
+    const hashedPassword = await bcrypt.hash(password, 10);
     const verificationToken = crypto.randomBytes(32).toString("hex");
-    const hashedPassword = await bcrypt.hash(req.body.password, 10);
 
     const newUser = new UserModel({
       ...req.body,
       password: hashedPassword,
+      password: hashedPassword,
       isVerified: false,
+      verificationToken,
+      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
       verificationToken,
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
     });
@@ -24,11 +63,12 @@ const registerUser = async (req, res) => {
     const user = await newUser.save();
 
     const verificationLink =
-      `http://10.208.46.51:8000/user/verify/${verificationToken}`;
+      `http://192.168.1.8:8000/user/verify/${verificationToken}`;
 
     await sendVerificationEmail(user.email, verificationLink);
 
     res.status(201).json({
+      message: "Registration successful. Please verify your email.",
       message: "Registration successful. Please verify your email.",
     });
   } catch (err) {
@@ -40,11 +80,15 @@ const registerUser = async (req, res) => {
 /* =========================
    VERIFY EMAIL
 ========================= */
+/* =========================
+   VERIFY EMAIL
+========================= */
 const verifyEmail = (req, res) => {
   const { token } = req.params;
 
   UserModel.findOne({
     verificationToken: token,
+    verificationTokenExpires: { $gt: Date.now() },
     verificationTokenExpires: { $gt: Date.now() },
   })
     .then((user) => {
@@ -55,7 +99,6 @@ const verifyEmail = (req, res) => {
       user.isVerified = true;
       user.verificationToken = undefined;
       user.verificationTokenExpires = undefined;
-
       return user.save();
     })
     .then(() => {
@@ -67,6 +110,9 @@ const verifyEmail = (req, res) => {
     });
 };
 
+/* =========================
+   USERS
+========================= */
 /* =========================
    USERS
 ========================= */
@@ -86,6 +132,9 @@ const loginUser = async (req, res) => {
   const { username, password } = req.body || {};
 
   if (!username || !password) {
+    return res
+      .status(400)
+      .json({ message: "Username and password are required" });
     return res
       .status(400)
       .json({ message: "Username and password are required" });
@@ -116,6 +165,7 @@ const loginUser = async (req, res) => {
         userId: user._id,
         email: user.email,
         restored: true,
+        restored: true,
       });
     }
 
@@ -124,6 +174,7 @@ const loginUser = async (req, res) => {
     res.json({
       twoFactor: false,
       user,
+      restored: true,
       restored: true,
     });
   } catch (err) {
@@ -136,10 +187,15 @@ const loginUser = async (req, res) => {
    UPDATE USER
 ========================= */
 const updateUser = async (req, res) => {
+/* =========================
+   UPDATE USER
+========================= */
+const updateUser = async (req, res) => {
   try {
     const updateData = { ...req.body };
 
     if (req.body.password) {
+      updateData.password = await bcrypt.hash(req.body.password, 10);
       updateData.password = await bcrypt.hash(req.body.password, 10);
     }
 
@@ -161,12 +217,15 @@ const updateUser = async (req, res) => {
   }
 };
 
-
-updateLocation = async (req, res) => {
+/* =========================
+   UPDATE LOCATION
+========================= */
+const updateLocation = async (req, res) => {
   try {
-    const userId = req.params.id; // ✅ THIS WAS MISSING
+    const userId = req.params.id;
     const { lat, lng } = req.body;
-   console.log("📍 Location update:", userId, lat, lng);
+    console.log("📍 Location update:", userId, lat, lng);
+
     if (!userId) {
       return res.status(400).json({ message: "Missing user id" });
     }
@@ -197,6 +256,9 @@ updateLocation = async (req, res) => {
   }
 };
 
+/* =========================
+   OTP
+========================= */
 const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
@@ -210,17 +272,12 @@ const sendOtp = (req, res) => {
   UserModel.findOne({ email })
     .then(user => {
       if (!user) {
-        // Stop chain and send proper error
         return Promise.reject({ status: 404, message: "Email not found" });
       }
 
       const otp = generateOTP();
-
-      // Save OTP in user model
       user.otp = otp;
-      user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-      // Save user and then send OTP email
+      user.otpExpires = Date.now() + 5 * 60 * 1000;
       return user.save().then(() => sendOTP(email, otp));
     })
     .then(() => {
@@ -228,7 +285,6 @@ const sendOtp = (req, res) => {
     })
     .catch(err => {
       console.error(err);
-      // If we rejected with our own error object
       res.status(err.status || 500).json({
         message: err.message || "Server error"
       });
@@ -244,13 +300,11 @@ const verifyOtp = (req, res) => {
   UserModel.findOne({ email })
     .then(user => {
       if (!user) throw { status: 404, message: "User not found" };
-      if (user.otp !== otp) throw { status: 400, message: "Invalid OTP" + user };
+      if (user.otp !== otp) throw { status: 400, message: "Invalid OTP" };
       if (user.otpExpires < Date.now()) throw { status: 400, message: "OTP expired" };
 
-      // Clear OTP
       user.otp = null;
       user.otpExpires = null;
-
       return user.save();
     })
     .then(() => {
@@ -258,7 +312,6 @@ const verifyOtp = (req, res) => {
     })
     .catch(error => {
       console.error(error);
-      // If we threw our own object with status/message
       if (error.status && error.message) {
         return res.status(error.status).json({ message: error.message });
       }
@@ -266,9 +319,11 @@ const verifyOtp = (req, res) => {
     });
 };
 
+/* =========================
+   ARCHIVE / RESTORE / TWO FACTOR
+========================= */
 const archiveUser = (req, res) => {
   const userId = req.params.id;
-
   const deleteAfter = new Date();
   deleteAfter.setMonth(deleteAfter.getMonth() + 6);
 
@@ -277,17 +332,15 @@ const archiveUser = (req, res) => {
     {
       isArchived: true,
       archivedAt: new Date(),
-      deleteAfter: deleteAfter,
+      deleteAfter,
     },
     { new: true }
   )
     .then(user => {
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (!user) return res.status(404).json({ message: "User not found" });
       res.json({
         message:
-          "Your account has been archived. You can still log in. It will be permanently deleted after 6 months.",
+          "Your account has been archived. It will be permanently deleted after 6 months.",
       });
     })
     .catch(err => {
@@ -295,7 +348,7 @@ const archiveUser = (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 };
-//pang admin siguro idk
+
 const restoreUser = (req, res) => {
   const userId = req.params.id;
 
@@ -309,9 +362,7 @@ const restoreUser = (req, res) => {
     { new: true }
   )
     .then(user => {
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
+      if (!user) return res.status(404).json({ message: "User not found" });
       res.json({ message: "Account restored successfully" });
     })
     .catch(err => {
@@ -320,22 +371,9 @@ const restoreUser = (req, res) => {
     });
 };
 
-const permanentlyDeleteArchivedUsers = () => {
-  ArchivedUserModel.deleteMany({
-    isArchived: true,
-    deleteAfter: { $lte: new Date() },
-  })
-    .then(result => {
-      console.log(`Permanently deleted ${result.deletedCount} archived users`);
-    })
-    .catch(err => {
-      console.error("Permanent delete error:", err);
-    });
-};
-
 const toggleTwoFactor = (req, res) => {
   const { id } = req.params;
-  const { enabled } = req.body; // expected true/false
+  const { enabled } = req.body;
 
   if (typeof enabled !== "boolean") {
     return res.status(400).json({ message: "enabled must be true or false" });
@@ -348,7 +386,6 @@ const toggleTwoFactor = (req, res) => {
   )
     .then(user => {
       if (!user) return res.status(404).json({ message: "User not found" });
-
       res.json({
         message: `Two-Factor Authentication ${enabled ? "enabled" : "disabled"}`,
         twoFactorEnabled: user.twoFactorEnabled
@@ -359,8 +396,9 @@ const toggleTwoFactor = (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 };
+
 /* =========================
-   GET USER BY ID (for app state)
+   GET USER BY ID
 ========================= */
 const getUserById = async (req, res) => {
   try {
@@ -377,11 +415,18 @@ const getUserById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-
-
-
-
-
-
-
-module.exports = { registerUser, verifyEmail, getUsers, updateUser, sendOtp, verifyOtp, archiveUser, restoreUser, permanentlyDeleteArchivedUsers, toggleTwoFactor, loginUser, updateLocation, getUserById };
+}
+module.exports = {
+  registerUser,
+  verifyEmail,
+  getUsers,
+  updateUser,
+  sendOtp,
+  verifyOtp,
+  archiveUser,
+  restoreUser,
+  toggleTwoFactor,
+  loginUser,
+  updateLocation,
+  getUserById,
+};

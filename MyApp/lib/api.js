@@ -11,20 +11,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /* -------------------------------------------------------------------------- */
 
 // 1) Your laptop's LAN IP (for real phone via Expo Go)
-const LAN_IP = '192.168.1.4';
+const LAN_IP = '192.168.1.8';
 
 // 2) Optional HTTPS tunnel for dev (ngrok, cloudflared, etc.)
 const NGROK_URL = ''; // e.g. 'https://xxxx.ngrok.app'
 
 // 3) Backend port
+// 3) Backend port
 const PORT = 8000;
 
 // 4) Health probe path
 const HEALTH_PATH = '/health';
-
 // 5) Production base
 const PROD_BASE = 'https://YOUR-PROD-API.com';
 
+// 6) Optional override
 // 6) Optional override
 const FORCE_BASE = '';
 
@@ -35,6 +36,9 @@ const FORCE_BASE = '';
 const candidatesDev = [
   ...(NGROK_URL ? [NGROK_URL] : []),
   `http://${LAN_IP}:${PORT}`,
+  Platform.OS === 'android'
+    ? `http://10.0.2.2:${PORT}`
+    : `http://localhost:${PORT}`,
   Platform.OS === 'android'
     ? `http://10.0.2.2:${PORT}`
     : `http://localhost:${PORT}`,
@@ -52,6 +56,7 @@ async function resolveDevBase() {
       console.log('[api] using base:', resolvedBase);
       return resolvedBase;
     } catch (_) {
+      // try next
       // try next
     }
   }
@@ -75,7 +80,12 @@ const api = axios.create({
 /*                      REQUEST INTERCEPTOR (FIXED ✅)                         */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/*                      REQUEST INTERCEPTOR (FIXED ✅)                         */
+/* -------------------------------------------------------------------------- */
+
 api.interceptors.request.use(async (config) => {
+  // ✅ Resolve base URL dynamically in development
   // ✅ Resolve base URL dynamically in development
   if (__DEV__) {
     if (FORCE_BASE) {
@@ -99,6 +109,10 @@ api.interceptors.request.use(async (config) => {
 /*                       RESPONSE INTERCEPTOR (LOGGING)                        */
 /* -------------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------- */
+/*                       RESPONSE INTERCEPTOR (LOGGING)                        */
+/* -------------------------------------------------------------------------- */
+
 api.interceptors.response.use(
   (res) => res,
   (err) => {
@@ -112,6 +126,7 @@ api.interceptors.response.use(
       status: err?.response?.status,
       data: err?.response?.data,
     });
+
 
     return Promise.reject(err);
   }

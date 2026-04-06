@@ -1,7 +1,13 @@
 // screens/SignUp.jsx
+
+import { useState, useEffect } from "react";
+import {
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import * as Location from "expo-location";
-import { useRef, useState, useEffect } from "react";
-import { FlatList, Dimensions, View, Alert } from "react-native";
 import api from "../lib/api";
 
 import StepPersonal from "./signup/StepPersonal";
@@ -9,13 +15,17 @@ import StepSecurity from "./signup/StepSecurity";
 import StepMobile from "./signup/StepMobile";
 import SignUpHeader from "./signup/SignUpHeader";
 
-const { width } = Dimensions.get("window");
+/* ================= CONSTANTS ================= */
+
+const JAEN_CENTER = { lat: 15.3383, lng: 120.9141 };
+const MAX_DISTANCE_KM = 5;
+
+/* ================= COMPONENT ================= */
 
 export default function SignUp({ navigation }) {
-  const ref = useRef(null);
-  const [index, setIndex] = useState(0);
+  const [step, setStep] = useState(0);
 
-  // ===== DATA =====
+  /* ===== FORM DATA ===== */
   const [fName, setFName] = useState("");
   const [lName, setLName] = useState("");
   const [username, setUsername] = useState("");
@@ -23,382 +33,146 @@ export default function SignUp({ navigation }) {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [birthdate, setBirthdate] = useState("");
+
+  /* ===== GEO DEBUG (✅ PERSISTS ACROSS STEPS) ===== */
+  const [geoDebug, setGeoDebug] = useState(false);
+
+  /* ===== LOCATION ===== */
   const [location, setLocation] = useState(null);
-  const [locationPermission, setLocationPermission] = useState(null);
+  const [permission, setPermission] = useState(null);
 
-  // ===== ERRORS =====
-  const [fNameError, setFNameError] = useState("");
-  const [lNameError, setLNameError] = useState("");
-  const [usernameError, setUsernameError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
-  const [confirmPasswordError, setConfirmPasswordError] = useState("");
-  const [phoneError, setPhoneError] = useState("");
-  const [addressError, setAddressError] = useState("");
+  /* ================= HELPERS ================= */
 
-  const sanitizeInput = (text, allowSpaces = false) => {
-    const pattern = allowSpaces ? /[^a-zA-Z0-9 ]/g : /[^a-zA-Z0-9]/g;
-    return text.replace(pattern, "");
-  };
-
-  //Jaen bounds and fencing and debugging
-  const [debuger, setDebuger] = useState(false);
-  const JAEN_CENTER = {
-    lat: 15.33830,
-    lng: 120.91410,
-  };
-
-  const MAX_DISTANCE_KM = 5; //adjust lang this idk optimal size
-  const getDistanceKm = (lat1, lon1, lat2, lon2) => {
-    const toRad = (val) => (val * Math.PI) / 180;
-
+  const toRad = (v) => (v * Math.PI) / 180;
+  const getDistanceKm = (a, b) => {
     const R = 6371;
-    const dLat = toRad(lat2 - lat1);
-    const dLon = toRad(lon2 - lon1);
-
-    const a =
+    const dLat = toRad(b.lat - a.lat);
+    const dLng = toRad(b.lng - a.lng);
+    const x =
       Math.sin(dLat / 2) ** 2 +
-      Math.cos(toRad(lat1)) *
-        Math.cos(toRad(lat2)) *
-        Math.sin(dLon / 2) ** 2;
-
-    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+      Math.cos(toRad(a.lat)) *
+        Math.cos(toRad(b.lat)) *
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
   };
 
+  /* ================= LOCATION ================= */
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      setLocationPermission(status);
+      const { status } =
+        await Location.requestForegroundPermissionsAsync();
+      setPermission(status);
 
-      if (status !== "granted") {
-        Alert.alert(
-          "Location Required",
-          "You must allow location access to register.",
-        );
-        return;
+      if (status === "granted") {
+        const pos = await Location.getCurrentPositionAsync({});
+        setLocation({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        });
       }
-
-      const loc = await Location.getCurrentPositionAsync({});
-      setLocation({
-        lat: loc.coords.latitude,
-        lng: loc.coords.longitude,
-      });
     })();
   }, []);
 
-  const handleCreateUser = () => {
-    if (locationPermission !== "granted" || !location) {
-      Alert.alert(
-        "Location Required",
-        "Please enable location permission to continue registration."
-      );
-      return;
-    }
-    if (
-      usernameError ||
-      passwordError ||
-      emailError ||
-      confirmPasswordError ||
-      fNameError ||
-      lNameError ||
-      phoneError
-    ) {
-      return;
-    }
-    if(!debuger){
-      if (!location) {
-        Alert.alert(
-          "Location Required",
-          "Waiting for your location. Please try again."
-        );
+  /* ================= NAV ================= */
+
+  const next = () => setStep((s) => s + 1);
+  const back = () =>
+    step === 0 ? navigation.goBack() : setStep((s) => s - 1);
+
+  /* ================= FINAL SUBMIT ================= */
+
+  const submit = async () => {
+    // ✅ Location check ONLY if debug OFF
+    if (!geoDebug) {
+      if (permission !== "granted" || !location) {
+        Alert.alert("Location Required");
         return;
       }
 
-      const distance = getDistanceKm(
-        location.lat,
-        location.lng,
-        JAEN_CENTER.lat,
-        JAEN_CENTER.lng
-      );
-
-      if (distance > MAX_DISTANCE_KM) {
+      const dist = getDistanceKm(location, JAEN_CENTER);
+      if (dist > MAX_DISTANCE_KM) {
         Alert.alert(
           "Outside Service Area",
-          "Registration is only allowed within Jaen, Nueva Ecija."
+          "Registration is only allowed in Jaen."
         );
         return;
       }
     }
 
-    const userData = {
-      fname: fName,
-      lname: lName,
-      username,
-      email,
-      password,
-      birthdate: date,
-      phone,
-      address,
-      location
-    };
-
-    api
-      .post("/user/register", userData)
-      .then(() => {
-        alert("Registration successful! Please verify your email.");
-
-        setFName("");
-        setLName("");
-        setUsername("");
-        setEmail("");
-        setPassword("");
-        setConfirmPassword("");
-        setDate("");
-      })
-      .catch(() => {
-        alert("Signup failed. Please try again.");
+    try {
+      await api.post("/user/register", {
+        fname: fName,
+        lname: lName,
+        username,
+        password,
+        birthdate,
+        phone,
+        email,
+        address,
+        location,
       });
-  };
 
-  const handlePassword = (v) => {
-    setPassword(v);
-    if (!v) setPasswordError("Password required");
-    else if (v.length < 8) setPasswordError("Minimum 8 characters");
-    else if (!/[A-Z]/.test(v)) setPasswordError("One uppercase required");
-    else if (!/[0-9]/.test(v)) setPasswordError("One number required");
-    else setPasswordError("");
-  };
-
-  const handleConfirmPassword = (v) => {
-    setConfirmPassword(v);
-    if (!v) setConfirmPasswordError("Confirm password");
-    else if (v !== password) setConfirmPasswordError("Passwords do not match");
-    else setConfirmPasswordError("");
-  };
-
-  const handlePhone = (v) => {
-    setPhone(v);
-    if (!/^\d{10,11}$/.test(v)) setPhoneError("Invalid phone number");
-    else setPhoneError("");
-  };
-
-  const handleEmail = (v) => {
-    setEmail(v);
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
-      setEmailError("Invalid email");
-    else setEmailError("");
-  };
-
-  // ===== NAV =====
-  const next = () => {
-    if (index === 0 && (fNameError || lNameError || usernameError)) {
-      Alert.alert("Fix errors first");
-      return;
-    }
-    if (index === 1 && (passwordError || confirmPasswordError)) {
-      Alert.alert("Fix password errors");
-      return;
-    }
-    ref.current.scrollToIndex({ index: index + 1 });
-  };
-
-  const back = () => {
-    if (index === 0) navigation.goBack();
-    else ref.current.scrollToIndex({ index: index - 1 });
-  };
-
-  const register = () => {
-    if (phoneError || emailError) {
-      Alert.alert("Fix errors before submitting");
-      return;
-    }
-
-    api.post("/user/register", {
-      fname: fName,
-      lname: lName,
-      username,
-      password,
-      phone,
-      email,
-    }).then(() => {
-      Alert.alert(
-        "Verify Email",
-        "Check your inbox to verify your account."
-      );
+      Alert.alert("Success", "Check your email to verify.");
       navigation.replace("LogIn");
-    });
+    } catch {
+      Alert.alert("Signup failed");
+    }
   };
+
+  /* ================= STEPS ================= */
 
   const pages = [
-    {
-      key: "personal",
-      component: (
-        <StepPersonal
-          fName={fName}
-          lName={lName}
-          username={username}
-          fNameError={fNameError}
-          lNameError={lNameError}
-          usernameError={usernameError}
-          onFNameChange={handleFName}
-          onLNameChange={handleLName}
-          onUsernameChange={handleUsername}
-          onNext={next}
-        />
-      ),
-    },
-    {
-      key: "security",
-      component: (
-        <StepSecurity
-          password={password}
-          confirmPassword={confirmPassword}
-          passwordError={passwordError}
-          confirmPasswordError={confirmPasswordError}
-          onPasswordChange={handlePassword}
-          onConfirmChange={handleConfirmPassword}
-          onNext={next}
-        />
-      ),
-    },
-    {
-      key: "mobile",
-      component: (
-        <StepMobile
-          phone={phone}
-          email={email}
-          phoneError={phoneError}
-          emailError={emailError}
-          onPhoneChange={handlePhone}
-          onEmailChange={handleEmail}
-          onSubmit={register}
-        />
-      ),
-    },
+    <StepPersonal
+      key="personal"
+      fName={fName}
+      lName={lName}
+      username={username}
+      onFNameChange={setFName}
+      onLNameChange={setLName}
+      onUsernameChange={setUsername}
+      geoDebug={geoDebug}
+      onToggleGeoDebug={() => setGeoDebug((v) => !v)}
+      onNext={next}
+    />,
+
+    <StepSecurity
+      key="security"
+      password={password}
+      confirmPassword={confirmPassword}
+      onPasswordChange={setPassword}
+      onConfirmChange={setConfirmPassword}
+      onNext={next}
+      onBack={back}
+    />,
+
+    <StepMobile
+      key="mobile"
+      phone={phone}
+      email={email}
+      address={address}
+      birthdate={birthdate}
+      onPhoneChange={setPhone}
+      onEmailChange={setEmail}
+      onAddressChange={setAddress}
+      onBirthdateChange={setBirthdate}
+      onSubmit={submit}
+      onBack={back}
+    />,
   ];
 
+  /* ================= RENDER ================= */
+
   return (
-    <SafeAreaView style={styles.safe}>
+    <SafeAreaView style={{ flex: 1 }}>
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        {/* Content (TOP-ALIGNED via ScrollView) */}
-        <ScrollView
-          contentContainerStyle={{ ...styles.contentWrapper, flexGrow: 1 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Logo */}
-          <Image
-            source={require("../stores/assets/sagipbayanlogo.png")}
-            style={styles.logo}
-            resizeMode="contain"
-          />
-
-          <View style={styles.formWrapper}>
-            <TextInput
-              style={styles.input}
-              placeholder="First Name"
-              placeholderTextColor="#706f6faa"
-              value={fName}
-              onChangeText={handleFName}
-            />
-            {fNameError ? <Text style={styles.error}>{fNameError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Last Name"
-              placeholderTextColor="#706f6faa"
-              value={lName}
-              onChangeText={handleLName}
-            />
-            {lNameError ? <Text style={styles.error}>{lNameError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Username"
-              placeholderTextColor="#706f6faa"
-              value={username}
-              onChangeText={handleUsername}
-            />
-            {usernameError ? <Text style={styles.error}>{usernameError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Password"
-              placeholderTextColor="#706f6faa"
-              secureTextEntry
-              value={password}
-              onChangeText={handlePassword}
-            />
-            {passwordError ? <Text style={styles.error}>{passwordError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Confirm Password"
-              placeholderTextColor="#706f6faa"
-              secureTextEntry
-              value={confirmPassword}
-              onChangeText={handleConfirmPassword}
-            />
-            {confirmPasswordError ? (
-              <Text style={styles.error}>{confirmPasswordError}</Text>
-            ) : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Email"
-              placeholderTextColor="#706f6faa"
-              value={email}
-              onChangeText={handleEmail}
-            />
-            {emailError ? <Text style={styles.error}>{emailError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Birthdate (YYYY-MM-DD)"
-              placeholderTextColor="#706f6faa"
-              value={date}
-              onChangeText={setDate}
-              {...Platform.select({ web: { type: "date" }, default: {} })}
-            />
-
-            <TextInput
-              style={styles.input}
-              placeholder="Phone Number"
-              placeholderTextColor="#706f6faa"
-              value={phone}
-              onChangeText={handlePhone}
-            />
-            {phoneError ? <Text style={styles.error}>{phoneError}</Text> : null}
-
-            <TextInput
-              style={styles.input}
-              placeholder="Address"
-              placeholderTextColor="#706f6faa"
-              value={address}
-              onChangeText={handleAddress}
-            />
-            {addressError ? <Text style={styles.error}>{addressError}</Text> : null}
-
-            <TouchableOpacity style={styles.button} onPress={handleCreateUser}>
-              <Text style={styles.buttonText}>SIGN UP</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={{ marginTop: 10 }}
-              onPress={() => setDebuger(prev => !prev)}
-            >
-              <Text style={{ color: debuger ? "green" : "red", fontSize: 12 }}>
-                {debuger ? "Geo Check: OFF (Debug)" : "Geo Check: ON"}
-              </Text>
-            </TouchableOpacity>
-
-            <Text style={styles.link} onPress={() => navigation.navigate("LogIn")}>
-              Already have an account? LOGIN
-            </Text>
-          </View>
-        </ScrollView>
+        <SignUpHeader step={step} onBack={back} />
+        {pages[step]}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

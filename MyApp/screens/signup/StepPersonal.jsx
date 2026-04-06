@@ -1,6 +1,4 @@
-import {
-  View,
-  Text,
+import { Text,
   TextInput,
   TouchableOpacity,
   Image,
@@ -14,13 +12,14 @@ export default function StepPersonal({
   fName,
   lName,
   username,
-  fNameError,
-  lNameError,
-  usernameError,
   onFNameChange,
   onLNameChange,
   onUsernameChange,
   onNext,
+
+  /* ✅ GEO DEBUG PROPS */
+  geoDebug,
+  onToggleGeoDebug,
 }) {
   return (
     <KeyboardAvoidingView
@@ -28,11 +27,7 @@ export default function StepPersonal({
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={Platform.OS === "ios" ? 120 : 0}
     >
-      <ScrollView
-        keyboardShouldPersistTaps="handled"
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView contentContainerStyle={styles.container}>
         <Image
           source={require("../../stores/assets/application1.png")}
           style={styles.image}
@@ -40,9 +35,6 @@ export default function StepPersonal({
         />
 
         <Text style={styles.title}>Personal Information</Text>
-        <Text style={styles.description}>
-          Tell us a little about yourself to help personalize your experience.
-        </Text>
 
         <TextInput
           style={styles.input}
@@ -50,7 +42,6 @@ export default function StepPersonal({
           value={fName}
           onChangeText={onFNameChange}
         />
-        {fNameError ? <Text style={styles.error}>{fNameError}</Text> : null}
 
         <TextInput
           style={styles.input}
@@ -58,17 +49,30 @@ export default function StepPersonal({
           value={lName}
           onChangeText={onLNameChange}
         />
-        {lNameError ? <Text style={styles.error}>{lNameError}</Text> : null}
 
         <TextInput
           style={styles.input}
           placeholder="Username"
           value={username}
           onChangeText={onUsernameChange}
+          autoCapitalize="none"
         />
-        {usernameError ? (
-          <Text style={styles.error}>{usernameError}</Text>
-        ) : null}
+
+        {/* ✅ GEO DEBUG TOGGLE */}
+        <TouchableOpacity
+          onPress={onToggleGeoDebug}
+          style={{ marginTop: 12, alignSelf: "center" }}
+        >
+          <Text
+            style={{
+              color: geoDebug ? "#16A34A" : "#DC2626",
+              fontSize: 12,
+              fontWeight: "600",
+            }}
+          >
+            Geo Check: {geoDebug ? "OFF (Debug)" : "ON"}
+          </Text>
+        </TouchableOpacity>
 
         <TouchableOpacity style={styles.button} onPress={onNext}>
           <Text style={styles.buttonText}>NEXT</Text>

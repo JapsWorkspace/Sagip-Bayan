@@ -1,5 +1,5 @@
 // App.js
-import React from 'react';
+import React, { useContext } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
@@ -13,52 +13,55 @@ import SendOtp from './screens/SendOtp';
 import VerifyOtp from './screens/VerifyOtp';
 import PasswordSecurity from './screens/PasswordSecurity';
 import PersonalDetails from './screens/PersonalDetails';
-import RiskHeatMap from './screens/RiskHeatMap';
-import Guidelines from './screens/Guidelines';
-import SafetyMark from './screens/SafetyMark';
-import MainCenter from './screens/MainCenter';
 
-
-import AppShell from './screens/AppShell'; // ✅ THIS IS THE ONE
+import AppShell from './screens/AppShell';
 import { UserProvider } from './screens/UserProvider';
+import { UserContext } from './screens/UserContext';
 
 const Stack = createNativeStackNavigator();
+
+/* ================= AUTH STACK ================= */
+function AuthStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="GetStarted" component={GetStarted} />
+      <Stack.Screen name="LogIn" component={LogIn} />
+      <Stack.Screen name="PrivacyGate" component={PrivacyGate} />
+      <Stack.Screen name="SignUp" component={SignUp} />
+      <Stack.Screen name="SendOtp" component={SendOtp} />
+      <Stack.Screen
+        name="VerifyOtp"
+        component={VerifyOtp}
+        options={{ presentation: 'modal' }}
+      />
+    </Stack.Navigator>
+  );
+}
+
+/* ================= APP STACK ================= */
+function AppStack() {
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="AppShell" component={AppShell} />
+      <Stack.Screen name="PasswordSecurity" component={PasswordSecurity} />
+      <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
+    </Stack.Navigator>
+  );
+}
+
+/* ================= ROOT SWITCH ================= */
+function RootNavigator() {
+  const { user } = useContext(UserContext);
+
+  // ✅ When user becomes null → AuthStack appears automatically
+  return user ? <AppStack /> : <AuthStack />;
+}
 
 export default function App() {
   return (
     <UserProvider>
       <NavigationContainer>
-        <Stack.Navigator
-          initialRouteName="GetStarted"
-          screenOptions={{ headerShown: false }}
-        >
-          {/* BOOTSTRAP */}
-          <Stack.Screen name="AppBootstrap" component={AppBootstrap} />
-
-          {/* ENTRY */}
-          <Stack.Screen name="GetStarted" component={GetStarted} />
-          <Stack.Screen name="LogIn" component={LogIn} />
-
-          {/* SIGN UP FLOW */}
-          <Stack.Screen name="PrivacyGate" component={PrivacyGate} />
-          <Stack.Screen name="SignUp" component={SignUp} />
-
-          {/* OPTIONAL AUTH */}
-          <Stack.Screen name="SendOtp" component={SendOtp} />
-          <Stack.Screen
-            name="VerifyOtp"
-            component={VerifyOtp}
-            options={{ presentation: 'modal' }}
-          />
-
-          {/* ✅ MAIN APP (BOTTOM NAV LIVES HERE, ONCE) */}
-          <Stack.Screen name="AppShell" component={AppShell} />
-
-          {/* SETTINGS (NO BOTTOM NAV) */}
-          <Stack.Screen name="PasswordSecurity" component={PasswordSecurity} />
-          <Stack.Screen name="PersonalDetails" component={PersonalDetails} />
-
-        </Stack.Navigator>
+        <RootNavigator />
       </NavigationContainer>
     </UserProvider>
   );
