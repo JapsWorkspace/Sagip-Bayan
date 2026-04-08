@@ -1,4 +1,3 @@
-
 const UserModel = require("../models/User");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
@@ -183,10 +182,6 @@ const loginUser = async (req, res) => {
   }
 };
 
-/* =========================
-   UPDATE USER
-========================= */
-const updateUser = async (req, res) => {
 /* =========================
    UPDATE USER
 ========================= */
@@ -415,7 +410,7 @@ const getUserById = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
-}
+
 module.exports = {
   registerUser,
   verifyEmail,

@@ -34,9 +34,8 @@ export default function Login() {
   const countdownRef = useRef(null);
 
 
-  const BASE_URL = "http://localhost:8000";
-  const local =
-    process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
+  const local = "http://localhost:8000";
+  const BASE_URL = process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
 
 
   useEffect(() => {

@@ -11,7 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 /* -------------------------------------------------------------------------- */
 
 // 1) Your laptop's LAN IP (for real phone via Expo Go)
-const LAN_IP = '192.168.1.8';
+const LAN_IP = '172.20.10.3';
 
 // 2) Optional HTTPS tunnel for dev (ngrok, cloudflared, etc.)
 const NGROK_URL = ''; // e.g. 'https://xxxx.ngrok.app'

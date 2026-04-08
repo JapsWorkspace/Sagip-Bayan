@@ -1,27 +1,4 @@
-
-
-// screens/SafetyMark.jsx
-import React, {
-  useState,
-  useContext,
-  useEffect,
-  useRef,
-  useCallback,
-} from "react";
-import {
-  View,
-  Text,
-  TextInput,
-  Alert,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Animated,
-  PanResponder,
-  Dimensions,
-  Image,
-} from "react-native";
-import React, {
+import{
   useState,
   useContext,
   useEffect,

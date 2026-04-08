@@ -27,7 +27,7 @@ import TimeInOut from './components/admin/timeInOut';
 import AdminLogs from './components/admin/AdminLogs';
 import EvacuationMap from './components/map/EvacuationMap';
 import AdminAccounts from './components/group/AdminAccounts';
-
+import PublicGuide from './components/guidelines/PublicGuide';
 import Inventory from './components/Donations/Inventory';
 import InventoryAdd from './components/Donations/InventoryAdd';
 
