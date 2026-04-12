@@ -10,6 +10,12 @@ const incidentSchema = new mongoose.Schema(
     longitude: Number,
     status: { type: String, default: "reported" },
 
+    image: {
+      fileName: String,
+      fileUrl: String,
+      public_id: String,
+    },
+
     // ⏰ auto-expire after 24 hours
     expiresAt: {
       type: Date,

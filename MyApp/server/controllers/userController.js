@@ -2,6 +2,7 @@ const UserModel = require("../models/User");
 const crypto = require("crypto");
 const sendVerificationEmail = require("../utils/sendVerificationEmail");
 const sendOTP = require("../utils/sendOTP");
+const cloudinary = require("../config/cloudinary");
 const bcrypt = require("bcryptjs");
 
 /* =========================
@@ -51,10 +52,7 @@ const registerUser = async (req, res) => {
     const newUser = new UserModel({
       ...req.body,
       password: hashedPassword,
-      password: hashedPassword,
       isVerified: false,
-      verificationToken,
-      verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
       verificationToken,
       verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000,
     });
@@ -67,7 +65,6 @@ const registerUser = async (req, res) => {
     await sendVerificationEmail(user.email, verificationLink);
 
     res.status(201).json({
-      message: "Registration successful. Please verify your email.",
       message: "Registration successful. Please verify your email.",
     });
   } catch (err) {
@@ -87,8 +84,7 @@ const verifyEmail = (req, res) => {
 
   UserModel.findOne({
     verificationToken: token,
-    verificationTokenExpires: { $gt: Date.now() },
-    verificationTokenExpires: { $gt: Date.now() },
+    verificationTokenExpires: { $gt: Date.now() }
   })
     .then((user) => {
       if (!user) {
@@ -134,11 +130,8 @@ const loginUser = async (req, res) => {
     return res
       .status(400)
       .json({ message: "Username and password are required" });
-    return res
-      .status(400)
-      .json({ message: "Username and password are required" });
   }
-
+  
   try {
     const user = await UserModel.findOne({ username });
 
@@ -164,7 +157,6 @@ const loginUser = async (req, res) => {
         userId: user._id,
         email: user.email,
         restored: true,
-        restored: true,
       });
     }
 
@@ -173,7 +165,6 @@ const loginUser = async (req, res) => {
     res.json({
       twoFactor: false,
       user,
-      restored: true,
       restored: true,
     });
   } catch (err) {
@@ -190,7 +181,6 @@ const updateUser = async (req, res) => {
     const updateData = { ...req.body };
 
     if (req.body.password) {
-      updateData.password = await bcrypt.hash(req.body.password, 10);
       updateData.password = await bcrypt.hash(req.body.password, 10);
     }
 
@@ -411,6 +401,52 @@ const getUserById = async (req, res) => {
   }
 };
 
+
+const uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
+    }
+
+    // ✅ STEP 1: get current user FIRST
+    const existingUser = await UserModel.findById(req.params.id);
+
+    // ✅ STEP 2: delete old avatar from Cloudinary
+    if (existingUser?.avatarPublicId) {
+      await cloudinary.uploader.destroy(existingUser.avatarPublicId);
+    }
+
+    // ✅ STEP 3: upload new image
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { folder: "evacuation_app/avatars" },
+        (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        }
+      ).end(req.file.buffer);
+    });
+
+    // ✅ STEP 4: save BOTH url + public_id
+    const user = await UserModel.findByIdAndUpdate(
+      req.params.id,
+      {
+        avatar: result.secure_url,
+        avatarPublicId: result.public_id, // 🔥 IMPORTANT
+      },
+      { new: true }
+    );
+
+    res.json({
+      avatar: result.secure_url,
+      user,
+    });
+  } catch (err) {
+    console.error("AVATAR UPLOAD ERROR:", err);
+    res.status(500).json({ message: "Avatar upload failed" });
+  }
+};
+
 module.exports = {
   registerUser,
   verifyEmail,
@@ -424,4 +460,5 @@ module.exports = {
   loginUser,
   updateLocation,
   getUserById,
+  uploadAvatar,
 };

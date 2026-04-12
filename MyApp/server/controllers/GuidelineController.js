@@ -1,13 +1,30 @@
 // controllers/GuidelineController.js
 const PostingGuideline = require("../models/Guidelines");
+const cloudinary = require("../config/cloudinary");
 
 // ✅ Create a new guideline
 const createGuideline = async (req, res) => {
   try {
-    const attachments = (req.files || []).map(file => ({
-      fileName: file.originalname,
-      fileUrl: `http://localhost:8000/uploads/guidelines/${file.filename}`, // ✅ updated path
-    }));
+    const files = req.files || [];
+
+    const attachments = await Promise.all(
+      files.map(file => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { folder: "evacuation_app/guidelines" },
+            (err, result) => {
+              if (err) return reject(err);
+
+              resolve({
+                fileName: file.originalname,
+                fileUrl: result.secure_url,
+                public_id: result.public_id,
+              });
+            }
+          ).end(file.buffer);
+        });
+      })
+    );
 
     const guideline = await PostingGuideline.create({
       ...req.body,
@@ -52,29 +69,25 @@ const incrementViews = async (req, res) => {
 
 // ✅ Get all guidelines
 const getGuidelines = async (req, res) => {
-
-
   try {
-      const users = await PostingGuideline.find(); // get ALL documents
-      console.log(users);
-    } catch (error) {
-      console.error(error);
+    const { status, category } = req.query;  // Get query parameters
+    const filter = {};  // Initialize filter object
+
+    if (status) filter.status = status;  // Add status filter if provided
+    if (category) filter.category = category;  // Add category filter if provided
+
+    // Example database query (replace with your actual database code)
+    const guidelines = await PostingGuideline.find(filter);  // Assuming you're using something like MongoDB
+
+    if (!guidelines || guidelines.length === 0) {
+      return res.status(404).json({ message: "No guidelines found" });  // Handle no results
     }
 
-  try {
-    const { status, category } = req.query;
-    const filter = {};
-    if (status) filter.status = status;
-    if (category) filter.category = category;
+    res.status(200).json(guidelines);  // Return the guidelines data as JSON
 
-    const guidelines = await PostingGuideline.find(filter)
-      .populate("createdBy", "name email")
-      .sort({ createdAt: -1 });
-
-    res.json(guidelines);
   } catch (err) {
     console.error("Error fetching guidelines:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });  // Return error response
   }
 };
 
@@ -95,13 +108,66 @@ const getGuidelineById = async (req, res) => {
 // ✅ Update a guideline
 const updateGuideline = async (req, res) => {
   try {
-    const guideline = await PostingGuideline.findByIdAndUpdate(
-      req.params.id,
-      req.body,
-      { new: true, runValidators: true }
+    const guideline = await PostingGuideline.findById(req.params.id);
+    if (!guideline) {
+      return res.status(404).json({ message: "Guideline not found" });
+    }
+
+    // =======================
+    // ✅ Handle deleted images
+    // =======================
+    let remainingAttachments = guideline.attachments || [];
+
+    if (req.body.removeImages) {
+      const removeList = JSON.parse(req.body.removeImages);
+
+      // delete from Cloudinary
+      await Promise.all(
+        removeList.map(img =>
+          cloudinary.uploader.destroy(img.public_id)
+        )
+      );
+
+      // filter out removed images
+      remainingAttachments = remainingAttachments.filter(
+        img => !removeList.some(r => r.public_id === img.public_id)
+      );
+    }
+
+    // =======================
+    // ✅ Upload new images
+    // =======================
+    const newAttachments = await Promise.all(
+      (req.files || []).map(file => {
+        return new Promise((resolve, reject) => {
+          cloudinary.uploader.upload_stream(
+            { folder: "evacuation_app/guidelines" },
+            (err, result) => {
+              if (err) return reject(err);
+
+              resolve({
+                fileName: file.originalname,
+                fileUrl: result.secure_url,
+                public_id: result.public_id,
+              });
+            }
+          ).end(file.buffer);
+        });
+      })
     );
 
-    if (!guideline) return res.status(404).json({ message: "Guideline not found" });
+    // =======================
+    // ✅ Combine old + new
+    // =======================
+    guideline.attachments = [...remainingAttachments, ...newAttachments];
+
+    // =======================
+    // ✅ Update other fields
+    // =======================
+    Object.assign(guideline, req.body);
+
+    await guideline.save();
+
     res.json(guideline);
   } catch (err) {
     console.error("Error updating guideline:", err);
@@ -109,12 +175,26 @@ const updateGuideline = async (req, res) => {
   }
 };
 
-// ✅ Delete a guideline
+//Delete
 const deleteGuideline = async (req, res) => {
   try {
-    const guideline = await PostingGuideline.findByIdAndDelete(req.params.id);
+    const guideline = await PostingGuideline.findById(req.params.id);
 
-    if (!guideline) return res.status(404).json({ message: "Guideline not found" });
+    if (!guideline) {
+      return res.status(404).json({ message: "Guideline not found" });
+    }
+
+    // ✅ delete images from Cloudinary
+    if (guideline.attachments?.length) {
+      await Promise.all(
+        guideline.attachments.map(file =>
+          cloudinary.uploader.destroy(file.public_id)
+        )
+      );
+    }
+
+    await PostingGuideline.findByIdAndDelete(req.params.id);
+
     res.json({ message: "Guideline deleted successfully" });
   } catch (err) {
     console.error("Error deleting guideline:", err);

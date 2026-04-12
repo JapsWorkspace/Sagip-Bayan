@@ -1,14 +1,17 @@
 const IncidentModel = require("../models/Incident");
 const HistoryModel = require("../models/History");
+const cloudinary = require("../config/cloudinary");
 
 // ✅ Get all incidents
 const getIncidents = async (req, res) => {
   try {
     const incidents = await IncidentModel.find().sort({ createdAt: -1 });
     res.json(incidents);
+    
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Internal Server Error" });
+    
   }
 };
 
@@ -20,9 +23,20 @@ const registerIncident = async (req, res) => {
     let imageData = null;
 
     if (req.file) {
+      const result = await new Promise((resolve, reject) => {
+        cloudinary.uploader.upload_stream(
+          { folder: "evacuation_app/incidents" },
+          (err, result) => {
+            if (err) return reject(err);
+            resolve(result);
+          }
+        ).end(req.file.buffer);
+      });
+
       imageData = {
         fileName: req.file.originalname,
-        fileUrl: `http://localhost:8000/uploads/incidents/${req.file.filename}`,
+        fileUrl: result.secure_url,
+        public_id: result.public_id, // 🔥 important for delete later
       };
     }
 
@@ -40,8 +54,6 @@ const registerIncident = async (req, res) => {
     });
 
     const incident = await newIncident.save();
-
-    console.log("Incident registered:", incident);
 
     console.log("Incident registered:", incident);
 

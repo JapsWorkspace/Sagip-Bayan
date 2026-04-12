@@ -160,6 +160,7 @@ export default function EManagement() {
     const res = await axios.get(`${BASE_URL}/evacs`, { withCredentials: true });
     const payload = Array.isArray(res.data) ? res.data : [];
     setPlaces(payload);
+    console.log("Fetched places:", payload);
     return payload;
   }, []);
 

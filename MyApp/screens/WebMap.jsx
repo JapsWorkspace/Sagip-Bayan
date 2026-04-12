@@ -1,5 +1,4 @@
-// screens/WebMap.jsx
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import {
   View,
   Text,
@@ -13,100 +12,95 @@ import MapView, { Marker, Callout, PROVIDER_GOOGLE } from "react-native-maps";
 import api from "../lib/api";
 import axios from "axios";
 import { MarkerImages, getMarkerImageBySeverity } from "./MapIcon";
-import AppLayout from "./AppLayout";
-import useJaenPlaceSearch from "./hooks/useJaenPlaceSearch";
 
-/* ------------------------- JAEN, NUEVA ECIJA LOCK ------------------------- */
+/* ---------------- JAEN BOUNDS ---------------- */
 const JAEN_CENTER = { latitude: 15.3274, longitude: 120.9190 };
-const JAEN_PAD_LAT = 0.05;
-const JAEN_PAD_LNG = 0.05;
+const PAD = 0.05;
+const TOLERANCE = 0.0005;
 
-const JAEN_BOUNDS = {
-  north: JAEN_CENTER.latitude + JAEN_PAD_LAT,
-  south: JAEN_CENTER.latitude - JAEN_PAD_LAT,
-  west: JAEN_CENTER.longitude - JAEN_PAD_LNG,
-  east: JAEN_CENTER.longitude + JAEN_PAD_LNG,
+const BOUNDS = {
+  north: JAEN_CENTER.latitude + PAD,
+  south: JAEN_CENTER.latitude - PAD,
+  east: JAEN_CENTER.longitude + PAD,
+  west: JAEN_CENTER.longitude - PAD,
 };
 
-function isInsideBounds(lat, lng) {
-  return (
-    lat <= JAEN_BOUNDS.north &&
-    lat >= JAEN_BOUNDS.south &&
-    lng >= JAEN_BOUNDS.west &&
-    lng <= JAEN_BOUNDS.east
-  );
-}
+const isInside = (lat, lng) =>
+  lat <= BOUNDS.north + TOLERANCE &&
+  lat >= BOUNDS.south - TOLERANCE &&
+  lng <= BOUNDS.east + TOLERANCE &&
+  lng >= BOUNDS.west - TOLERANCE;
 
-function clampToBounds(lat, lng) {
-  return {
-    latitude: Math.max(JAEN_BOUNDS.south, Math.min(JAEN_BOUNDS.north, lat)),
-    longitude: Math.max(JAEN_BOUNDS.west, Math.min(JAEN_BOUNDS.east, lng)),
-  };
-}
+/* ---------------- ZOOM ---------------- */
+const zoomToDelta = (z) => 0.02 * Math.pow(2, 15 - z);
 
-/* ------------------------- Zoom helpers --------------------------- */
-function zoomToLatDelta(z) {
-  return 0.02 * Math.pow(2, 15 - z);
-}
-
-function markerSizeFromDelta(latDelta) {
-  const MIN = 108;
-  const MAX = 800;
-  const REF = 0.02;
-  const factor = REF / Math.max(latDelta, 1e-6);
-  return Math.max(MIN, Math.min(MAX, MAX * factor));
-}
-
-export default function WebMap({ onSelect, selected, selectedLevel, userLocation }) {
+/* ---------------- COMPONENT ---------------- */
+export default function WebMap({
+  onSelect,
+  selected,
+  userLocation,
+  onIncidentPress, // ✅ required
+}) {
   const mapRef = useRef(null);
+  const [incidents, setIncidents] = useState([]);
   const { width, height } = Dimensions.get("window");
   const aspect = width / height;
 
-  const { suggestions, search, clear } = useJaenPlaceSearch();
-  const [incidents, setIncidents] = useState([]);
-
-  const [region, setRegion] = useState(() => {
-    const z = 15;
-    const latDelta = zoomToLatDelta(z);
+  const [region] = useState(() => {
+    const d = zoomToDelta(15);
     return {
       latitude: JAEN_CENTER.latitude,
       longitude: JAEN_CENTER.longitude,
-      latitudeDelta: latDelta,
-      longitudeDelta: latDelta * aspect,
+      latitudeDelta: d,
+      longitudeDelta: d * aspect,
     };
   });
 
-  const markerPx = markerSizeFromDelta(region.latitudeDelta);
+  /* ---------------- FETCH INCIDENTS ---------------- */
+  const fetchIncidents = useCallback(async () => {
+    try {
+      const res = await api.get("/incident/getIncidents");
 
-  /* ---------------- Fetch incidents ---------------- */
-  useEffect(() => {
-    const fetchIncidents = async () => {
-      try {
-        const res = await api.get("/incident/getIncidents");
-        setIncidents(Array.isArray(res.data) ? res.data : []);
-      } catch (err) {
-        console.error("Fetch incidents error:", err?.message);
-      }
-    };
+      const data = Array.isArray(res.data)
+        ? res.data
+        : res.data?.incidents || [];
 
-    fetchIncidents();
-    const interval = setInterval(fetchIncidents, 5000);
-    return () => clearInterval(interval);
+      setIncidents(data);
+    } catch (err) {
+      console.error("Fetch error:", err?.message);
+    }
   }, []);
 
-  /* ---------------- Map helpers ---------------- */
+  useEffect(() => {
+    fetchIncidents();
+    const interval = setInterval(fetchIncidents, 8000);
+    return () => clearInterval(interval);
+  }, [fetchIncidents]);
+
+  /* ---------------- HELPERS ---------------- */
+  const focusTo = (lat, lng, zoom = 17) => {
+    if (!mapRef.current) return;
+
+    const d = zoomToDelta(zoom);
+
+    mapRef.current.animateToRegion({
+      latitude: lat,
+      longitude: lng,
+      latitudeDelta: d,
+      longitudeDelta: d * aspect,
+    });
+  };
+
   const reverseGeocode = async (lat, lng) => {
     try {
-      const res = await axios.get("https://nominatim.openstreetmap.org/reverse", {
-        params: { lat, lon: lng, format: "json" },
-        headers: { "User-Agent": "SafeJaen/1.0 (contact: admin@jaen.gov.ph)" },
-      });
+      const res = await axios.get(
+        "https://nominatim.openstreetmap.org/reverse",
+        {
+          params: { lat, lon: lng, format: "json" },
+        }
+      );
 
-      const a = res?.data?.address || {};
       return (
-        a.road ||
-        a.suburb ||
-        a.neighbourhood ||
         res?.data?.display_name ||
         `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`
       );
@@ -115,181 +109,163 @@ export default function WebMap({ onSelect, selected, selectedLevel, userLocation
     }
   };
 
-  const focusTo = (lat, lng, zoom = 17, ms = 280) => {
-    if (!mapRef.current) return;
-    const latDelta = zoomToLatDelta(zoom);
-    mapRef.current.animateToRegion(
-      {
-        latitude: lat,
-        longitude: lng,
-        latitudeDelta: latDelta,
-        longitudeDelta: latDelta * aspect,
-      },
-      ms
-    );
-  };
+  /* ---------------- MAP CLICK ---------------- */
+  const handlePress = async (e) => {
+    const { latitude, longitude } = e.nativeEvent.coordinate;
 
-  /* ✅ REQUIRED unified handler */
-  const handleSelectSuggestion = (place) => {
-    const inside = isInsideBounds(place.latitude, place.longitude);
-    const target = inside
-      ? { latitude: place.latitude, longitude: place.longitude }
-      : clampToBounds(place.latitude, place.longitude);
+    const label = await reverseGeocode(latitude, longitude);
 
     onSelect?.({
-      text: place.label,
-      lat: target.latitude,
-      lng: target.longitude,
+      text: label,
+      lat: latitude,
+      lng: longitude,
     });
 
-    focusTo(target.latitude, target.longitude, 17, 300);
-    clear();
+    focusTo(latitude, longitude);
   };
 
-  /* ---------------- Marker bounce ---------------- */
-  const dropScale = useRef(new Animated.Value(1)).current;
+  /* ---------------- ANIMATION ---------------- */
+  const scale = useRef(new Animated.Value(1)).current;
+
   useEffect(() => {
-    if (selected?.lat && selected?.lng) {
-      dropScale.setValue(0.01);
-      Animated.spring(dropScale, {
+    if (selected?.lat) {
+      scale.setValue(0.3);
+      Animated.spring(scale, {
         toValue: 1,
         useNativeDriver: true,
-        speed: 14,
-        bounciness: 6,
       }).start();
     }
-  }, [selected?.lat, selected?.lng]);
+  }, [selected?.lat]);
 
-  const selectionImg = MarkerImages.def || MarkerImages.default;
-
+  /* ---------------- RENDER ---------------- */
   return (
-    <AppLayout
-      onSearch={search}
-      suggestions={suggestions}
-      onSelectSuggestion={handleSelectSuggestion}
-    >
-      <View style={styles.container}>
-        <MapView
-          ref={mapRef}
-          style={{ flex: 1 }}
-          provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
-          initialRegion={region}
-          onPress={async (e) => {
-            const { latitude, longitude } = e.nativeEvent.coordinate;
+    <View style={styles.container}>
+      <MapView
+        ref={mapRef}
+        style={{ flex: 1 }}
+        provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
+        initialRegion={region}
+        onPress={handlePress}
+      >
+        {/* INCIDENT MARKERS */}
+        {incidents.map((incident) => {
+          const lat = Number(incident?.latitude);
+          const lng = Number(incident?.longitude);
 
-            const inside = isInsideBounds(latitude, longitude);
-            const target = inside
-              ? { latitude, longitude }
-              : clampToBounds(latitude, longitude);
+          if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+          if (!isInside(lat, lng)) return null;
 
-            const label = await reverseGeocode(
-              target.latitude,
-              target.longitude
-            );
+          const source = getMarkerImageBySeverity(incident.level);
 
-            onSelect?.({
-              text: label,
-              lat: target.latitude,
-              lng: target.longitude,
-            });
-
-            focusTo(target.latitude, target.longitude, 17, 280);
-          }}
-        >
-          {/* Incident markers */}
-          {incidents.map((incident) => {
-            const lat = incident?.latitude;
-            const lng = incident?.longitude;
-            if (!isInsideBounds(lat, lng)) return null;
-
-            const img = getMarkerImageBySeverity(
-              incident.level || incident.type
-            );
-
-            return (
-              <Marker
-                key={incident._id}
-                coordinate={{ latitude: lat, longitude: lng }}
-                anchor={{ x: 0.5, y: 1 }}
-              >
-                <Image
-                  source={img || MarkerImages.default}
-                  style={{ width: 24, height: 24 }}
-                  resizeMode="contain"
-                />
-                <Callout>
-                  <View style={styles.callout}>
-                    <Text style={styles.title}>
-                      {(incident.type || "").toUpperCase()}
-                    </Text>
-                    <Text>Status: {incident.status ?? "—"}</Text>
-                    <Text>Severity: {incident.level ?? "—"}</Text>
-                    {!!incident.location && (
-                      <Text>{incident.location}</Text>
-                    )}
-                    {!!incident.description && (
-                      <Text>{incident.description}</Text>
-                    )}
-                  </View>
-                </Callout>
-              </Marker>
-            );
-          })}
-
-          {/* Selected marker */}
-          {!!selected?.lat && !!selected?.lng && (
+          return (
             <Marker
-              coordinate={{
-                latitude: selected.lat,
-                longitude: selected.lng,
+              key={incident._id}
+              coordinate={{ latitude: lat, longitude: lng }}
+              onPress={(e) => {
+                e.stopPropagation(); // ✅ prevent map click
+                console.log("MARKER CLICK:", incident);
+                onIncidentPress?.(incident);
               }}
-              anchor={{ x: 0.5, y: 1 }}
             >
-              <Animated.Image
-                source={selectionImg}
-                style={{
-                  width: markerPx,
-                  height: markerPx,
-                  transform: [{ scale: dropScale }],
+              <Image source={source} style={styles.marker} />
+
+              {/* ✅ Callout also triggers (backup + UX) */}
+              <Callout
+                onPress={() => {
+                  console.log("CALLOUT CLICK:", incident);
+                  onIncidentPress?.(incident);
                 }}
-                resizeMode="contain"
-              />
-              {!!selected?.label && (
-                <Callout>
-                  <View style={{ maxWidth: 240 }}>
-                    <Text style={{ fontWeight: "600" }}>
-                      {selected.label}
-                    </Text>
-                  </View>
-                </Callout>
-              )}
-            </Marker>
-          )}
+              >
+                <View style={styles.callout}>
+                  <Text style={styles.title}>
+                    {incident.type?.toUpperCase()}
+                  </Text>
+                  <Text>Status: {incident.status}</Text>
+                  <Text>Severity: {incident.level}</Text>
 
-          {/* User location */}
-          {!!userLocation?.lat && !!userLocation?.lng && (
-            <Marker
-              coordinate={{
-                latitude: userLocation.lat,
-                longitude: userLocation.lng,
-              }}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <Image
-                source={MarkerImages.def}
-                style={{ width: 30, height: 30 }}
-                resizeMode="contain"
-              />
+                  {!!incident.location && <Text>{incident.location}</Text>}
+                  {!!incident.description && (
+                    <Text>{incident.description}</Text>
+                  )}
+
+                  {!!incident?.image?.fileUrl && (
+                    <Image
+                      source={{ uri: incident.image.fileUrl }}
+                      style={styles.preview}
+                    />
+                  )}
+                </View>
+              </Callout>
             </Marker>
-          )}
-        </MapView>
-      </View>
-    </AppLayout>
+          );
+        })}
+
+        {/* SELECTED MARKER */}
+        {!!selected?.lat && (
+          <Marker
+            coordinate={{
+              latitude: selected.lat,
+              longitude: selected.lng,
+            }}
+          >
+            <Animated.Image
+              source={MarkerImages.selected}
+              style={[styles.selected, { transform: [{ scale }] }]}
+            />
+          </Marker>
+        )}
+
+        {/* USER LOCATION */}
+        {!!userLocation?.lat && (
+          <Marker
+            coordinate={{
+              latitude: userLocation.lat,
+              longitude: userLocation.lng,
+            }}
+          >
+            <Image source={MarkerImages.default} style={styles.user} />
+          </Marker>
+        )}
+      </MapView>
+    </View>
   );
 }
 
+/* ---------------- STYLES ---------------- */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  callout: { maxWidth: 260, padding: 6 },
-  title: { fontWeight: "700", marginBottom: 4 },
+  container: { flex: 1 },
+
+  marker: {
+    width: 26,
+    height: 26,
+    resizeMode: "contain",
+  },
+
+  selected: {
+    width: 60,
+    height: 60,
+    resizeMode: "contain",
+  },
+
+  user: {
+    width: 30,
+    height: 30,
+  },
+
+  callout: {
+    maxWidth: 260,
+    padding: 6,
+  },
+
+  title: {
+    fontWeight: "700",
+    marginBottom: 4,
+  },
+
+  preview: {
+    width: 140,
+    height: 90,
+    marginTop: 6,
+    borderRadius: 8,
+  },
 });

@@ -42,6 +42,7 @@ export default function IncidentReportScreen({ navigation }) {
     usernames: user.username || "",
     phone: user.phone || "",
   });
+  
 
    const {
       query,
@@ -64,6 +65,14 @@ export default function IncidentReportScreen({ navigation }) {
   const [image, setImage] = useState(null); // single image
   const [debuger, setDebuger] = useState(false);
   const [userLocation, setUserLocation] = useState(null);
+
+  useEffect(() => {
+  if (!image?.uri) return;
+
+  setImage(prev => prev ? { ...prev } : prev);
+  console.log("Image updated:", image);
+}, [image?.uri]);
+
   useEffect(() => {
   if (suggestions.length === 1) {
     const place = suggestions[0];
@@ -239,15 +248,11 @@ export default function IncidentReportScreen({ navigation }) {
       formData.append("phone", phone || "");
 
       if (image) {
-        if (Platform.OS === "web") {
-          formData.append("image", image.file);
-        } else {
-          formData.append("image", {
-            uri: image.uri,
-            name: image.name,
-            type: image.type,
-          });
-        }
+        formData.append("image", {
+        uri: image.uri,
+        name: image.name,
+        type: image.type,
+      });
       }
 
       await api.post("/incident/register", formData, {
@@ -338,17 +343,47 @@ export default function IncidentReportScreen({ navigation }) {
               lng: incidentReports.longitude,
               label: incidentReports.location,
             }}
-            selectedLevel={incidentReports.level}
             userLocation={userLocation}
+
             onSelect={(obj) => {
-              setIncidentReports((prev) => ({
+              setIncidentReports(prev => ({
                 ...prev,
                 location: obj.text,
                 latitude: obj.lat,
                 longitude: obj.lng,
               }));
             }}
-          />
+
+            // 🔥 NEW
+            onIncidentPress={(incident) => {
+              console.log("INCIDENT CLICKED:", incident);
+
+              setIncidentReports(prev => ({
+                ...prev,
+                type: incident.type || "",
+                level: incident.level || "",
+                location: incident.location || "",
+                latitude: Number(incident.latitude),
+                longitude: Number(incident.longitude),
+                description: incident.description || "",
+                usernames: incident.usernames || "",
+                phone: incident.phone || "",
+              }));
+
+              // ✅ FIX: ensure valid + force RN refresh
+              if (incident?.image?.fileUrl) {
+                const cleanUrl = String(incident.image.fileUrl);
+
+                setImage({
+                  uri: cleanUrl.includes("?")
+                    ? cleanUrl + "&t=" + Date.now()
+                    : cleanUrl + "?t=" + Date.now(),
+                });
+              } else {
+                setImage(null);
+              }
+            }}
+            />
         </View>
 
         {/* ▶️ Draggable panel with full-height sheet */}
@@ -441,12 +476,13 @@ export default function IncidentReportScreen({ navigation }) {
                 )}
 
                 {/* Image preview */}
-                {image && (
+                {image?.uri ? (
                   <Image
                     source={{ uri: image.uri }}
                     style={{ width: 60, height: 60, marginTop: 6, borderRadius: 6 }}
+                    resizeMode="cover"
                   />
-                )}
+                ) : null}
 
                 <TouchableOpacity style={styles.button} onPress={submitReport}>
                   <Text style={styles.buttonText}>SUBMIT</Text>

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const incidentController = require("../controllers/incidentController");
-const uploadIncidentImage = require("../middleware/incidentUpload"); 
+const {uploadIncidentImage} = require("../middleware/upload"); 
 
 // ✅ Get all incidents
 router.get("/getIncidents", incidentController.getIncidents);

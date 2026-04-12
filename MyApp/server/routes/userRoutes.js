@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const path = require("path");
-const multer = require("multer");
+const { uploadAvatar } = require("../middleware/upload");
+
 
 // ✅ CONTROLLERS
 const userController = require("../controllers/userController");
@@ -32,47 +33,12 @@ router.put("/location/:id", userController.updateLocation);
 router.put("/twofactor/:id", userController.toggleTwoFactor);
 
 router.get("/:id", userController.getUserById);
-/* =========================
-   AVATAR UPLOAD
-========================= */
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, "../uploads/avatars"));
-  },
-  filename: (req, file, cb) => {
-    cb(
-      null,
-      `${req.params.id}-${Date.now()}${path.extname(file.originalname)}`
-    );
-  },
-});
-
-const upload = multer({ storage });
 
 router.put(
   "/avatar/:id",
-  upload.single("avatar"),
-  async (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      const avatarUrl = `/uploads/avatars/${req.file.filename}`;
-
-      const user = await UserModel.findByIdAndUpdate(
-        req.params.id,
-        { avatar: avatarUrl },
-        { new: true }
-      );
-
-      res.json({ avatar: avatarUrl, user });
-    } catch (err) {
-      console.error("AVATAR UPLOAD ERROR:", err);
-      res.status(500).json({ message: "Avatar upload failed" });
-    }
-  }
+  uploadAvatar.single("avatar"),
+  userController.uploadAvatar
 );
 
 module.exports = router;

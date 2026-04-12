@@ -9,7 +9,7 @@ const historySchema = new mongoose.Schema(
     },
     placeName: {
       type: String,
-      required: true,
+      required: false,
     },
     details: String,
   },

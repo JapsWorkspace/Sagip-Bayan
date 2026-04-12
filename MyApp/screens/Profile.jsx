@@ -27,7 +27,7 @@ export default function Profile({ navigation }) {
   /* ===== preload avatar ===== */
   useEffect(() => {
     if (user?.avatar) {
-      setAvatarUri(`${BASE_URL}${user.avatar}`);
+      setAvatarUri(user.avatar || null);
     }
   }, [user?.avatar]);
 
@@ -53,24 +53,25 @@ export default function Profile({ navigation }) {
     try {
       setUploading(true);
 
-      const ext = picked.uri.split(".").pop();
+      const ext = picked.uri.split(".").pop()?.toLowerCase() || "jpg";
       const formData = new FormData();
       formData.append("avatar", {
         uri: picked.uri,
         name: `avatar.${ext}`,
         type: `image/${ext}`,
       });
+      console.log(user._id);
 
       const res = await api.put(
-        `/user/avatar/${user.id}`,
+        `/user/avatar/${user._id}`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
 
-      setUser({ ...user, avatar: res.data.avatar });
+      setUser(res.data.user);
     } catch (err) {
       Alert.alert("Upload failed", "Please try again.");
-      setAvatarUri(user.avatar ? `${BASE_URL}${user.avatar}` : null);
+      setAvatarUri(user.avatar || null);
     } finally {
       setUploading(false);
     }

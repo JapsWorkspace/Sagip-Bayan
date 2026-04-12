@@ -1,89 +1,90 @@
-const multer = require("multer"); 
+const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 
 // =======================
-// ✅ Fixed folder for guideline uploads
-// =======================
-const guidelineDir = path.join(__dirname, "../uploads/guidelines");
-if (!fs.existsSync(guidelineDir)) fs.mkdirSync(guidelineDir, { recursive: true });
-
-// Storage configuration for guidelines
-const guidelineStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    console.log("Saving guideline file to:", guidelineDir); // 🔹 debug destination
-    cb(null, guidelineDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    console.log("Uploading guideline file:", file.originalname, "as", uniqueSuffix + "-" + file.originalname); // 🔹 debug filename
-    cb(null, uniqueSuffix + "-" + file.originalname);
-  },
-});
-
-// =======================
-// ✅ Fixed folder for inventory/proof uploads (goods/monetary)
+// ✅ Proof uploads (still local)
 // =======================
 const proofDir = path.join(__dirname, "../uploads/proofs");
 if (!fs.existsSync(proofDir)) fs.mkdirSync(proofDir, { recursive: true });
 
-// Storage configuration for proofs
 const proofStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    console.log("Saving proof file to:", proofDir); // 🔹 debug destination
-    cb(null, proofDir);
-  },
+  destination: (req, file, cb) => cb(null, proofDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    console.log("Uploading proof file:", file.originalname, "as", uniqueSuffix + "-" + file.originalname); // 🔹 debug filename
-    cb(null, uniqueSuffix + "-" + file.originalname);
+    cb(null, `${uniqueSuffix}-${file.originalname}`);
   },
 });
 
-// Accept only images and PDFs for proofs
 const proofFileFilter = (req, file, cb) => {
   const allowed = /jpeg|jpg|png|pdf/;
   const ext = path.extname(file.originalname).toLowerCase();
+
   if (allowed.test(ext)) {
-    console.log("Proof file accepted:", file.originalname);
     cb(null, true);
   } else {
-    cb(new Error("Only images and PDF files are allowed for proofs"));
+    cb(new Error("Only images and PDF files are allowed for proofs"), false);
   }
 };
 
-const uploadDir = path.join(__dirname, "../uploads/guidelines");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, uniqueSuffix + "-" + file.originalname);
+// =======================
+// ✅ Guideline uploads (Cloudinary-ready)
+// =======================
+const uploadGuideline = multer({
+  storage: multer.memoryStorage(), // ✅ REQUIRED for Cloudinary
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image")) {
+      return cb(new Error("Only image files are allowed"), false);
+    }
+    cb(null, true);
   },
 });
 
-const fileFilter = (req, file, cb) => cb(null, true);
+// =======================
+// ✅ Proof uploader
+// =======================
+const uploadProof = multer({
+  storage: proofStorage,
+  fileFilter: proofFileFilter,
+});
 
 // =======================
-// ✅ Multer instances
+// 🛠 Debug helpers (optional)
 // =======================
-const uploadGuideline = multer({ storage: guidelineStorage, fileFilter: (req, file, cb) => cb(null, true) });
-const uploadProof = multer({ storage: proofStorage, fileFilter: proofFileFilter });
-const upload = multer({ storage, fileFilter });
-
-// Debug helper (optional)
 uploadGuideline.debugMiddleware = (req, res, next) => {
-  console.log("Request files (guideline):", req.files);
-  console.log("Request body (guideline):", req.body);
+  console.log("Guideline files:", req.files);
+  console.log("Body:", req.body);
   next();
 };
 
 uploadProof.debugMiddleware = (req, res, next) => {
-  console.log("Request files (proof):", req.files);
-  console.log("Request body (proof):", req.body);
+  console.log("Proof files:", req.files);
+  console.log("Body:", req.body);
   next();
 };
+
+const uploadAvatar = multer({
+  storage: multer.memoryStorage(), // ✅ same as guidelines
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image")) {
+      return cb(new Error("Only image files allowed"), false);
+    }
+    cb(null, true);
+  },
+});
+
+const uploadIncidentImage = multer({
+  storage: multer.memoryStorage(), // ✅ REQUIRED
+  limits: { fileSize: 3 * 1024 * 1024 }, // optional (3MB)
+  fileFilter: (req, file, cb) => {
+    if (!file.mimetype.startsWith("image")) {
+      return cb(new Error("Only image files allowed"), false);
+    }
+    cb(null, true);
+  },
+});
 
 // =======================
 // ✅ Export
@@ -91,5 +92,6 @@ uploadProof.debugMiddleware = (req, res, next) => {
 module.exports = {
   uploadGuideline,
   uploadProof,
-  upload
+  uploadAvatar,
+  uploadIncidentImage,
 };

@@ -13,7 +13,7 @@ import { useNavigation } from "@react-navigation/native";
 import { UserContext } from "../UserContext";
 
 /* ========= SAME CONSTANTS AS Profile.jsx ========= */
-const BASE_URL = "http://192.168.1.4:8000";
+const BASE_URL = "http://172.31.100.51:8000";
 const DEFAULT_AVATAR =
   "https://ui-avatars.com/api/?background=E5E7EB&color=6B7280&rounded=true&name=User";
 
@@ -67,7 +67,7 @@ export default function AppDrawer({ onRequestClose, onLogout }) {
   };
 
   const avatarUri = user?.avatar
-    ? `${BASE_URL}${user.avatar}`
+    ? user.avatar
     : DEFAULT_AVATAR;
 
   return (

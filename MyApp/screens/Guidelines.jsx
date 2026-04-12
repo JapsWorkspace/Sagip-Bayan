@@ -22,6 +22,7 @@ export default function GuidelinesListScreen({ navigation }) {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchText, setSearchText] = useState("");
   const [suggestions, setSuggestions] = useState([]);
+  const [selectedGuideline, setSelectedGuideline] = useState(null);
 
   const BASE_URL = "http://localhost:8000/api/guidelines/";
   const categories = ["all", "earthquake", "flood", "typhoon", "general"];
@@ -70,6 +71,10 @@ export default function GuidelinesListScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => (
+     <TouchableOpacity
+    style={styles.card}
+    onPress={() => setSelectedGuideline(item)}
+    >
     <View style={styles.card}>
       <Text style={styles.title}>{item.title}</Text>
 
@@ -107,6 +112,7 @@ export default function GuidelinesListScreen({ navigation }) {
         </View>
       )}
     </View>
+    </TouchableOpacity>
   );
 
   if (loading) {
@@ -173,6 +179,80 @@ export default function GuidelinesListScreen({ navigation }) {
           renderItem={renderItem}
           contentContainerStyle={{ paddingBottom: 24 }}
         />
+        {selectedGuideline && (
+          <View style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "100%",
+            height: "100%",
+            backgroundColor: "rgba(0,0,0,0.5)",
+            justifyContent: "center",
+            alignItems: "center",
+            zIndex: 999,
+          }}>
+            <View style={{
+              backgroundColor: "#fff",
+              width: "90%",
+              maxHeight: "80%",
+              borderRadius: 12,
+              padding: 20,
+            }}>
+
+              <Text style={styles.title}>{selectedGuideline.title}</Text>
+
+              <Text style={styles.metaText}>Category: {selectedGuideline.category}</Text>
+              <Text style={styles.metaText}>Priority: {selectedGuideline.priorityLevel}</Text>
+
+              {!!selectedGuideline.description && (
+                <Text style={styles.desc}>{selectedGuideline.description}</Text>
+              )}
+
+              {/* ✅ ATTACHMENTS */}
+              {selectedGuideline.attachments?.length > 0 && (
+                <View style={{ marginTop: 10 }}>
+                  <Text style={styles.attachHeader}>Attachments:</Text>
+
+                  {selectedGuideline.attachments.map((file, index) =>
+                    /\.(jpg|jpeg|png|gif)$/i.test(file.fileUrl) ? (
+                      <Image
+                        key={index}
+                        source={{ uri: file.fileUrl }}
+                        style={{
+                          width: 140,
+                          height: 140,
+                          marginTop: 8,
+                          borderRadius: 10,
+                        }}
+                      />
+                    ) : (
+                      <TouchableOpacity
+                        key={index}
+                        onPress={() => Linking.openURL(file.fileUrl)}
+                      >
+                        <Text style={styles.link}>{file.fileName}</Text>
+                      </TouchableOpacity>
+                    )
+                  )}
+                </View>
+              )}
+
+              {/* CLOSE BUTTON */}
+              <TouchableOpacity
+                onPress={() => setSelectedGuideline(null)}
+                style={{
+                  marginTop: 15,
+                  backgroundColor: "#dc3545",
+                  padding: 10,
+                  borderRadius: 8,
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ color: "#fff", fontWeight: "bold" }}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
       </View>
     </View>
   );

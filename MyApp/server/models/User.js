@@ -94,7 +94,8 @@ const userSchema = new mongoose.Schema({
   avatar: {
   type: String,
   default: ""
-},
+  },
+  avatarPublicId: String,
 
   deleteAfter: {
     type: Date,

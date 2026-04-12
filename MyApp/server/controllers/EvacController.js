@@ -158,7 +158,6 @@ const createPlace = async (req, res) => {
   }
 };
 
-// GET ALL PLACES (ROLE-AWARE)
 const getPlaces = async (req, res) => {
   try {
     const role = req.session?.role;
@@ -186,7 +185,12 @@ const getPlaces = async (req, res) => {
     }
 
     const places = await Place.find(filter).sort({ createdAt: -1 });
-    res.json(places);
+
+    res.json({
+      collection: Place.collection.name, // 👈 added
+      count: places.length,
+      data: places,
+    });
   } catch (err) {
     console.error("Get Places Error:", err);
     res.status(500).json({ message: "Server error" });
