@@ -27,6 +27,7 @@ export default function Admin() {
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [statusMap, setStatusMap] = useState({});
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
@@ -47,6 +48,11 @@ export default function Admin() {
     return () => clearInterval(interval);
   }, []);
 
+  const filteredIncidents = incidents.filter(inc => {
+    if (filter === "all") return true;
+    return inc.verification?.status === filter;
+  });
+
   const handleChange = async (id, value) => {
     try {
       const incident = incidents.find(i => i._id === id);
@@ -64,10 +70,6 @@ export default function Admin() {
       });
 
       // Update UI
-      setIncidents(prev =>
-        prev.map(i => i._id === id ? { ...i, status: value } : i)
-      );
-      setStatusMap(prev => ({ ...prev, [id]: value }));
     } catch (err) {
       console.error(err);
     }
@@ -90,6 +92,47 @@ export default function Admin() {
         delete copy[id];
         return copy;
       });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleVerifyOverride = async (id, newStatus) => {
+    try {
+      const res = await axios.put(
+        `http://localhost:8000/incident/updateVerification/${id}`,
+        { status: newStatus }
+      );
+
+      const updated = res.data.incident;
+
+      setIncidents(prev =>
+        prev.map(i => (i._id === id ? updated : i))
+      );
+
+      setSelectedIncident(updated);
+
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+    }
+  };
+
+  const handleReverify = async (id) => {
+    try {
+      const res = await axios.put(
+        `http://localhost:8000/incident/reverify/${id}`
+      );
+
+      const updated = res.data.incident;
+
+      // ✅ Update UI with fresh AI result
+      setIncidents(prev =>
+        prev.map(i => (i._id === id ? updated : i))
+      );
+
+      // ✅ Also update modal if open
+      setSelectedIncident(updated);
+
     } catch (err) {
       console.error(err);
     }
@@ -141,6 +184,12 @@ export default function Admin() {
       </div>
 
       <h3>Manage Incident Statuses</h3>
+      <div style={{ marginBottom: "10px" }}>
+        <button onClick={() => setFilter("all")}>All</button>
+        <button onClick={() => setFilter("pending")}>Pending</button>
+        <button onClick={() => setFilter("approved")}>Approved</button>
+        <button onClick={() => setFilter("rejected")}>Rejected</button>
+      </div>
       <div style={{ overflowX: 'auto' }}>
         <table border="1" cellPadding="6" cellSpacing="0" style={{ width: '100%', fontSize: 14 }}>
           <thead>
@@ -149,12 +198,14 @@ export default function Admin() {
               <th>Level</th>
               <th>Description</th>
               <th>Location</th>
-              <th>Status</th>
+              <th>Status</th>    
+              <th>Image</th>
+              <th>AI Status</th>
               <th>Delete</th>
             </tr>
           </thead>
           <tbody>
-            {incidents.map(inc => (
+            {filteredIncidents.map(inc => (
               <tr key={inc._id}>
                 <td>{inc.type}</td>
                 <td>{inc.level}</td>
@@ -169,6 +220,33 @@ export default function Admin() {
                     <option value="onProcess">On Process</option>
                     <option value="resolved">Resolved</option>
                   </select>
+                </td>
+                <td>
+                  {inc.image?.fileUrl && (
+                    <img
+                      src={inc.image.fileUrl}
+                      alt="incident"
+                      style={{ width: 60, cursor: "pointer" }}
+                      onClick={() => setSelectedIncident(inc)}
+                    />
+                  )}
+                </td>
+
+                <td>
+                  <span style={{
+                    color:
+                      inc.verification?.status === "approved" ? "green" :
+                      inc.verification?.status === "rejected" ? "red" :
+                      "orange"
+                  }}>
+                    {inc.verification?.status || "pending"}
+                  </span>
+
+                  <div>
+                    <button onClick={() => handleVerifyOverride(inc._id, "approved")}>✔</button>
+                    <button onClick={() => handleVerifyOverride(inc._id, "rejected")}>✖</button>
+                    <button onClick={() => handleReverify(inc._id)}>↻</button>
+                  </div>
                 </td>
                 <td>
                   <button onClick={() => handleDelete(inc._id)}>Delete</button>
@@ -188,7 +266,41 @@ export default function Admin() {
           <p>{selectedIncident.description}</p>
           <p> Username: {selectedIncident.usernames}</p>
           <p> Phone: {selectedIncident.phone}</p>
+          {selectedIncident.image?.fileUrl && (
+            <img
+              src={selectedIncident.image.fileUrl}
+              alt="incident"
+              style={{ width: "100%", maxHeight: 300, objectFit: "cover" }}
+            />
+          )}
+          <p>
+            <strong>AI Status:</strong>{" "}
+            <span style={{
+              color:
+                selectedIncident.verification?.status === "approved" ? "green" :
+                selectedIncident.verification?.status === "rejected" ? "red" :
+                "orange",
+              fontWeight: "bold"
+            }}>
+              {selectedIncident.verification?.status}
+            </span>
+          </p>
 
+          <p><strong>Confidence:</strong> {selectedIncident.verification?.confidence}%</p>
+          <p><strong>Matched Labels:</strong> {selectedIncident.verification?.matchedLabels?.join(", ") || "None"}</p>
+          <p><strong>All Labels:</strong> {selectedIncident.verification?.labels?.join(", ")}</p>
+          <p><strong>Confidence:</strong> {selectedIncident.verification?.confidence}</p>
+          <p><strong>Labels:</strong> {selectedIncident.verification?.labels?.join(", ")}</p>
+
+          <button onClick={() => handleVerifyOverride(selectedIncident._id, "approved")}>
+            Approve
+          </button>
+          <button onClick={() => handleVerifyOverride(selectedIncident._id, "rejected")}>
+            Reject
+          </button>
+          <button onClick={() => handleReverify(selectedIncident._id)}>
+            Re-Verify AI
+          </button>
           <button onClick={() => setSelectedIncident(null)}>Close</button>
         </div>
       )}

@@ -10,16 +10,21 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-rekognition": "^3.1029.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
 <<<<<<< HEAD
     "cloudinary": "^2.9.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+<<<<<<< Updated upstream
 =======
     "cors": "^2.8.6",
     "dotenv": "^17.4.1",
 >>>>>>> sidestream/main
+=======
+    "exif-parser": "^0.1.12",
+>>>>>>> Stashed changes
     "expo-image-picker": "^55.0.14",
     "express": "^5.2.1",
     "express-session": "^1.19.0",

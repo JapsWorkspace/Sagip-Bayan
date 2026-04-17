@@ -77,7 +77,7 @@ const uploadAvatar = multer({
 
 const uploadIncidentImage = multer({
   storage: multer.memoryStorage(), // ✅ REQUIRED
-  limits: { fileSize: 3 * 1024 * 1024 }, // optional (3MB)
+  limits: { fileSize: 10 * 1024 * 1024 }, // optional (10MB)
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith("image")) {
       return cb(new Error("Only image files allowed"), false);

@@ -8,6 +8,11 @@ router.get("/getIncidents", incidentController.getIncidents);
 router.get('/stats', incidentController.getIncidentStats);
 router.get('/typeStats', incidentController.getIncidentTypeStats);
 router.get('/trend', incidentController.getTrend);
+// ✅ Admin verification override
+router.put("/updateVerification/:id", incidentController.updateVerification);
+
+// ✅ Re-run AI verification
+router.put('/reverify/:id', incidentController.reverifyIncident);
 
 // ✅ Register incident (single image) + prevent undefined body
 router.post(

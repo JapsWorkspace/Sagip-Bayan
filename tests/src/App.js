@@ -30,6 +30,7 @@ import AdminAccounts from './components/group/AdminAccounts';
 import Inventory from './components/Donations/Inventory';
 import PublicGuide from './components/guidelines/PublicGuide';
 import InventoryAdd from './components/Donations/InventoryAdd';
+import Admins from './components/Admin';
 
 function App() {
   return (
@@ -40,6 +41,7 @@ function App() {
 
             <Route path="/Incident-Report" element={<IncidentReport />} />
             <Route path="/auditTrails" element={<AuditTrails/>} />
+            <Route path="/shet" element={<Admins/>} />
 
             {/* Evacuation Center Management */}
             {/* Keep existing generic route for backward compatibility */}

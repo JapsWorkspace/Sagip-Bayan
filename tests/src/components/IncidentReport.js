@@ -29,11 +29,12 @@ const JAEN_BOUNDS = {
 };
 
 export default function IncidentReport() {
-  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+  const BASE_URL = process.env.REACT_APP_API_URL;
   const navigate = useNavigate();
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [statusMap, setStatusMap] = useState({});
+  const [filter, setFilter] = useState("all");
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
@@ -53,6 +54,47 @@ export default function IncidentReport() {
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
   }, [BASE_URL]);
+
+  const filteredIncidents = useMemo(() => {
+    if (filter === "all") return incidents;
+    return incidents.filter(
+      (i) => i.verification?.status === filter
+    );
+  }, [incidents, filter]);
+  
+  const handleVerifyOverride = async (id, newStatus) => {
+    try {
+      await axios.put(`http://localhost:8000/incident/updateVerification/${id}`, {
+        status: newStatus
+      });
+
+      setIncidents(prev =>
+        prev.map(i =>
+          i._id === id
+            ? { ...i, verification: { ...i.verification, status: newStatus } }
+            : i
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleReverify = async (id) => {
+    try {
+      console.log("Reverify ID:", id);  // Log the id to ensure it's passed correctly// Log the status
+      const res = await axios.put(`http://localhost:8000/incident/reverify/${id}`);
+      console.log("Reverify request was successful.");
+      setIncidents(prev =>
+        prev.map(i =>
+          i._id === id ? res.data.incident : i
+        )
+      );
+    } catch (err) {
+      console.error(err);
+      
+    }
+  };
 
   const handleChange = async (id, value) => {
     try {
@@ -115,12 +157,79 @@ export default function IncidentReport() {
     };
   }, [incidents]);
 
+  const interpretAIResult = (verification = {}) => {
+    const labels = verification.labels || [];
+    const confidence = verification.confidence || 0;
+
+    // 🔹 Dynamic keyword scoring (can expand anytime)
+    const categoryMap = {
+      fire: ["fire", "smoke", "flame", "burn", "explosion"],
+      flood: ["flood", "water", "rain", "overflow"],
+      accident: ["car", "vehicle", "crash", "collision", "road", "traffic"],
+      disaster: ["earthquake", "debris", "collapse", "damage"],
+      people: ["person", "crowd", "injury", "victim"]
+    };
+
+    // 🔹 Score categories dynamically
+    const scores = {};
+
+    labels.forEach(label => {
+      const lower = label.toLowerCase();
+
+      Object.entries(categoryMap).forEach(([category, keywords]) => {
+        if (keywords.some(k => lower.includes(k))) {
+          scores[category] = (scores[category] || 0) + 1;
+        }
+      });
+    });
+
+    // 🔹 Get best matched category
+    const bestCategory = Object.entries(scores)
+      .sort((a, b) => b[1] - a[1])[0]?.[0];
+
+    // 🔹 Generate interpretation
+    let message = "AI is analyzing the image.";
+
+    if (confidence < 40) {
+      message = "Low confidence. Manual review recommended.";
+    } else if (!bestCategory) {
+      message = "No clear incident detected. Needs verification.";
+    } else {
+      switch (bestCategory) {
+        case "fire":
+          message = "Possible fire hazard detected.";
+          break;
+        case "flood":
+          message = "Possible flooding detected.";
+          break;
+        case "accident":
+          message = "Possible road accident detected.";
+          break;
+        case "disaster":
+          message = "Possible structural damage or disaster detected.";
+          break;
+        case "people":
+          message = "People possibly involved or affected.";
+          break;
+        default:
+          message = "Incident detected. Needs review.";
+      }
+    }
+
+    return {
+      message,
+      confidence,
+      category: bestCategory || "unknown"
+    };
+  };
+
   const getStatusLabel = (status) => {
     if (!status || status === 'reported') return 'Reported';
     if (status === 'onProcess') return 'On Process';
     if (status === 'resolved') return 'Resolved';
     return status;
   };
+
 
   const getStatusBadgeStyle = (status) => {
     if (!status || status === 'reported') {
@@ -188,6 +297,105 @@ export default function IncidentReport() {
     };
   };
 
+  const getAIDecisionExplanation = (verification) => {
+      if (!verification) return "No AI verification available.";
+
+      const confidence = verification.confidence || 0;
+      const status = verification.status || "pending";
+      const labels = verification.labels || [];
+
+      const topLabels = labels.slice(0, 3).join(", ") || "unclear objects";
+
+      // ✅ APPROVED
+      if (status === "approved") {
+        if (confidence >= 80) {
+          return `Approved because the AI detected clear signs of ${topLabels} with high confidence (${confidence}%).`;
+        }
+        return `Approved, but with moderate confidence (${confidence}%). Detected: ${topLabels}. Consider manual review if needed.`;
+      }
+
+      // ❌ REJECTED
+      if (status === "rejected") {
+        if (confidence < 40) {
+          return `Rejected due to low confidence (${confidence}%). The image likely does not clearly show an incident.`;
+        }
+        return `Rejected because detected elements (${topLabels}) do not strongly indicate a valid incident.`;
+      }
+
+      // ⏳ PENDING
+      if (status === "pending") {
+        if (confidence >= 60) {
+          return `Pending review: AI detected possible ${topLabels} with moderate confidence (${confidence}%).`;
+        }
+        return `Pending due to unclear detection. AI confidence is low (${confidence}%), and results are inconclusive.`;
+      }
+
+      return "AI decision could not be interpreted.";
+    };
+    const getAIReviewSummary = (verification = {}) => {
+      const status = verification.status || "pending";
+      const confidence = verification.confidence ?? 0;
+      const matchedLabels = verification.matchedLabels || [];
+      const labels = verification.labels || [];
+      const metadata = verification.metadata || {};
+
+      const matchText =
+        matchedLabels.length > 0
+          ? matchedLabels.join(", ")
+          : "no matching incident labels";
+
+      const metaBits = [
+        metadata.hasGPS ? "GPS present" : "no GPS",
+        metadata.isRecent ? "recent image" : "not recent",
+        metadata.isWithinArea ? "within Jaen" : "outside Jaen / unknown area",
+      ];
+
+      let verdict = "Pending review.";
+      if (status === "approved") verdict = "Approved by AI.";
+      if (status === "rejected") verdict = "Rejected by AI.";
+      if (status === "pending") verdict = "Needs manual review.";
+
+      return {
+        verdict,
+        confidence,
+        matchText,
+        metaText: metaBits.join(" • "),
+        reasoning: verification.reasoning || "No reasoning provided.",
+        labelsText: labels.length ? labels.join(", ") : "None",
+        score: verification.score ?? confidence,
+      };
+    };
+    const formatTimestamp = (ts) => {
+      if (!ts) return "Unknown";
+
+      const date = new Date(ts * 1000);
+
+      return date.toLocaleString("en-PH", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true
+      });
+    };
+
+    const getTimeAgo = (ts) => {
+      if (!ts) return "";
+
+      const now = new Date();
+      const date = new Date(ts * 1000);
+      const diff = (now - date) / 1000; // seconds
+
+      const mins = Math.floor(diff / 60);
+      const hours = Math.floor(diff / 3600);
+      const days = Math.floor(diff / 86400);
+
+      if (mins < 60) return `${mins} min ago`;
+      if (hours < 24) return `${hours} hrs ago`;
+      return `${days} days ago`;
+    };
+
   return (
     <DashboardShell>
     <div style={styles.page}>
@@ -248,15 +456,15 @@ export default function IncidentReport() {
 
           <div style={styles.mapFrame}>
             <MapContainer
-  center={[JAEN_CENTER.lat, JAEN_CENTER.lng]}
-  zoom={14}
-  style={{ height: '100%', width: '100%' }}
-  maxBounds={[
-    [JAEN_BOUNDS.south, JAEN_BOUNDS.west],
-    [JAEN_BOUNDS.north, JAEN_BOUNDS.east],
-  ]}
-  maxBoundsViscosity={1.0}
->
+              center={[JAEN_CENTER.lat, JAEN_CENTER.lng]}
+              zoom={14}
+              style={{ height: '100%', width: '100%' }}
+              maxBounds={[
+                [JAEN_BOUNDS.south, JAEN_BOUNDS.west],
+                [JAEN_BOUNDS.north, JAEN_BOUNDS.east],
+              ]}
+              maxBoundsViscosity={1.0}
+            >
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution="&copy; OpenStreetMap contributors"
@@ -300,6 +508,12 @@ export default function IncidentReport() {
               </p>
             </div>
           </div>
+          <div style={{ marginBottom: 12 }}>
+            <button onClick={() => setFilter("all")}>All</button>
+            <button onClick={() => setFilter("pending")}>Pending</button>
+            <button onClick={() => setFilter("approved")}>Approved</button>
+            <button onClick={() => setFilter("rejected")}>Rejected</button>
+          </div>
 
           <div style={styles.tableWrap}>
             <table style={styles.table}>
@@ -310,12 +524,14 @@ export default function IncidentReport() {
                   <th style={styles.th}>Description</th>
                   <th style={styles.th}>Location</th>
                   <th style={styles.th}>Status</th>
+                  <th style={styles.th}>Image</th>
+                  <th style={styles.th}>AI</th>
                   <th style={styles.th}>Delete</th>
                 </tr>
               </thead>
               <tbody>
-                {incidents.length > 0 ? (
-                  incidents.map((inc) => (
+                {filteredIncidents.length > 0 ? (
+                  filteredIncidents.map((inc) => (
                     <tr key={inc._id} style={styles.tr}>
                       <td style={styles.td}>
                         <span style={styles.typeBadge}>
@@ -361,6 +577,78 @@ export default function IncidentReport() {
                           </select>
                         </div>
                       </td>
+                      <td style={styles.td}>
+                        {inc.image?.fileUrl && (
+                          <img
+                            src={inc.image.fileUrl}
+                            alt="incident"
+                            style={{
+                              width: 60,
+                              height: 60,
+                              objectFit: "cover",
+                              borderRadius: 8,
+                              cursor: "pointer"
+                            }}
+                            onClick={() => setSelectedIncident(inc)}
+                          />
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                          {(() => {
+                            const ai = getAIReviewSummary(inc.verification);
+
+                            return (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                <span
+                                  style={{
+                                    ...styles.badge,
+                                    background:
+                                      inc.verification?.status === "approved"
+                                        ? "#ecfdf3"
+                                        : inc.verification?.status === "rejected"
+                                        ? "#fff1f2"
+                                        : "#fff7ed",
+                                    color:
+                                      inc.verification?.status === "approved"
+                                        ? "#166534"
+                                        : inc.verification?.status === "rejected"
+                                        ? "#be123c"
+                                        : "#c2410c",
+                                  }}
+                                >
+                                  {inc.verification?.status || "pending"}
+                                </span>
+
+                                <small style={{ color: "#555" }}>
+                                  {ai.verdict}
+                                </small>
+
+                                <small style={{ color: "#555" }}>
+                                  Confidence: {ai.confidence}%
+                                </small>
+
+                                <small style={{ color: "#666", fontStyle: "italic" }}>
+                                  {ai.reasoning}
+                                </small>
+
+                                <small style={{ color: "#666" }}>
+                                  Match: {ai.matchText}
+                                </small>
+
+                                <small style={{ color: "#666" }}>
+                                  {ai.metaText}
+                                </small>
+
+                                <div style={{ display: "flex", gap: 4 }}>
+                                  <button onClick={() => handleVerifyOverride(inc._id, "approved")}>✔</button>
+                                  <button onClick={() => handleVerifyOverride(inc._id, "rejected")}>✖</button>
+                                  <button onClick={() => handleReverify(inc._id)}>↻</button>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </td>
 
                       <td style={styles.td}>
                         <button
@@ -370,6 +658,7 @@ export default function IncidentReport() {
                           Delete
                         </button>
                       </td>
+                      
                     </tr>
                   ))
                 ) : (
@@ -436,6 +725,33 @@ export default function IncidentReport() {
                 <div style={styles.detailSection}>
                   <div style={styles.detailLabel}>Location</div>
                   <div style={styles.detailValue}>{selectedIncident.location || '-'}</div>
+
+                  <p>
+                    <strong>GPS:</strong>{" "}
+                    {selectedIncident.verification?.metadata?.hasGPS ? "Available" : "Missing"}
+                  </p>
+
+                  <p>
+                    <strong>Device:</strong>{" "}
+                    {selectedIncident.verification?.metadata?.device || "Unknown"}
+                  </p>
+
+                  <p>
+                    <strong>Resolution:</strong>{" "}
+                    {selectedIncident.verification?.metadata?.width && selectedIncident.verification?.metadata?.height
+                      ? `${selectedIncident.verification.metadata.width} x ${selectedIncident.verification.metadata.height}`
+                      : "Unknown"}
+                  </p>
+
+                  <p
+                    style={{
+                      color: selectedIncident.verification?.metadata?.isRecent ? "green" : "red"
+                    }}
+                  >
+                    {selectedIncident.verification?.metadata?.isRecent
+                      ? "Recent Image"
+                      : "Old Image (⚠ suspicious)"}
+                  </p>
                 </div>
 
                 <div style={styles.detailSection}>
@@ -453,10 +769,91 @@ export default function IncidentReport() {
                     <div style={styles.detailLabel}>Phone</div>
                     <div style={styles.detailValue}>{selectedIncident.phone || '-'}</div>
                   </div>
+                  {selectedIncident.image?.fileUrl && (
+                    <img
+                      src={selectedIncident.image.fileUrl}
+                      alt="incident"
+                      style={{
+                        width: "100%",
+                        maxHeight: 260,
+                        objectFit: "cover",
+                        borderRadius: 12
+                      }}
+                    />
+                  )}
+
+                  <div style={styles.detailSection}>
+                    <div style={styles.detailLabel}>AI Verification</div>
+
+                    {(() => {
+                      const ai = getAIReviewSummary(selectedIncident.verification);
+
+                      return (
+                        <div style={styles.detailValue}>
+                          <strong>{ai.verdict}</strong>
+                          <br />
+                          Confidence: {ai.confidence}%
+                          <br />
+                          Score: {ai.score}
+                          <br />
+                          Matched Labels: {selectedIncident.verification?.matchedLabels?.join(", ") || "None"}
+                          <br />
+                          All Labels: {ai.labelsText}
+                          <br />
+                          Reasoning: {ai.reasoning}
+                          <br />
+                          <br />
+                          <strong>Metadata</strong>
+                          <br />
+                          GPS: {selectedIncident.verification?.metadata?.hasGPS ? "Available" : "Missing"}
+                          <br />
+                          Within Jaen: {selectedIncident.verification?.metadata?.isWithinArea ? "Yes" : "No / Unknown"}
+                          <br />
+                          Recent Image: {selectedIncident.verification?.metadata?.isRecent ? "Yes" : "No"}
+                          <br />
+                          Device: {selectedIncident.verification?.metadata?.device || "Unknown"}
+                          <br />
+                          Resolution: {selectedIncident.verification?.metadata?.width && selectedIncident.verification?.metadata?.height
+                            ? `${selectedIncident.verification.metadata.width} x ${selectedIncident.verification.metadata.height}`
+                            : "Unknown"}
+                          <br />
+                          <p>
+                            <strong>Timestamp:</strong>{" "}
+                            {formatTimestamp(selectedIncident.verification?.metadata?.timestamp)}
+                            <br />
+                            <span style={{ color: "#777" }}>
+                              {getTimeAgo(selectedIncident.verification?.metadata?.timestamp)}
+                            </span>
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
 
               <div style={styles.modalFooter}>
+                <button
+                  onClick={() => handleVerifyOverride(selectedIncident._id, "approved")}
+                  style={{ ...styles.closeBtn, background: "#166534" }}
+                >
+                  Approve
+                </button>
+
+                <button
+                  onClick={() => handleVerifyOverride(selectedIncident._id, "rejected")}
+                  style={{ ...styles.closeBtn, background: "#be123c" }}
+                >
+                  Reject
+                </button>
+
+                <button
+                  onClick={() => handleReverify(selectedIncident._id)}
+                  style={{ ...styles.closeBtn, background: "#1d4ed8" }}
+                >
+                  Re-Verify AI
+                </button>
+
                 <button
                   onClick={() => setSelectedIncident(null)}
                   style={styles.closeBtn}

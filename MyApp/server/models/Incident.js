@@ -23,15 +23,45 @@ const incidentSchema = new mongoose.Schema(
       index: { expires: 0 },
     },
 
-    usernames: { 
-        type: String, 
-        ref: "User" 
+    // 🔥 FULL AI VERIFICATION DATA
+    verification: {
+      status: {
+        type: String,
+        enum: ["approved", "pending", "rejected"],
+        default: "pending"
       },
 
-     phone: { 
-        type: String, 
-        ref: "User" 
+      confidence: Number,
+
+      labels: [String],          // all detected labels
+      matchedLabels: [String],   // labels relevant to incident type
+
+      isMatch: Boolean,          // whether labels matched rules
+
+      score: Number,             // 🔥 weighted score (labels + metadata)
+
+      reasoning: String,         // 🔥 human-friendly explanation
+
+      metadata: {
+        hasGPS: Boolean,
+        isRecent: Boolean,
+        isWithinArea: Boolean,
+        device: String,
+        width: Number,
+        height: Number,
+        timestamp: Number,
       }
+    },
+
+    usernames: { 
+      type: String, 
+      ref: "User" 
+    },
+
+    phone: { 
+      type: String, 
+      ref: "User" 
+    }
   },
   { timestamps: true }
 );
