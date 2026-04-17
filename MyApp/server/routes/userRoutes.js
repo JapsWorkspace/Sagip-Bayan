@@ -32,6 +32,8 @@ router.put("/location/:id", userController.updateLocation);
 router.put("/twofactor/:id", userController.toggleTwoFactor);
 
 router.get("/:id", userController.getUserById);
+
+router.post("/verify-email", userController.verifyEmailByEmail);
 /* =========================
    AVATAR UPLOAD
 ========================= */

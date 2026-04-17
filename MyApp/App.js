@@ -10,9 +10,13 @@ import GetStarted from './screens/GetStarted';
 import LogIn from './screens/LogIn';
 import SignUp from './screens/SignUp';
 import SendOtp from './screens/SendOtp';
-import VerifyOtp from './screens/VerifyOtp';
 import PasswordSecurity from './screens/PasswordSecurity';
 import PersonalDetails from './screens/PersonalDetails';
+import HazardMap from './screens/hazardMap';
+import ResetPasswordScreen from './screens/PasswordReset';
+import EmailVerifyer from './screens/EmailVerifyer';
+import VerifyOtp from './screens/VerifyOtp';
+import DonationScreen from './screens/DonationScreen';
 
 import AppShell from './screens/AppShell';
 import { UserProvider } from './screens/UserProvider';
@@ -51,10 +55,14 @@ function AppStack() {
 
 /* ================= ROOT SWITCH ================= */
 function RootNavigator() {
-  const { user } = useContext(UserContext);
-
-  // ✅ When user becomes null → AuthStack appears automatically
-  return user ? <AppStack /> : <AuthStack />;
+  return (
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen
+        name="DonationScreen"
+        component={DonationScreen}
+      />
+    </Stack.Navigator>
+  );
 }
 
 export default function App() {

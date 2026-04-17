@@ -6,6 +6,7 @@ import api from "../lib/api";
 export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [resetMode, setResetMode] = useState(false);
 
   // ✅ Load user from storage on app start
   useEffect(() => {
@@ -45,9 +46,16 @@ export const UserProvider = ({ children }) => {
   if (loading) return null; // or splash screen
 
   return (
-    <UserContext.Provider value={{ user, setUser: updateUser }}>
-      {children}
-    </UserContext.Provider>
+   <UserContext.Provider
+  value={{
+    user,
+    setUser: updateUser,
+    resetMode,
+    setResetMode,
+  }}
+>
+  {children}
+</UserContext.Provider>
   );
 };
 ``

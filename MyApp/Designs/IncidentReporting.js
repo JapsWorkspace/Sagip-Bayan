@@ -65,13 +65,24 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
 
+  centerWrapper1: {
+  position: "absolute",
+  bottom: 0,
+  width: "100%",
+  alignSelf: "center",
+  zIndex: 10,
+},
+
   /** White panel (sheet) */
   card: {
     backgroundColor: COLORS.panelBg,
     borderTopLeftRadius: METRICS.panelRadius,
     borderTopRightRadius: METRICS.panelRadius,
-    padding: METRICS.pad,
+   flex: 1,
+  paddingTop: METRICS.pad,
+  paddingHorizontal: METRICS.pad,
     width: "100%",
+    flex: 1,
 
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
