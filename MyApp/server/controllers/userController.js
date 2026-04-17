@@ -447,6 +447,28 @@ const uploadAvatar = async (req, res) => {
   }
 };
 
+const verifyEmailByEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await UserModel.findOne({ email });
+
+    if (!user) {
+      return res.json({
+        exists: false,
+      });
+    }
+
+    return res.json({
+      exists: true,
+      user,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   registerUser,
   verifyEmail,
@@ -461,4 +483,5 @@ module.exports = {
   updateLocation,
   getUserById,
   uploadAvatar,
+  verifyEmailByEmail,
 };

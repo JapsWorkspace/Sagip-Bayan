@@ -11,6 +11,7 @@ import Profile from "./Profile";
 import RiskHeatMap from "./RiskHeatMap";
 import Guidelines from "./Guidelines";
 import SafetyMark from "./SafetyMark";
+import ResetPasswordScreen from "./PasswordReset";
 
 const Stack = createNativeStackNavigator();
 
@@ -28,6 +29,7 @@ export default function AppShell() {
         <Stack.Screen name="RiskHeatMap" component={RiskHeatMap} />
         <Stack.Screen name="Guidelines" component={Guidelines} />
         <Stack.Screen name="Connection" component={SafetyMark} />
+        <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
       </Stack.Navigator>
 
       {/* ✅ Persistent bottom nav (NOT a Screen) */}

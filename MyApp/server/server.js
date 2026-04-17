@@ -38,6 +38,14 @@ const inventoryRoutes = require('./routes/inventoryRoutes');
 const reliefRequestRoutes = require('./routes/reliefRequestRoutes');
 const reliefReleaseRoutes = require('./routes/reliefReleaseRoutes');
 
+const barangayCollectionRoutes = require("./routes/barangayCollectionRoutes");
+
+const donationRoutes = require("./routes/donationRoutes");
+
+const BarangayCol = require("./models/barangayCollection");
+const jaenData = require("../data/Hilera.json"); // adjust path
+
+
 const app = express();
 const server = http.createServer(app);
 app.set('trust proxy', 1);
@@ -134,6 +142,19 @@ app.get("/api/debug-express", (req, res) => {
   });
 });
 
+app.get("/api/seed-barangays", async (req, res) => {
+  try {
+    await BarangayCol.deleteMany(); // optional reset
+
+    await BarangayCol.create(jaenData);
+
+    res.json({ message: "Seeded successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // --------------------
 // Serve uploads
 // --------------------
@@ -155,6 +176,8 @@ app.use("/history", historyRoutes);
 app.use("/evacs", evacRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/barangays", barangayRoutes);
+
+app.use("/api/barangays/collection", barangayCollectionRoutes);
 app.use("/api/drrmo", drrmoRoutes);
 app.use("/api/relief-tracking", reliefTrackingRoutes);
 app.use("/api/audit", auditRoutes);
@@ -167,6 +190,8 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/relief-requests', reliefRequestRoutes);
 app.use('/api/relief-releases', reliefReleaseRoutes);
 app.use('/api/barangay-stock', barangayStockRoutes);
+
+app.use("/api/donations", donationRoutes);
 
 // --------------------
 // Hazard proxy
