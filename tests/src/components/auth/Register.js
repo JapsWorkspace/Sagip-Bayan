@@ -3,28 +3,28 @@ import { useNavigate } from 'react-router-dom';
 import '../css/Register.css';
 
 const OFFICIAL_BARANGAYS = [
-  "Bagong Sikat",
-  "Bagong Silang",
-  "Calabasa",
-  "Don Mariano Marcos",
-  "Dampulan",
-  "Hilera",
-  "Imelda Poblacion",
-  "Ibunia",
-  "Lambakin",
-  "Langla",
-  "Magsalisi",
-  "Malabon Kaingin",
-  "Marawa",
-  "Niyugan",
-  "Putlod",
-  "San Jose",
-  "San Pablo",
-  "San Roque",
-  "Santo Tomas Norte",
-  "Santo Tomas Sur",
-  "Sapang Putik",
-  "Ulanin-Pitak"
+  'Bagong Sikat',
+  'Bagong Silang',
+  'Calabasa',
+  'Don Mariano Marcos',
+  'Dampulan',
+  'Hilera',
+  'Imelda Poblacion',
+  'Ibunia',
+  'Lambakin',
+  'Langla',
+  'Magsalisi',
+  'Malabon Kaingin',
+  'Marawa',
+  'Niyugan',
+  'Putlod',
+  'San Jose',
+  'San Pablo',
+  'San Roque',
+  'Santo Tomas Norte',
+  'Santo Tomas Sur',
+  'Sapang Putik',
+  'Ulanin-Pitak'
 ];
 
 export default function Register() {
@@ -32,7 +32,6 @@ export default function Register() {
   const BASE_URL =
     process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
 
-  // ---------- AUTH GUARD ----------
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
     if (!storedRole) {
@@ -40,7 +39,6 @@ export default function Register() {
     }
   }, [navigate]);
 
-  // ---------- FORM STATE ----------
   const [role, setRole] = useState('drrmo');
 
   const [username, setUsername] = useState('');
@@ -64,10 +62,7 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ---------- LOAD AVAILABLE BARANGAYS ----------
   useEffect(() => {
-    if (role !== 'barangay') return;
-
     const fetchBarangayOptions = async () => {
       try {
         setBarangayLoading(true);
@@ -96,9 +91,8 @@ export default function Register() {
     };
 
     fetchBarangayOptions();
-  }, [role, BASE_URL]);
+  }, [BASE_URL]);
 
-  // ---------- RESET BARANGAY WHEN ROLE CHANGES ----------
   useEffect(() => {
     if (role !== 'barangay') {
       setBarangay('');
@@ -107,7 +101,6 @@ export default function Register() {
     setSuccessMessage('');
   }, [role]);
 
-  // ---------- VALIDATORS ----------
   function validatePassword(pw) {
     if (!pw) return 'Password is required';
     if (!/^[A-Z]/.test(pw)) return 'Password must start with a capital letter';
@@ -148,7 +141,6 @@ export default function Register() {
     return '';
   }
 
-  // ---------- REAL-TIME VALIDATION ----------
   useEffect(() => {
     const nextErrors = {};
 
@@ -199,7 +191,6 @@ export default function Register() {
     touched
   ]);
 
-  // ---------- SUBMIT VALIDATION ----------
   function computeErrors() {
     const nextErrors = {};
 
@@ -228,7 +219,6 @@ export default function Register() {
     return nextErrors;
   }
 
-  // ---------- SUBMIT ----------
   async function handleRegister() {
     const freshErrors = computeErrors();
     setErrors(freshErrors);
@@ -282,7 +272,6 @@ export default function Register() {
       }
 
       const createdRoleLabel = role === 'barangay' ? 'Barangay' : 'DRRMO';
-
       setSuccessMessage(`${createdRoleLabel} account created successfully.`);
 
       setRole('drrmo');
@@ -310,24 +299,27 @@ export default function Register() {
     }
   }
 
-  const statItems = useMemo(() => {
-    const usedCount = OFFICIAL_BARANGAYS.length - availableBarangays.length;
+  const usedCount = OFFICIAL_BARANGAYS.length - availableBarangays.length;
 
+  const statItems = useMemo(() => {
     return [
       {
         label: 'Account Type',
-        value: role === 'barangay' ? 'Barangay' : 'DRRMO'
+        value: role === 'barangay' ? 'Barangay' : 'DRRMO',
+        tone: role === 'barangay' ? 'green' : 'blue'
       },
       {
         label: 'Available Barangays',
-        value: role === 'barangay' ? availableBarangays.length : '—'
+        value: barangayLoading ? '—' : availableBarangays.length,
+        tone: 'green'
       },
       {
         label: 'Occupied Barangays',
-        value: role === 'barangay' ? usedCount : '—'
+        value: barangayLoading ? '—' : usedCount,
+        tone: 'amber'
       }
     ];
-  }, [role, availableBarangays]);
+  }, [role, availableBarangays.length, usedCount, barangayLoading]);
 
   const renderFieldError = (key) => (
     <div className="field-message" aria-live="polite">
@@ -336,306 +328,255 @@ export default function Register() {
   );
 
   return (
-      <div className="register-page">
-        <div className="register-shell">
-          <div className="register-hero">
-            <div className="register-hero-copy">
+    <div className="register-page">
+      <div className="register-shell">
+        <div className="register-hero">
+          <div className="register-hero-copy">
+            <div className="register-kicker-row">
               <span className="register-kicker">Administration Module</span>
-              <h1 className="register-title">Create New Account</h1>
-              <p className="register-subtitle">
-                Register DRRMO and barangay accounts through a clean, controlled
-                workspace. Barangay options are limited to official entries and
-                active barangays are automatically removed from the list.
-              </p>
+              {barangayLoading && <span className="register-mini-badge">Updating barangays</span>}
             </div>
 
-            <div className="register-stats">
+            <h1 className="register-title">Create Account</h1>
+
+            <div className="register-stats register-stats--hero">
               {statItems.map((item) => (
-                <div className="register-stat-card" key={item.label}>
+                <div
+                  className={`register-stat-card register-stat-card--${item.tone}`}
+                  key={item.label}
+                >
                   <span>{item.label}</span>
                   <strong>{item.value}</strong>
                 </div>
               ))}
             </div>
           </div>
+        </div>
 
-          <div className="register-workspace">
-            <div className="register-panel register-panel-form">
-              <div className="register-panel-head">
-                <div>
-                  <h2>Account Details</h2>
-                  <p>
-                    Complete the required information below. Validation is shown
-                    inline to avoid layout shifting and make data entry easier.
-                  </p>
-                </div>
-              </div>
-
+        <div className="register-workspace">
+          <div className="register-panel register-panel-form">
+            <div className="register-panel-top">
               <div className="register-role-switch" aria-label="Account role">
                 <button
                   type="button"
                   className={`role-tab ${role === 'drrmo' ? 'active' : ''}`}
                   onClick={() => setRole('drrmo')}
                 >
-                  DRRMO Account
+                  DRRMO
                 </button>
                 <button
                   type="button"
                   className={`role-tab ${role === 'barangay' ? 'active' : ''}`}
                   onClick={() => setRole('barangay')}
                 >
-                  Barangay Account
+                  Barangay
                 </button>
               </div>
-
-              <form
-                className="register-form-grid"
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  handleRegister();
-                }}
-              >
-                {role === 'barangay' && (
-                  <div className="form-block form-block-full">
-                    <label className="input-label">Barangay</label>
-                    <div className={`input-shell ${errors.barangay ? 'has-error' : ''}`}>
-                      <select
-                        className="premium-input"
-                        value={barangay}
-                        onChange={(e) => {
-                          setBarangay(e.target.value);
-                          setTouched((prev) => ({ ...prev, barangay: true }));
-                          setSubmitError('');
-                        }}
-                        disabled={barangayLoading}
-                      >
-                        <option value="">
-                          {barangayLoading
-                            ? 'Loading barangay options...'
-                            : availableBarangays.length === 0
-                            ? 'No available barangays'
-                            : 'Select barangay'}
-                        </option>
-
-                        {availableBarangays.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {renderFieldError('barangay')}
-                  </div>
-                )}
-
-                <div className="form-block">
-                  <label className="input-label">Username</label>
-                  <div className={`input-shell ${errors.username ? 'has-error' : ''}`}>
-                    <input
-                      className="premium-input"
-                      placeholder="Enter username"
-                      value={username}
-                      onChange={(e) => {
-                        setUsername(e.target.value);
-                        setTouched((prev) => ({ ...prev, username: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                  </div>
-                  {renderFieldError('username')}
-                </div>
-
-                <div className="form-block">
-                  <label className="input-label">Email Address</label>
-                  <div className={`input-shell ${errors.email ? 'has-error' : ''}`}>
-                    <input
-                      className="premium-input"
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => {
-                        setEmail(e.target.value);
-                        setTouched((prev) => ({ ...prev, email: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                  </div>
-                  {renderFieldError('email')}
-                </div>
-
-                <div className="form-block">
-                  <label className="input-label">Phone Number</label>
-                  <div className={`input-shell ${errors.phoneNumber ? 'has-error' : ''}`}>
-                    <input
-                      className="premium-input"
-                      placeholder="09XXXXXXXXX"
-                      value={phoneNumber}
-                      onChange={(e) => {
-                        setPhoneNumber(e.target.value);
-                        setTouched((prev) => ({ ...prev, phoneNumber: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                  </div>
-                  {renderFieldError('phoneNumber')}
-                </div>
-
-                <div className="form-block">
-                  <label className="input-label">Hotline (optional)</label>
-                  <div className="input-shell">
-                    <input
-                      className="premium-input"
-                      placeholder="Enter hotline number"
-                      value={hotline}
-                      onChange={(e) => {
-                        setHotline(e.target.value);
-                        setSubmitError('');
-                      }}
-                    />
-                  </div>
-                  <div className="field-message">{' '}</div>
-                </div>
-
-                <div className="form-block form-block-full">
-                  <label className="input-label">Address</label>
-                  <div className={`input-shell ${errors.address ? 'has-error' : ''}`}>
-                    <input
-                      className="premium-input"
-                      placeholder="Enter full address"
-                      value={address}
-                      onChange={(e) => {
-                        setAddress(e.target.value);
-                        setTouched((prev) => ({ ...prev, address: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                  </div>
-                  {renderFieldError('address')}
-                </div>
-
-                <div className="form-block">
-                  <label className="input-label">Password</label>
-                  <div className={`input-shell ${errors.password ? 'has-error' : ''}`}>
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      className="premium-input premium-input-with-action"
-                      placeholder="Create password"
-                      value={password}
-                      onChange={(e) => {
-                        setPassword(e.target.value);
-                        setTouched((prev) => ({ ...prev, password: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="input-action"
-                      onClick={() => setShowPassword((prev) => !prev)}
-                    >
-                      {showPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {renderFieldError('password')}
-                </div>
-
-                <div className="form-block">
-                  <label className="input-label">Confirm Password</label>
-                  <div className={`input-shell ${errors.confirmPassword ? 'has-error' : ''}`}>
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      className="premium-input premium-input-with-action"
-                      placeholder="Re-enter password"
-                      value={confirmPassword}
-                      onChange={(e) => {
-                        setConfirmPassword(e.target.value);
-                        setTouched((prev) => ({ ...prev, confirmPassword: true }));
-                        setSubmitError('');
-                      }}
-                    />
-                    <button
-                      type="button"
-                      className="input-action"
-                      onClick={() => setShowConfirmPassword((prev) => !prev)}
-                    >
-                      {showConfirmPassword ? 'Hide' : 'Show'}
-                    </button>
-                  </div>
-                  {renderFieldError('confirmPassword')}
-                </div>
-
-                <div className="form-status-row form-block-full">
-                  <div className="form-status-space" aria-live="polite">
-                    {submitError && (
-                      <div className="status-banner status-banner-error">
-                        {submitError}
-                      </div>
-                    )}
-
-                    {successMessage && (
-                      <div className="status-banner status-banner-success">
-                        {successMessage}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="form-actions form-block-full">
-                  <button
-                    type="submit"
-                    className="submit-btn"
-                    disabled={isSubmitting}
-                  >
-                    {isSubmitting ? 'Creating Account...' : 'Create Account'}
-                  </button>
-                </div>
-              </form>
             </div>
 
-            <aside className="register-panel register-panel-side">
-              <div className="register-panel-head">
-                <div>
-                  <h2>Registration Notes</h2>
-                  <p>
-                    Review key reminders before creating a new account.
-                  </p>
+            <form
+              className="register-form-grid"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleRegister();
+              }}
+            >
+              {role === 'barangay' && (
+                <div className="form-block form-block-full form-block-highlight">
+                  <label className="input-label">Barangay</label>
+                  <div className={`input-shell ${errors.barangay ? 'has-error' : ''}`}>
+                    <select
+                      className="premium-input"
+                      value={barangay}
+                      onChange={(e) => {
+                        setBarangay(e.target.value);
+                        setTouched((prev) => ({ ...prev, barangay: true }));
+                        setSubmitError('');
+                      }}
+                      disabled={barangayLoading}
+                    >
+                      <option value="">
+                        {barangayLoading
+                          ? 'Loading barangay options...'
+                          : availableBarangays.length === 0
+                          ? 'No available barangays'
+                          : 'Select barangay'}
+                      </option>
+
+                      {availableBarangays.map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  {renderFieldError('barangay')}
+                </div>
+              )}
+
+              <div className="form-block">
+                <label className="input-label">Username</label>
+                <div className={`input-shell ${errors.username ? 'has-error' : ''}`}>
+                  <input
+                    className="premium-input"
+                    placeholder="Enter username"
+                    value={username}
+                    onChange={(e) => {
+                      setUsername(e.target.value);
+                      setTouched((prev) => ({ ...prev, username: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                </div>
+                {renderFieldError('username')}
+              </div>
+
+              <div className="form-block">
+                <label className="input-label">Email Address</label>
+                <div className={`input-shell ${errors.email ? 'has-error' : ''}`}>
+                  <input
+                    className="premium-input"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setTouched((prev) => ({ ...prev, email: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                </div>
+                {renderFieldError('email')}
+              </div>
+
+              <div className="form-block">
+                <label className="input-label">Phone Number</label>
+                <div className={`input-shell ${errors.phoneNumber ? 'has-error' : ''}`}>
+                  <input
+                    className="premium-input"
+                    placeholder="09XXXXXXXXX"
+                    value={phoneNumber}
+                    onChange={(e) => {
+                      setPhoneNumber(e.target.value);
+                      setTouched((prev) => ({ ...prev, phoneNumber: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                </div>
+                {renderFieldError('phoneNumber')}
+              </div>
+
+              <div className="form-block">
+                <label className="input-label">Hotline</label>
+                <div className="input-shell">
+                  <input
+                    className="premium-input"
+                    placeholder="Optional"
+                    value={hotline}
+                    onChange={(e) => {
+                      setHotline(e.target.value);
+                      setSubmitError('');
+                    }}
+                  />
+                </div>
+                <div className="field-message">{' '}</div>
+              </div>
+
+              <div className="form-block form-block-full">
+                <label className="input-label">Address</label>
+                <div className={`input-shell ${errors.address ? 'has-error' : ''}`}>
+                  <input
+                    className="premium-input"
+                    placeholder="Enter full address"
+                    value={address}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      setTouched((prev) => ({ ...prev, address: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                </div>
+                {renderFieldError('address')}
+              </div>
+
+              <div className="form-block">
+                <label className="input-label">Password</label>
+                <div className={`input-shell ${errors.password ? 'has-error' : ''}`}>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    className="premium-input premium-input-with-action"
+                    placeholder="Create password"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      setTouched((prev) => ({ ...prev, password: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="input-action"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                  >
+                    {showPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {renderFieldError('password')}
+              </div>
+
+              <div className="form-block">
+                <label className="input-label">Confirm Password</label>
+                <div className={`input-shell ${errors.confirmPassword ? 'has-error' : ''}`}>
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    className="premium-input premium-input-with-action"
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      setTouched((prev) => ({ ...prev, confirmPassword: true }));
+                      setSubmitError('');
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="input-action"
+                    onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  >
+                    {showConfirmPassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+                {renderFieldError('confirmPassword')}
+              </div>
+
+              <div className="form-status-row form-block-full">
+                <div className="form-status-space" aria-live="polite">
+                  {submitError && (
+                    <div className="status-banner status-banner-error">
+                      {submitError}
+                    </div>
+                  )}
+
+                  {successMessage && (
+                    <div className="status-banner status-banner-success">
+                      {successMessage}
+                    </div>
+                  )}
                 </div>
               </div>
 
-              <div className="info-stack">
-                <div className="info-card">
-                  <strong>Role-based creation</strong>
-                  <p>
-                    Use DRRMO for office staff accounts and Barangay for official
-                    barangay-linked access.
-                  </p>
-                </div>
-
-                <div className="info-card">
-                  <strong>Barangay restrictions</strong>
-                  <p>
-                    Barangays already assigned to an active account are removed from
-                    the dropdown automatically.
-                  </p>
-                </div>
-
-                <div className="info-card">
-                  <strong>Password policy</strong>
-                  <p>
-                    Passwords must start with a capital letter, include at least one
-                    number, and contain 8 or more characters.
-                  </p>
-                </div>
-
-                <div className="info-card accent">
-                  <strong>Admin reminder</strong>
-                  <p>
-                    Double-check names, phone numbers, and email addresses before
-                    submission to avoid account corrections later.
-                  </p>
-                </div>
+              <div className="form-actions form-block-full">
+                <button
+                  type="submit"
+                  className="submit-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Creating Account...' : 'Create Account'}
+                </button>
               </div>
-            </aside>
+            </form>
           </div>
         </div>
       </div>
+    </div>
   );
 }

@@ -23,10 +23,12 @@ const EvacuationMap = () => {
   // Transport mode
   const [transportMode, setTransportMode] = useState("driving");
 
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+
   /* ---------------- Fetch Evac Centers ---------------- */
   const fetchPlaces = () => {
     axios
-      .get("http://localhost:8000/evacs")
+      .get(`${BASE_URL}/evacs`)
       .then((res) => {
       setPlaces(res.data);
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "../css/InventoryAdd.css";
-import DashboardShell from '../layout/DashboardShell';
+import DashboardShell from "../layout/DashboardShell";
 
 const BASE_URL =
   process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
@@ -30,6 +30,7 @@ const InventoryAdd = () => {
     quantity: "",
     unit: "",
     amount: "",
+    expirationDate: "",
     description: "",
     sourceType: "external",
     sourceName: ""
@@ -118,6 +119,7 @@ const InventoryAdd = () => {
       quantity: "",
       unit: "",
       amount: "",
+      expirationDate: "",
       description: "",
       sourceType: "external",
       sourceName: ""
@@ -138,6 +140,7 @@ const InventoryAdd = () => {
       quantity: "",
       unit: "",
       amount: "",
+      expirationDate: "",
       description: "",
       sourceType: "external",
       sourceName: ""
@@ -163,6 +166,11 @@ const InventoryAdd = () => {
     return new Date(date).toLocaleDateString();
   };
 
+  const formatExpiryDate = (date) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString();
+  };
+
   const normalizeType = (type) => (type || "goods").toLowerCase();
 
   const normalizeCategoryValue = (value) => {
@@ -183,6 +191,24 @@ const InventoryAdd = () => {
     const now = new Date();
     const diffInDays = (now - itemDate) / (1000 * 60 * 60 * 24);
     return diffInDays <= 7;
+  };
+
+  const getExpiryStatus = (item) => {
+    if (!item?.expirationDate) return "none";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiry = new Date(item.expirationDate);
+    expiry.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil(
+      (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays < 0) return "expired";
+    if (diffDays <= 30) return "soon";
+    return "ok";
   };
 
   const getFormTitle = () => {
@@ -252,7 +278,13 @@ const InventoryAdd = () => {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
 
-    setFormErrors((prev) => ({ ...prev, [name]: "", category: "", customCategory: "" }));
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: "",
+      category: "",
+      customCategory: "",
+      expirationDate: ""
+    }));
   };
 
   const handleFileChange = (e) => {
@@ -290,6 +322,13 @@ const InventoryAdd = () => {
 
       if (!form.unit.trim()) {
         errors.unit = "Unit is required for goods donations.";
+      }
+
+      if (form.expirationDate) {
+        const parsed = new Date(form.expirationDate);
+        if (Number.isNaN(parsed.getTime())) {
+          errors.expirationDate = "Expiration date is invalid.";
+        }
       }
     }
 
@@ -329,6 +368,10 @@ const InventoryAdd = () => {
           formData.append("quantity", form.quantity);
         }
         formData.append("unit", form.unit.trim());
+
+        if (form.expirationDate) {
+          formData.append("expirationDate", form.expirationDate);
+        }
       } else {
         if (form.amount !== "") {
           formData.append("amount", form.amount);
@@ -356,7 +399,7 @@ const InventoryAdd = () => {
       fetchInventoryCategories();
     } catch (err) {
       console.error("Error adding inventory:", err);
-      alert("Failed to add inventory item.");
+      alert(err?.response?.data?.message || "Failed to add inventory item.");
     } finally {
       setLoading(false);
     }
@@ -384,49 +427,49 @@ const InventoryAdd = () => {
   };
 
   const handleUnarchive = async (id, name) => {
-  const confirmUnarchive = window.confirm(
-    `Are you sure you want to unarchive "${name || "this item"}"?`
-  );
-
-  if (!confirmUnarchive) return;
-
-  try {
-    await axios.put(
-      `${BASE_URL}/api/inventory/archived/${id}/restore`,
-      {},
-      { withCredentials: true }
+    const confirmUnarchive = window.confirm(
+      `Are you sure you want to unarchive "${name || "this item"}"?`
     );
 
-    alert("Inventory item unarchived successfully!");
-    fetchArchivedInventory();
-    fetchInventory();
-    fetchInventoryCategories();
-  } catch (err) {
-    console.error("Error unarchiving item:", err);
-    alert("Failed to unarchive item.");
-  }
-};
+    if (!confirmUnarchive) return;
 
-const handlePermanentDelete = async (id, name) => {
-  const confirmDelete = window.confirm(
-    `Permanently delete "${name || "this item"}"? This cannot be undone.`
-  );
+    try {
+      await axios.put(
+        `${BASE_URL}/api/inventory/archived/${id}/restore`,
+        {},
+        { withCredentials: true }
+      );
 
-  if (!confirmDelete) return;
+      alert("Inventory item unarchived successfully!");
+      fetchArchivedInventory();
+      fetchInventory();
+      fetchInventoryCategories();
+    } catch (err) {
+      console.error("Error unarchiving item:", err);
+      alert("Failed to unarchive item.");
+    }
+  };
 
-  try {
-    await axios.delete(`${BASE_URL}/api/inventory/archived/${id}/permanent`, {
-      withCredentials: true
-    });
+  const handlePermanentDelete = async (id, name) => {
+    const confirmDelete = window.confirm(
+      `Permanently delete "${name || "this item"}"? This cannot be undone.`
+    );
 
-    alert("Inventory item deleted permanently!");
-    fetchArchivedInventory();
-    fetchInventoryCategories();
-  } catch (err) {
-    console.error("Error deleting archived item:", err);
-    alert("Failed to permanently delete item.");
-  }
-};
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`${BASE_URL}/api/inventory/archived/${id}/permanent`, {
+        withCredentials: true
+      });
+
+      alert("Inventory item deleted permanently!");
+      fetchArchivedInventory();
+      fetchInventoryCategories();
+    } catch (err) {
+      console.error("Error deleting archived item:", err);
+      alert("Failed to permanently delete item.");
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -537,7 +580,8 @@ const handlePermanentDelete = async (id, name) => {
           item.addedBy,
           item.unit,
           item.sourceType,
-          item.sourceName
+          item.sourceName,
+          item.expirationDate
         ]
           .join(" ")
           .toLowerCase()
@@ -582,9 +626,9 @@ const handlePermanentDelete = async (id, name) => {
         bValue = normalizeType(b.type);
       }
 
-      if (sortConfig.key === "createdAt") {
-        aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-        bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      if (sortConfig.key === "createdAt" || sortConfig.key === "expirationDate") {
+        aValue = a[sortConfig.key] ? new Date(a[sortConfig.key]).getTime() : 0;
+        bValue = b[sortConfig.key] ? new Date(b[sortConfig.key]).getTime() : 0;
       }
 
       if (sortConfig.key === "quantity") {
@@ -636,7 +680,7 @@ const handlePermanentDelete = async (id, name) => {
     return sortConfig.direction === "asc" ? "↑" : "↓";
   };
 
-  const tableColSpan = donationType === "goods" ? 10 : 8;
+  const tableColSpan = donationType === "goods" ? 11 : 8;
 
   return (
     <DashboardShell>
@@ -836,11 +880,7 @@ const handlePermanentDelete = async (id, name) => {
                               )}
                             </div>
                           )}
-                        </>
-                      )}
 
-                      {donationType === "goods" ? (
-                        <>
                           <div className="donation-form-group">
                             <label htmlFor="quantity">
                               Quantity <span>*</span>
@@ -882,8 +922,29 @@ const handlePermanentDelete = async (id, name) => {
                               <span className="error-text">{formErrors.unit}</span>
                             )}
                           </div>
+
+                          <div className="donation-form-group">
+                            <label htmlFor="expirationDate">Expiration Date</label>
+                            <input
+                              id="expirationDate"
+                              type="date"
+                              name="expirationDate"
+                              value={form.expirationDate}
+                              onChange={handleChange}
+                              className={`input ${
+                                formErrors.expirationDate ? "input-error" : ""
+                              }`}
+                            />
+                            {formErrors.expirationDate && (
+                              <span className="error-text">
+                                {formErrors.expirationDate}
+                              </span>
+                            )}
+                          </div>
                         </>
-                      ) : (
+                      )}
+
+                      {donationType === "monetary" && (
                         <div className="donation-form-group">
                           <label htmlFor="amount">
                             Amount <span>*</span>
@@ -1233,6 +1294,15 @@ const handlePermanentDelete = async (id, name) => {
 
                         {donationType === "goods" && <th>Unit</th>}
 
+                        {donationType === "goods" && (
+                          <th
+                            onClick={() => handleSort("expirationDate")}
+                            className="sortable"
+                          >
+                            Expiration <span>{sortArrow("expirationDate")}</span>
+                          </th>
+                        )}
+
                         <th>Source</th>
                         <th>Description</th>
                         <th>Files</th>
@@ -1278,103 +1348,124 @@ const handlePermanentDelete = async (id, name) => {
                           </td>
                         </tr>
                       ) : (
-                        paginatedItems.map((item) => (
-                          <tr key={item._id}>
-                            <td>
-                              <span className={`badge badge-type ${normalizeType(item.type)}`}>
-                                {normalizeType(item.type)}
-                              </span>
-                            </td>
+                        paginatedItems.map((item) => {
+                          const expiryStatus = getExpiryStatus(item);
 
-                            <td>
-                              <div className="cell-main">{item.name || "-"}</div>
-                            </td>
-
-                            {donationType === "goods" && (
+                          return (
+                            <tr key={item._id}>
                               <td>
-                                <span className="badge badge-category">
-                                  {formatCategory(item.category)}
+                                <span className={`badge badge-type ${normalizeType(item.type)}`}>
+                                  {normalizeType(item.type)}
                                 </span>
                               </td>
-                            )}
 
-                            <td className="quantity-cell">
-                              {donationType === "monetary"
-                                ? `₱${Number(item.amount || 0).toLocaleString()}`
-                                : Number(item.quantity || 0).toLocaleString()}
-                            </td>
+                              <td>
+                                <div className="cell-main">{item.name || "-"}</div>
+                              </td>
 
-                            {donationType === "goods" && <td>{item.unit || "-"}</td>}
-
-                            <td>
-                              <div className="source-cell">
-                                <strong>{item.sourceType || "-"}</strong>
-                                <small>{item.sourceName || "No source name"}</small>
-                              </div>
-                            </td>
-
-                            <td>
-                              <div className="description-cell" title={item.description || ""}>
-                                {item.description || "-"}
-                              </div>
-                            </td>
-
-                            <td>
-                              {item.proofFiles && item.proofFiles.length > 0 ? (
-                                <div className="proof-list">
-                                  {item.proofFiles.map((file, idx) => (
-                                    <a
-                                      key={idx}
-                                      href={`${BASE_URL}/uploads/proofs/${file}`}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="file-link"
-                                    >
-                                      View File {idx + 1}
-                                    </a>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span className="muted-text">No files</span>
+                              {donationType === "goods" && (
+                                <td>
+                                  <span className="badge badge-category">
+                                    {formatCategory(item.category)}
+                                  </span>
+                                </td>
                               )}
-                            </td>
 
-                            <td>{item.addedBy || "-"}</td>
+                              <td className="quantity-cell">
+                                {donationType === "monetary"
+                                  ? `₱${Number(item.amount || 0).toLocaleString()}`
+                                  : Number(item.quantity || 0).toLocaleString()}
+                              </td>
 
-                            <td>
-                              <div className="date-cell">
-                                <span>{formatShortDate(item.createdAt)}</span>
-                                <small>{formatDate(item.createdAt)}</small>
-                              </div>
-                            </td>
+                              {donationType === "goods" && <td>{item.unit || "-"}</td>}
 
-                            <td>
-                              {showArchived ? (
-                                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                                  <button
-                                    className="btn btn-secondary btn-sm"
-                                    onClick={() => handleUnarchive(item._id, item.name)}
-                                  >
-                                    Unarchive
-                                  </button>
+                              {donationType === "goods" && (
+                                <td>
+                                  <div className="date-cell">
+                                    <span>{formatExpiryDate(item.expirationDate)}</span>
+                                    <small>
+                                      {expiryStatus === "expired"
+                                        ? "Expired"
+                                        : expiryStatus === "soon"
+                                        ? "Expiring soon"
+                                        : expiryStatus === "ok"
+                                        ? "Valid"
+                                        : "No expiry"}
+                                    </small>
+                                  </div>
+                                </td>
+                              )}
+
+                              <td>
+                                <div className="source-cell">
+                                  <strong>{item.sourceType || "-"}</strong>
+                                  <small>{item.sourceName || "No source name"}</small>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="description-cell" title={item.description || ""}>
+                                  {item.description || "-"}
+                                </div>
+                              </td>
+
+                              <td>
+                                {item.proofFiles && item.proofFiles.length > 0 ? (
+                                  <div className="proof-list">
+                                    {item.proofFiles.map((file, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={`${BASE_URL}/uploads/proofs/${file}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="file-link"
+                                      >
+                                        View File {idx + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="muted-text">No files</span>
+                                )}
+                              </td>
+
+                              <td>{item.addedBy || "-"}</td>
+
+                              <td>
+                                <div className="date-cell">
+                                  <span>{formatShortDate(item.createdAt)}</span>
+                                  <small>{formatDate(item.createdAt)}</small>
+                                </div>
+                              </td>
+
+                              <td>
+                                {showArchived ? (
+                                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      onClick={() => handleUnarchive(item._id, item.name)}
+                                    >
+                                      Unarchive
+                                    </button>
+                                    <button
+                                      className="btn btn-danger btn-sm"
+                                      onClick={() => handlePermanentDelete(item._id, item.name)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                ) : (
                                   <button
                                     className="btn btn-danger btn-sm"
-                                    onClick={() => handlePermanentDelete(item._id, item.name)}
+                                    onClick={() => handleArchive(item._id, item.name)}
                                   >
-                                    Delete
+                                    Archive
                                   </button>
-                                </div>
-                              ) : (
-                                <button
-                                  className="btn btn-danger btn-sm"
-                                  onClick={() => handleArchive(item._id, item.name)}
-                                >
-                                  Archive
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
                       )}
                     </tbody>
                   </table>

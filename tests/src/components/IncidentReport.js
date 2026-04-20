@@ -189,7 +189,7 @@ export default function IncidentReport() {
   };
 
   return (
-    <DashboardShell>
+    <DashboardShell variant="drrmo">
     <div style={styles.page}>
       <div style={styles.shell}>
         <div style={styles.hero}>

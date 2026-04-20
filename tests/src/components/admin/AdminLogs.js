@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import '../css/AdminLogs.css';
 import axios from 'axios';
 
 export default function AdminLogs() {
   const BASE_URL =
     process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
-  const navigate = useNavigate();
   const PAGE_SIZE = 10;
 
   const [allLogs, setAllLogs] = useState([]);
@@ -15,9 +13,11 @@ export default function AdminLogs() {
 
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
 
   const actionClass = (action) => {
-    switch (action) {
+    switch (String(action || '').toLowerCase()) {
       case 'create':
         return 'admin-create';
       case 'update':
@@ -54,7 +54,7 @@ export default function AdminLogs() {
 
   useEffect(() => {
     setPage(1);
-  }, [search, actionFilter]);
+  }, [search, actionFilter, dateFilter, sortOrder]);
 
   const formatTime = (date) => {
     if (!date) return '-';
@@ -71,10 +71,38 @@ export default function AdminLogs() {
     }
   };
 
+  const isWithinDateFilter = (timestamp, filterValue) => {
+    if (!filterValue || !timestamp) return true;
+
+    const logDate = new Date(timestamp);
+    if (Number.isNaN(logDate.getTime())) return false;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (filterValue === 'today') {
+      return logDate >= startOfToday;
+    }
+
+    if (filterValue === '7days') {
+      const sevenDaysAgo = new Date(startOfToday);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      return logDate >= sevenDaysAgo;
+    }
+
+    if (filterValue === '30days') {
+      const thirtyDaysAgo = new Date(startOfToday);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+      return logDate >= thirtyDaysAgo;
+    }
+
+    return true;
+  };
+
   const filteredLogs = useMemo(() => {
     const term = search.trim().toLowerCase();
 
-    return allLogs.filter((log) => {
+    const filtered = allLogs.filter((log) => {
       const adminUsername = String(log.adminUsername || '').toLowerCase();
       const targetUsername = String(log.targetUsername || '').toLowerCase();
       const action = String(log.action || '').toLowerCase();
@@ -90,9 +118,21 @@ export default function AdminLogs() {
       const matchesAction =
         !actionFilter || String(log.action || '').toLowerCase() === actionFilter;
 
-      return matchesSearch && matchesAction;
+      const matchesDate = isWithinDateFilter(log.timestamp, dateFilter);
+
+      return matchesSearch && matchesAction && matchesDate;
     });
-  }, [allLogs, search, actionFilter]);
+
+    filtered.sort((a, b) => {
+      const aTime = new Date(a.timestamp || 0).getTime();
+      const bTime = new Date(b.timestamp || 0).getTime();
+
+      if (sortOrder === 'oldest') return aTime - bTime;
+      return bTime - aTime;
+    });
+
+    return filtered;
+  }, [allLogs, search, actionFilter, dateFilter, sortOrder]);
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -119,65 +159,52 @@ export default function AdminLogs() {
 
   const canPrev = safePage > 1;
   const canNext = safePage < totalPages;
+  const hasActiveFilters = Boolean(
+    search.trim() || actionFilter || dateFilter || sortOrder !== 'newest'
+  );
+
+  const statCards = [
+    { label: 'Total Logs', value: loading ? '—' : stats.total, tone: 'green', lead: true },
+    { label: 'Created', value: loading ? '—' : stats.create, tone: 'create' },
+    { label: 'Updated', value: loading ? '—' : stats.update, tone: 'update' },
+    { label: 'Archived', value: loading ? '—' : stats.archive, tone: 'archive' },
+    { label: 'Restored', value: loading ? '—' : stats.restore, tone: 'restore' }
+  ];
 
   return (
     <div className="admin-logs-page">
       <div className="admin-logs-shell">
         <section className="admin-logs-hero">
           <div className="admin-logs-hero-copy">
-            <span className="admin-logs-kicker">Administration Module</span>
-            <h1 className="admin-logs-title">Admin Activity Logs</h1>
-            <p className="admin-logs-subtitle">
-              Monitor account-related administrative actions including account
-              creation, updates, archiving, and restoration. Use filters to review
-              system activity more efficiently.
-            </p>
-          </div>
+            <div className="admin-logs-kicker-row">
+              <span className="admin-logs-kicker">Administration Module</span>
+              {hasActiveFilters && (
+                <span className="admin-logs-mini-badge">Filtered View</span>
+              )}
+            </div>
 
-          <div className="admin-logs-stats">
-            <div className="admin-stat-card">
-              <span>Total Logs</span>
-              <strong>{loading ? '—' : stats.total}</strong>
-            </div>
-            <div className="admin-stat-card">
-              <span>Created</span>
-              <strong>{loading ? '—' : stats.create}</strong>
-            </div>
-            <div className="admin-stat-card">
-              <span>Updated</span>
-              <strong>{loading ? '—' : stats.update}</strong>
-            </div>
-            <div className="admin-stat-card">
-              <span>Archived</span>
-              <strong>{loading ? '—' : stats.archive}</strong>
-            </div>
-            <div className="admin-stat-card emphasis">
-              <span>Restored</span>
-              <strong>{loading ? '—' : stats.restore}</strong>
+            <h1 className="admin-logs-title">Admin Activity Logs</h1>
+
+            <div className="admin-logs-stats">
+              {statCards.map((item) => (
+                <div
+                  key={item.label}
+                  className={`admin-stat-card admin-stat-card--${item.tone} ${item.lead ? 'is-lead' : ''}`}
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
         <section className="admin-logs-panel">
-          <div className="admin-logs-panel-head">
-            <div>
-              <h2>Activity Records</h2>
-              <p>
-                Search by admin, target user, barangay, or action type. Review the
-                latest administrative actions in a cleaner log workspace.
-              </p>
-            </div>
-
-            <button className="admin-btn admin-btn-back" onClick={() => navigate(-1)}>
-              ← Back
-            </button>
-          </div>
-
-          <div className="admin-logs-toolbar">
+          <div className="admin-logs-toolbar admin-logs-toolbar--top">
             <input
               className="admin-logs-search"
               type="text"
-              placeholder="Search admin, target user, barangay, or action..."
+              placeholder="Search admin, target user, barangay, or action"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -193,6 +220,62 @@ export default function AdminLogs() {
               <option value="archive">Archive</option>
               <option value="restore">Restore</option>
             </select>
+          </div>
+
+          <div className="admin-logs-toolbar admin-logs-toolbar--bottom">
+            <select
+              className="admin-logs-filter"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+            >
+              <option value="">All Dates</option>
+              <option value="today">Today</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+            </select>
+
+            <select
+              className="admin-logs-filter"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+
+          <div className="admin-logs-toolbar-meta">
+            <span className="admin-results-text">
+              {loading
+                ? 'Loading records...'
+                : `${filteredLogs.length} result${filteredLogs.length === 1 ? '' : 's'}`}
+            </span>
+
+            <div className="admin-toolbar-actions">
+              {hasActiveFilters && !loading && (
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-clear"
+                  onClick={() => {
+                    setSearch('');
+                    setActionFilter('');
+                    setDateFilter('');
+                    setSortOrder('newest');
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="admin-btn admin-btn-refresh"
+                onClick={fetchLogs}
+                disabled={loading}
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
           </div>
 
           <div className="admin-logs-table-region">
@@ -223,15 +306,29 @@ export default function AdminLogs() {
                         </div>
                       </td>
                     </tr>
-                  ) : paginatedLogs.length === 0 ? (
+                  ) : allLogs.length === 0 ? (
                     <tr className="admin-empty-row">
                       <td colSpan={5}>
                         <div className="admin-empty-inline">
                           <div className="admin-empty-emoji">📝</div>
                           <div className="admin-empty-text">
-                            <strong>No logs found</strong>
+                            <strong>No activity records yet</strong>
                             <span className="admin-muted">
-                              Try adjusting the search or action filter.
+                              Logs will appear here after admin actions are recorded.
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : paginatedLogs.length === 0 ? (
+                    <tr className="admin-empty-row">
+                      <td colSpan={5}>
+                        <div className="admin-empty-inline">
+                          <div className="admin-empty-emoji">🔎</div>
+                          <div className="admin-empty-text">
+                            <strong>No matching logs</strong>
+                            <span className="admin-muted">
+                              Try adjusting the search, action, or date filter.
                             </span>
                           </div>
                         </div>
@@ -262,6 +359,51 @@ export default function AdminLogs() {
                   )}
                 </tbody>
               </table>
+            </div>
+
+            <div className="admin-logs-mobile-list">
+              {loading ? (
+                <div className="admin-mobile-empty">
+                  <strong>Loading admin logs...</strong>
+                  <span>Please wait while records are being fetched.</span>
+                </div>
+              ) : allLogs.length === 0 ? (
+                <div className="admin-mobile-empty">
+                  <strong>No activity records yet</strong>
+                  <span>Logs will appear here after admin actions are recorded.</span>
+                </div>
+              ) : paginatedLogs.length === 0 ? (
+                <div className="admin-mobile-empty">
+                  <strong>No matching logs</strong>
+                  <span>Try adjusting the search, action, or date filter.</span>
+                </div>
+              ) : (
+                paginatedLogs.map((log) => (
+                  <div className="admin-mobile-card" key={`mobile-${log._id}`}>
+                    <div className="admin-mobile-card-top">
+                      <strong>{log.adminUsername || '-'}</strong>
+                      <span className={`admin-action-pill ${actionClass(log.action)}`}>
+                        {log.action || '-'}
+                      </span>
+                    </div>
+
+                    <div className="admin-mobile-meta">
+                      <div className="admin-mobile-row">
+                        <span>Target</span>
+                        <strong>{log.targetUsername || '-'}</strong>
+                      </div>
+                      <div className="admin-mobile-row">
+                        <span>Barangay</span>
+                        <strong>{log.barangay || '—'}</strong>
+                      </div>
+                      <div className="admin-mobile-row">
+                        <span>Date</span>
+                        <strong>{formatTime(log.timestamp)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="admin-pagination">

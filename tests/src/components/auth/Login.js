@@ -202,18 +202,27 @@ export default function Login() {
       }
 
       setLoginAttempts(0);
-      localStorage.removeItem('loginLock');
+localStorage.removeItem('loginLock');
 
-      setUser(data);
-      localStorage.setItem('role', data.role);
+setUser(data);
 
-      if (data.role === 'admin') {
-        navigate('/admin/dashboard');
-      } else if (data.role === 'drrmo') {
-        navigate('/drrmo/dashboard');
-      } else {
-        navigate('/barangay/dashboard');
-      }
+localStorage.setItem('role', data.role || '');
+localStorage.setItem('username', data.username || '');
+localStorage.setItem('email', data.email || '');
+
+if (data.barangay) {
+  localStorage.setItem('barangay', data.barangay);
+} else {
+  localStorage.removeItem('barangay');
+}
+
+if (data.role === 'admin') {
+  navigate('/admin/dashboard');
+} else if (data.role === 'drrmo') {
+  navigate('/drrmo/dashboard');
+} else {
+  navigate('/barangay/relief-request');
+}
     } catch (err) {
       console.error('Login fetch error:', err);
       setLoginError('Login failed. Check server or network.');

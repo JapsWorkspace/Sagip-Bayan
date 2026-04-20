@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function GuidelinesScreen() {
+export default function HomeGuidelines() {
   const [guidelines, setGuidelines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [files, setFiles] = useState([]);
@@ -20,37 +20,34 @@ export default function GuidelinesScreen() {
   const [editStatus, setEditStatus] = useState("");
   const [editPriority, setEditPriority] = useState("");
   const [editFiles, setEditFiles] = useState([]);
+  const [showArchived, setShowArchived] = useState(false);
+
+  const [removeImages, setRemoveImages] = useState([]);
 
   const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
 
-  useEffect(() => {
-    fetchGuidelines();
-  }, []);
+
 
   const fetchGuidelines = async () => {
-  try {
-    const response = await axios.get(BASE_URL);
-    console.log("API response:", response.data); // 🔹 check the shape
-
-    // Safely extract the array of guidelines
-    let data = [];
-    if (Array.isArray(response.data)) {
-      data = response.data;
-    } else if (Array.isArray(response.data.guidelines)) {
-      data = response.data.guidelines;
-    } else if (Array.isArray(response.data.data)) {
-      data = response.data.data;
-    } else {
-      console.warn("Guidelines API did not return an array:", response.data);
+    try {
+      let url = BASE_URL;
+      if (showArchived) url += "?status=archived";
+      const response = await axios.get(url);
+      // const sorted = response.data.sort((a, b) => {
+      //   const order = { critical: 4, high: 3, medium: 2, low: 1 };
+      //   return order[b.priorityLevel] - order[a.priorityLevel];
+      // });
+      // setGuidelines(sorted);
+    } catch (error) {
+      console.error(error.message);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setGuidelines(data);
-  } catch (error) {
-    console.error(error.message);
-  } finally {
-    setLoading(false);
-  }
-};
+    useEffect(() => {
+    fetchGuidelines();
+  }, [showArchived]); // Re-fetch whenever archived toggle changes
 
   const pickFile = (event) => {
     const selectedFiles = Array.from(event.target.files);
@@ -71,9 +68,10 @@ export default function GuidelinesScreen() {
       formData.append("category", category);
       formData.append("status", status);
       formData.append("priorityLevel", priorityLevel);
-      formData.append("createdBy", "65f123456789abcdef123456");
 
-      files.forEach((file) => formData.append("attachments", file));
+      if (files.length > 0) {
+        files.forEach((file) => formData.append("attachments", file));
+      }
 
       const response = await axios.post(BASE_URL, formData, {
         headers: { "Content-Type": "multipart/form-data" },
@@ -99,8 +97,11 @@ export default function GuidelinesScreen() {
       formData.append("category", editCategory);
       formData.append("status", editStatus);
       formData.append("priorityLevel", editPriority);
+      formData.append("removeImages", JSON.stringify(removeImages));
 
-      editFiles.forEach((file) => formData.append("attachments", file));
+      if (editFiles.length > 0) {
+        editFiles.forEach((file) => formData.append("attachments", file));
+      }
 
       const response = await axios.put(
         `${BASE_URL}${editingGuideline._id}`,
@@ -115,31 +116,101 @@ export default function GuidelinesScreen() {
       alert("Guideline updated successfully!");
       setEditingGuideline(null);
       setEditFiles([]);
+      setEditTitle("");
+      setEditDescription("");
+      setEditCategory("");
+      setEditStatus("");
+      setEditPriority("");
+      setRemoveImages([]);
     } catch (error) {
       console.error(error.response?.data || error.message);
       alert("Failed to update guideline.");
     }
   };
 
-  const deleteGuideline = async (id) => {
-    const confirmDelete = window.confirm(
-      "Are you sure you want to delete this guideline?"
-    );
+  const archiveGuideline = async (id) => {
+    const confirmDelete = window.confirm("Archive this guideline?");
+    if (!confirmDelete) return;
+
+    try {
+      await axios.patch(`${BASE_URL}soft-delete/${id}`);
+      setGuidelines((prev) =>
+        prev.map((g) => (g._id === id ? { ...g, status: "archived" } : g))
+      );
+      alert("Guideline archived successfully!");
+    } catch (error) {
+      console.error(error.response?.data || error.message);
+      alert("Failed to archive guideline.");
+    }
+  };
+
+  const publishGuideline = async (id) => {
+    try {
+      const res = await axios.put(`${BASE_URL}${id}`, {
+        status: "published",
+      });
+
+      setGuidelines((prev) =>
+        prev.map((g) => (g._id === id ? res.data : g))
+      );
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+    }
+  };
+
+  const makeDraft = async (id) => {
+    try {
+      const res = await axios.put(`${BASE_URL}${id}`, {
+        status: "draft",
+      });
+
+      setGuidelines((prev) =>
+        prev.map((g) => (g._id === id ? res.data : g))
+      );
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+    }
+  };
+
+  const restoreGuideline = async (id) => {
+    try {
+      const res = await axios.patch(`${BASE_URL}restore/${id}`);
+
+      const updated = { ...res.data, status: "draft" }; // enforce rule
+
+      setGuidelines((prev) =>
+        prev.map((g) => (g._id === id ? updated : g))
+      );
+
+      alert("Guideline restored to draft!");
+    } catch (err) {
+      console.error(err.response?.data || err.message);
+    }
+  };
+
+  
+  const deleteArchived = async (id) => {
+    const confirmDelete = window.confirm("Permanently delete this guideline?");
     if (!confirmDelete) return;
 
     try {
       await axios.delete(`${BASE_URL}${id}`);
-      setGuidelines((prev) => prev.filter((item) => item._id !== id));
-      alert("Guideline deleted successfully!");
-    } catch (error) {
-      console.error(error.response?.data || error.message);
-      alert("Failed to delete guideline.");
+
+      setGuidelines((prev) =>
+        prev.filter((g) => g._id !== id)
+      );
+
+      alert("Guideline permanently deleted!");
+    } catch (err) {
+      console.error(err.response?.data || err.message);
     }
   };
 
   if (loading) {
     return <div style={{ textAlign: "center", marginTop: 50 }}>Loading...</div>;
   }
+
+  const isCreateDisabled = !title || !description;
 
   return (
     <div style={styles.container}>
@@ -167,20 +238,6 @@ export default function GuidelinesScreen() {
           style={{
             ...styles.option,
             ...(category === item ? styles.selectedOption : {}),
-          }}
-        >
-          {item}
-        </button>
-      ))}
-
-      <label style={styles.label}>Status</label>
-      {["draft", "published", "archived"].map((item) => (
-        <button
-          key={item}
-          onClick={() => setStatus(item)}
-          style={{
-            ...styles.option,
-            ...(status === item ? styles.selectedOption : {}),
           }}
         >
           {item}
@@ -219,39 +276,66 @@ export default function GuidelinesScreen() {
         Clear Files
       </button>
 
-      <button style={styles.button} onClick={createGuideline}>
+      <button style={styles.button} onClick={createGuideline} disabled={isCreateDisabled}>
         Create Guideline
+      </button>
+
+      <button onClick={() => setShowArchived((prev) => !prev)} style={{ marginBottom: 10 }}>
+        {showArchived ? "Show Active" : "Show Archived"}
       </button>
 
       <h2>All Guidelines</h2>
 
-      {guidelines.map((item) => (
+      {guidelines.filter((g) => (showArchived ? g.status === "archived" : g.status !== "archived"))
+      .map((item) => (
         <div key={item._id} style={styles.card}>
           <div style={styles.cardHeader}>
-            <button
-              style={styles.updateButton}
-              onClick={() => {
-                setEditingGuideline(item);
-                setEditTitle(item.title);
-                setEditDescription(item.description);
-                setEditCategory(item.category);
-                setEditStatus(item.status);
-                setEditPriority(item.priorityLevel);
-                setEditFiles([]);
-              }}
-            >
-              Update
-            </button>
+            {item.status === "draft" && (
+              <>
+                <button style={styles.actionButton} onClick={() => publishGuideline(item._id)}>
+                  Publish
+                </button>
+                <button
+                  style={styles.updateButton}
+                  onClick={() => {
+                    setEditingGuideline(item);
+                    setEditTitle(item.title);
+                    setEditDescription(item.description);
+                    setEditCategory(item.category);
+                    setEditPriority(item.priorityLevel);
+                    setEditFiles([]);
+                  }}
+                >
+                  Update
+                </button>
+                <button style={styles.actionButton} onClick={() => archiveGuideline(item._id)}>
+                  Archive
+                </button>
+              </>
+            )}
 
-            <button
-              onClick={() => deleteGuideline(item._id)}
-              style={styles.deleteButton}
-            >
-              Delete
-            </button>
+            {item.status === "published" && (
+              <button style={styles.actionButton} onClick={() => makeDraft(item._id)}>
+                Draft
+              </button>
+            )}
+
+            {item.status === "archived" && (
+              <>
+                <button style={styles.actionButton} onClick={() => restoreGuideline(item._id)}>
+                  Restore
+                </button>
+                <button style={styles.actionButton} onClick={() => deleteArchived(item._id)}>
+                  Delete
+                </button>
+              </>
+            )}
           </div>
 
           <h3>{item.title}</h3>
+          {item.priorityLevel === "critical" && (
+            <p style={{ color: "red", fontWeight: "bold" }}>⚠ CRITICAL ALERT</p>
+          )}
           <p>Category: {item.category}</p>
           <p>Status: {item.status}</p>
           <p>Priority: {item.priorityLevel}</p>
@@ -263,11 +347,7 @@ export default function GuidelinesScreen() {
               {item.attachments.map((file, idx) =>
                 file.fileUrl.match(/\.(jpg|jpeg|png|gif)$/i) ? (
                   <div key={idx}>
-                    <img
-                      src={file.fileUrl}
-                      alt=""
-                      style={{ width: 100, height: 100, marginTop: 5 }}
-                    />
+                    <img src={file.fileUrl} alt="" style={{ width: 100, height: 100, marginTop: 5 }} />
                   </div>
                 ) : (
                   <div key={idx}>
@@ -292,17 +372,8 @@ export default function GuidelinesScreen() {
           <div style={styles.modal}>
             <h2>Update Guideline</h2>
 
-            <input
-              style={styles.input}
-              value={editTitle}
-              onChange={(e) => setEditTitle(e.target.value)}
-            />
-
-            <textarea
-              style={styles.input}
-              value={editDescription}
-              onChange={(e) => setEditDescription(e.target.value)}
-            />
+            <input style={styles.input} value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+            <textarea style={styles.input} value={editDescription} onChange={(e) => setEditDescription(e.target.value)} />
 
             <label style={styles.label}>Category</label>
             {["earthquake", "flood", "typhoon", "general"].map((item) => (
@@ -312,20 +383,6 @@ export default function GuidelinesScreen() {
                 style={{
                   ...styles.option,
                   ...(editCategory === item ? styles.selectedOption : {}),
-                }}
-              >
-                {item}
-              </button>
-            ))}
-
-            <label style={styles.label}>Status</label>
-            {["draft", "published", "archived"].map((item) => (
-              <button
-                key={item}
-                onClick={() => setEditStatus(item)}
-                style={{
-                  ...styles.option,
-                  ...(editStatus === item ? styles.selectedOption : {}),
                 }}
               >
                 {item}
@@ -346,13 +403,7 @@ export default function GuidelinesScreen() {
               </button>
             ))}
 
-            <input
-              type="file"
-              multiple
-              onChange={pickEditFile}
-              style={{ marginTop: 10 }}
-            />
-
+            <input type="file" multiple onChange={pickEditFile} style={{ marginTop: 10 }} />
             {editFiles.length > 0 && (
               <div style={{ marginBottom: 10 }}>
                 <strong>Selected Files:</strong>
@@ -361,15 +412,25 @@ export default function GuidelinesScreen() {
                 ))}
               </div>
             )}
+            {editingGuideline.attachments?.map((img, index) => (
+            <div key={index}>
+              <img src={img.fileUrl} style={{ width: 80 }} />
+
+              <button
+                onClick={() =>
+                  setRemoveImages(prev => [...prev, img])
+                }
+              >
+                Remove
+              </button>
+            </div>
+          ))}
 
             <button style={styles.button} onClick={updateGuideline}>
               Save Update
             </button>
 
-            <button
-              style={styles.cancelButton}
-              onClick={() => setEditingGuideline(null)}
-            >
+            <button style={styles.cancelButton} onClick={() => setEditingGuideline(null)}>
               Cancel
             </button>
           </div>

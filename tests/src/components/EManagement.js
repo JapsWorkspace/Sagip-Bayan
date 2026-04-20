@@ -1,11 +1,17 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
+
 import DashboardShell from "./layout/DashboardShell";
-import Map from "./map/Map";
-import "./map/MapIcon";
-import "./css/EManagement.css";
+import EvacMap from "./map/Map";
+import "../components/css/EManagement.css";
 
 const BASE_URL =
   process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
@@ -26,39 +32,88 @@ const initialFormState = {
   commonCR: false,
   potableWater: false,
   nonPotableWater: false,
-  foodPackCapacity: "",
   isPermanent: false,
   isCovidFacility: false,
+  showOnLanding: true,
   remarks: "",
 };
 
-const sanitizeText = (value) => String(value || "").replace(/<[^>]*>?/gm, "").trim();
-const safeLower = (value) => String(value || "").toLowerCase();
+const sanitizeText = (value) => String(value ?? "").trim();
+
+const safeLower = (value) => String(value ?? "").toLowerCase().trim();
+
+const formatNumber = (value) => {
+  const num = Number(value || 0);
+  if (Number.isNaN(num)) return "0";
+  return new Intl.NumberFormat().format(num);
+};
 
 const numberOrZero = (value) => {
-  if (value === "" || value === null || value === undefined) return 0;
   const num = Number(value);
   return Number.isNaN(num) ? 0 : num;
 };
 
-const formatNumber = (value) => {
-  const num = Number(value || 0);
-  return new Intl.NumberFormat().format(num);
-};
+const normalizeBarangayKey = (value) =>
+  safeLower(value).replace(/\s+/g, " ").trim();
+
+const getStoredRole = () => localStorage.getItem("role") || "";
+const getStoredUserId = () => localStorage.getItem("userId") || "";
+const getStoredBarangayName = () =>
+  localStorage.getItem("barangayName") ||
+  localStorage.getItem("username") ||
+  "";
 
 const formatDateTime = (value) => {
   if (!value) return "-";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "-";
-  return date.toLocaleString();
+
+  return new Intl.DateTimeFormat("en-PH", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
 };
 
-const getStoredRole = () => localStorage.getItem("role") || "";
-const getStoredUserId = () =>
-  localStorage.getItem("userId") ||
-  localStorage.getItem("_id") ||
-  localStorage.getItem("id") ||
-  "";
+const getStatusClass = (status) => {
+  const normalized = safeLower(status);
+  if (normalized === "available") return "available";
+  if (normalized === "limited") return "limited";
+  return "full";
+};
+
+const getHistoryAccentClass = (action) => {
+  const normalized = safeLower(action);
+  if (["add", "create"].includes(normalized)) return "success";
+  if (["update", "edit", "status_update", "allocate"].includes(normalized))
+    return "warning";
+  if (["delete", "archive", "remove"].includes(normalized)) return "danger";
+  return "neutral";
+};
+
+function MapLegend() {
+  return (
+    <div className="map-legend-card" aria-label="Map legend">
+      <div className="map-legend-title">Map Legend</div>
+      <div className="map-legend-items">
+        <div className="map-legend-item">
+          <span className="map-legend-dot available" />
+          <span>Available</span>
+        </div>
+        <div className="map-legend-item">
+          <span className="map-legend-dot limited" />
+          <span>Limited</span>
+        </div>
+        <div className="map-legend-item">
+          <span className="map-legend-dot full" />
+          <span>Full</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function EManagement() {
   const navigate = useNavigate();
@@ -66,33 +121,62 @@ export default function EManagement() {
   const nameRef = useRef(null);
 
   const [places, setPlaces] = useState([]);
+  const [allPlaces, setAllPlaces] = useState([]);
   const [barangays, setBarangays] = useState([]);
-  const [stocks, setStocks] = useState([]);
-  const [transactions, setTransactions] = useState([]);
   const [history, setHistory] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
   const [me, setMe] = useState(null);
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [loadingSave, setLoadingSave] = useState(false);
-  const [loadingAllocate, setLoadingAllocate] = useState(false);
+  const [landingToggleLoading, setLandingToggleLoading] = useState(false);
+  const [bulkLandingLoading, setBulkLandingLoading] = useState(false);
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [barangayFilter, setBarangayFilter] = useState("all");
-  const [supportFilter, setSupportFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("capacity");
 
+  const [selectedBarangayName, setSelectedBarangayName] = useState("");
   const [selectedId, setSelectedId] = useState(null);
-  const [panelView, setPanelView] = useState("main");
+  const [panelView, setPanelView] = useState("areas");
+
+  const [notifications, setNotifications] = useState([]);
 
   const [showAddForm, setShowAddForm] = useState(false);
   const [showEditForm, setShowEditForm] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showArchiveConfirm, setShowArchiveConfirm] = useState(false);
   const [pickMode, setPickMode] = useState(false);
 
   const [formData, setFormData] = useState(initialFormState);
 
-  const [selectedStockId, setSelectedStockId] = useState("");
-  const [allocateQty, setAllocateQty] = useState("");
+      const pushNotification = useCallback((message, type = "success") => {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+    setNotifications((prev) => {
+      const next = [...prev, { id, message, type }];
+      return next.slice(-3);
+    });
+
+    window.setTimeout(() => {
+      setNotifications((prev) => prev.filter((item) => item.id !== id));
+    }, 10000);
+  }, []);
+
+  const dismissNotification = useCallback((id) => {
+    setNotifications((prev) => prev.filter((item) => item.id !== id));
+  }, []);
+
+    const visibleNotifications = useMemo(() => {
+    return [...notifications].reverse();
+  }, [notifications]);
+
+  const getNotificationIcon = useCallback((type) => {
+    if (type === "success") return "✓";
+    if (type === "error") return "!";
+    if (type === "info") return "i";
+    return "•";
+  }, []);
 
   const storedRole = getStoredRole();
   const storedUserId = getStoredUserId();
@@ -104,24 +188,18 @@ export default function EManagement() {
     safeLower(storedRole) === "barangay" ||
     safeLower(meRole) === "barangay";
 
-  const canAllocate = isBarangayRole;
+  const isPrivilegedOps =
+    !isBarangayRole &&
+    (safeLower(storedRole) === "admin" ||
+      safeLower(storedRole) === "drrmo" ||
+      safeLower(meRole) === "admin" ||
+      safeLower(meRole) === "drrmo");
 
   const localUserId = me?._id || storedUserId || "";
-  const localBarangayName =
-    me?.barangayName ||
-    localStorage.getItem("barangayName") ||
-    localStorage.getItem("barangay") ||
-    localStorage.getItem("username") ||
-    localStorage.getItem("name") ||
-    "";
+  const localBarangayName = me?.barangayName || getStoredBarangayName() || "";
 
   const normalizeBarangayItem = useCallback((item) => {
-    const id =
-      item?._id ||
-      item?.id ||
-      item?.barangayId ||
-      item?.value ||
-      "";
+    const id = item?._id || item?.id || item?.barangayId || item?.value || "";
 
     const name =
       item?.barangayName ||
@@ -139,25 +217,88 @@ export default function EManagement() {
     };
   }, []);
 
+  const buildEvacQueryParams = useCallback(() => {
+    const params = {};
+
+    if (!isBarangayRole) {
+      const selectedBarangay = barangayFilter !== "all" ? barangayFilter : "";
+      if (selectedBarangay) params.barangayName = selectedBarangay;
+    }
+
+    if (statusFilter !== "all") params.status = statusFilter;
+    if (sanitizeText(search)) params.search = sanitizeText(search);
+
+    return params;
+  }, [isBarangayRole, barangayFilter, statusFilter, search]);
+
+  const buildFallbackMe = useCallback(() => {
+    const role = safeLower(storedRole);
+    return {
+      _id: storedUserId || "",
+      role: role || "",
+      barangayName: getStoredBarangayName() || "",
+      username: localStorage.getItem("username") || "",
+      name: localStorage.getItem("name") || "",
+    };
+  }, [storedRole, storedUserId]);
+
   const fetchMe = useCallback(async () => {
     try {
       const res = await axios.get(`${BASE_URL}/api/barangays/me`, {
         withCredentials: true,
       });
-      setMe(res.data || null);
-      return res.data || null;
+
+      const payload = res.data || null;
+      setMe(payload);
+      return payload;
     } catch (error) {
+      const status = error?.response?.status;
+
+      if (status === 404 || status === 401) {
+        const fallback = buildFallbackMe();
+        setMe(fallback);
+        return fallback;
+      }
+
       console.error("Fetch me error:", error);
-      setMe(null);
-      return null;
+      const fallback = buildFallbackMe();
+      setMe(fallback);
+      return fallback;
+    }
+  }, [buildFallbackMe]);
+
+    const fetchPlaces = useCallback(async (overrideParams = null) => {
+    try {
+      const params = overrideParams || {};
+      const res = await axios.get(`${BASE_URL}/evacs`, {
+        withCredentials: true,
+        params,
+      });
+
+      const payload = Array.isArray(res.data) ? res.data : [];
+      setPlaces(payload);
+      return payload;
+    } catch (error) {
+      console.error("Fetch places error:", error);
+      setPlaces([]);
+      return [];
     }
   }, []);
 
-  const fetchPlaces = useCallback(async () => {
-    const res = await axios.get(`${BASE_URL}/evacs`, { withCredentials: true });
-    const payload = Array.isArray(res.data) ? res.data : [];
-    setPlaces(payload);
-    return payload;
+  const fetchAllPlaces = useCallback(async () => {
+    try {
+      const res = await axios.get(`${BASE_URL}/evacs`, {
+        withCredentials: true,
+      });
+
+      const payload = Array.isArray(res.data) ? res.data : [];
+      setAllPlaces(payload);
+      return payload;
+    } catch (error) {
+      console.error("Fetch all places error:", error);
+      setAllPlaces([]);
+      return [];
+    }
   }, []);
 
   const fetchBarangays = useCallback(async () => {
@@ -188,41 +329,14 @@ export default function EManagement() {
     }
   }, [normalizeBarangayItem]);
 
-  const fetchStocks = useCallback(async () => {
+    const fetchHistory = useCallback(async (overrideParams = null) => {
     try {
-      const res = await axios.get(`${BASE_URL}/api/barangay-stock`, {
-        withCredentials: true,
-      });
-      const payload = Array.isArray(res.data) ? res.data : [];
-      setStocks(payload);
-      return payload;
-    } catch (error) {
-      console.error("Fetch barangay stock error:", error);
-      setStocks([]);
-      return [];
-    }
-  }, []);
-
-  const fetchTransactions = useCallback(async () => {
-    try {
-      const res = await axios.get(`${BASE_URL}/api/barangay-stock/transactions`, {
-        withCredentials: true,
-      });
-      const payload = Array.isArray(res.data) ? res.data : [];
-      setTransactions(payload);
-      return payload;
-    } catch (error) {
-      console.error("Fetch stock transactions error:", error);
-      setTransactions([]);
-      return [];
-    }
-  }, []);
-
-  const fetchHistory = useCallback(async () => {
-    try {
+      const params = overrideParams || {};
       const res = await axios.get(`${BASE_URL}/evacs/history/logs`, {
         withCredentials: true,
+        params,
       });
+
       const payload = Array.isArray(res.data) ? res.data : [];
       setHistory(payload);
       return payload;
@@ -233,23 +347,47 @@ export default function EManagement() {
     }
   }, []);
 
-  const fetchAllData = useCallback(async () => {
+    const fetchAnalytics = useCallback(async (overrideParams = null) => {
+    try {
+      const params = overrideParams || {};
+      const res = await axios.get(`${BASE_URL}/evacs/analytics/summary`, {
+        withCredentials: true,
+        params,
+      });
+
+      setAnalytics(res.data || null);
+      return res.data || null;
+    } catch (error) {
+      console.error("Fetch analytics error:", error);
+      setAnalytics(null);
+      return null;
+    }
+  }, []);
+
+    const fetchAllData = useCallback(async () => {
     setLoadingPage(true);
     try {
       await Promise.all([
         fetchMe(),
         fetchPlaces(),
+        fetchAllPlaces(),
         fetchBarangays(),
-        fetchStocks(),
-        fetchTransactions(),
         fetchHistory(),
+        fetchAnalytics(),
       ]);
     } catch (error) {
       console.error("Fetch all EManagement data error:", error);
     } finally {
       setLoadingPage(false);
     }
-  }, [fetchMe, fetchPlaces, fetchBarangays, fetchStocks, fetchTransactions, fetchHistory]);
+  }, [
+    fetchMe,
+    fetchPlaces,
+    fetchAllPlaces,
+    fetchBarangays,
+    fetchHistory,
+    fetchAnalytics,
+  ]);
 
   useEffect(() => {
     const role = getStoredRole();
@@ -282,27 +420,59 @@ export default function EManagement() {
       if (e.key === "Escape" && !isField) {
         if (showAddForm) setShowAddForm(false);
         if (showEditForm) setShowEditForm(false);
-        if (showDeleteConfirm) setShowDeleteConfirm(false);
+        if (showArchiveConfirm) setShowArchiveConfirm(false);
         if (pickMode) setPickMode(false);
       }
     };
 
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [showAddForm, showEditForm, showDeleteConfirm, pickMode]);
+  }, [showAddForm, showEditForm, showArchiveConfirm, pickMode]);
+
+  useEffect(() => {
+    document.body.style.cursor = pickMode ? "crosshair" : "default";
+    return () => {
+      document.body.style.cursor = "default";
+    };
+  }, [pickMode]);
 
   const resolveOwnBarangay = useCallback(() => {
-    if (!barangays.length) return null;
+    if (!barangays.length) {
+      if (localBarangayName) {
+        return {
+          _id: localUserId || "",
+          name: localBarangayName,
+          raw: {},
+        };
+      }
+      return null;
+    }
 
-    return (
-      barangays.find(
-        (item) =>
-          String(item._id) === String(localUserId) ||
-          safeLower(item.name) === safeLower(localBarangayName) ||
-          safeLower(item.raw?.barangayName) === safeLower(localBarangayName) ||
-          safeLower(item.raw?.username) === safeLower(localBarangayName)
-      ) || null
-    );
+    const own = barangays.find((item) => {
+      const idMatch = localUserId && String(item._id) === String(localUserId);
+
+      const nameMatch =
+        normalizeBarangayKey(item.name) ===
+          normalizeBarangayKey(localBarangayName) ||
+        normalizeBarangayKey(item.raw?.barangayName) ===
+          normalizeBarangayKey(localBarangayName) ||
+        normalizeBarangayKey(item.raw?.username) ===
+          normalizeBarangayKey(localBarangayName);
+
+      return idMatch || nameMatch;
+    });
+
+    if (own) return own;
+
+    if (localBarangayName) {
+      return {
+        _id: localUserId || "",
+        name: localBarangayName,
+        raw: {},
+      };
+    }
+
+    return null;
   }, [barangays, localUserId, localBarangayName]);
 
   const visiblePlacesBase = useMemo(() => {
@@ -313,100 +483,172 @@ export default function EManagement() {
     return places.filter((place) => {
       const sameBarangayId =
         localUserId && String(place?.barangayId) === String(localUserId);
+
       const sameBarangayName =
         localBarangayName &&
-        safeLower(place?.barangayName) === safeLower(localBarangayName);
+        normalizeBarangayKey(place?.barangayName) ===
+          normalizeBarangayKey(localBarangayName);
 
       return sameBarangayId || sameBarangayName;
     });
   }, [places, isBarangayRole, localUserId, localBarangayName]);
 
   const computedPlaces = useMemo(() => {
-    const allocationTransactions = Array.isArray(transactions)
-      ? transactions.filter((item) => item?.transactionType === "allocation")
-      : [];
+    return visiblePlacesBase.map((place) => ({
+      ...place,
+      totalCapacity:
+        Number(place?.capacityIndividual || 0) +
+        Number(place?.capacityFamily || 0) +
+        Number(place?.bedCapacity || 0),
+      facilitiesCount: [
+        place?.femaleCR,
+        place?.maleCR,
+        place?.commonCR,
+        place?.potableWater,
+        place?.nonPotableWater,
+      ].filter(Boolean).length,
+    }));
+  }, [visiblePlacesBase]);
 
-    return visiblePlacesBase.map((place) => {
-      const placeAllocations = allocationTransactions.filter(
-        (tx) => String(tx?.evacPlaceId) === String(place?._id)
-      );
+    const barangayCards = useMemo(() => {
+    if (isBarangayRole) return [];
 
-      const totalAllocated = placeAllocations.reduce(
-        (sum, tx) => sum + Number(tx?.quantity || 0),
-        0
-      );
+    const sourceList = Array.isArray(allPlaces) ? allPlaces : [];
+    const map = new Map();
 
-      const recentAllocated = placeAllocations
-        .filter((tx) => {
-          if (!tx?.createdAt) return false;
-          const txDate = new Date(tx.createdAt);
-          if (Number.isNaN(txDate.getTime())) return false;
-          const now = new Date();
-          const diff = now.getTime() - txDate.getTime();
-          const days = diff / (1000 * 60 * 60 * 24);
-          return days <= 30;
-        })
-        .reduce((sum, tx) => sum + Number(tx?.quantity || 0), 0);
+    sourceList.forEach((place) => {
+      const key = place?.barangayName || "Unknown Barangay";
 
-      const supportBaseline = Math.max(
-        Number(place?.foodPackCapacity || 0),
-        Number(place?.capacityFamily || 0) * 2,
-        Math.ceil(Number(place?.capacityIndividual || 0) * 0.5),
-        10
-      );
-
-      let supportStatus = "adequate";
-      let supportLabel = "Adequate support";
-
-      if (placeAllocations.length === 0 || totalAllocated <= 0) {
-        supportStatus = "none";
-        supportLabel = "No relief allocation";
-      } else if (recentAllocated < supportBaseline * 0.25) {
-        supportStatus = "low";
-        supportLabel = "Low on support";
+      if (!map.has(key)) {
+        map.set(key, {
+          barangayName: key,
+          placesCount: 0,
+          availableCount: 0,
+          limitedCount: 0,
+          fullCount: 0,
+        });
       }
 
-      return {
-        ...place,
-        totalAllocated,
-        recentAllocated,
-        supportBaseline,
-        supportStatus,
-        supportLabel,
-        allocationCount: placeAllocations.length,
-        placeAllocations,
-      };
+      const entry = map.get(key);
+      entry.placesCount += 1;
+
+      if (safeLower(place?.capacityStatus) === "available") {
+        entry.availableCount += 1;
+      }
+
+      if (safeLower(place?.capacityStatus) === "limited") {
+        entry.limitedCount += 1;
+      }
+
+      if (safeLower(place?.capacityStatus) === "full") {
+        entry.fullCount += 1;
+      }
     });
-  }, [transactions, visiblePlacesBase]);
+
+    const cards = Array.from(map.values()).sort((a, b) =>
+      a.barangayName.localeCompare(b.barangayName)
+    );
+
+    const term = safeLower(search);
+    if (!term) return cards;
+
+    return cards.filter((item) =>
+      safeLower(item.barangayName).includes(term)
+    );
+  }, [allPlaces, isBarangayRole, search]);
+
+  useEffect(() => {
+    if (isBarangayRole) {
+      setSelectedBarangayName(localBarangayName || "");
+      return;
+    }
+
+    const availableNames = barangayCards.map((item) => item.barangayName);
+
+    if (!availableNames.length) {
+      setSelectedBarangayName("");
+      return;
+    }
+
+    if (barangayFilter !== "all") {
+      setSelectedBarangayName(barangayFilter);
+      return;
+    }
+
+    if (
+      !selectedBarangayName ||
+      !availableNames.includes(selectedBarangayName)
+    ) {
+      setSelectedBarangayName("");
+    }
+  }, [
+    barangayCards,
+    isBarangayRole,
+    localBarangayName,
+    selectedBarangayName,
+    barangayFilter,
+  ]);
 
   const filteredPlaces = useMemo(() => {
-    return computedPlaces.filter((place) => {
-      const term = search.trim().toLowerCase();
+    let list = [...computedPlaces];
+    const term = safeLower(search);
 
-      const matchesSearch = !term
-        ? true
-        : isBarangayRole
-        ? safeLower(place?.name).includes(term) ||
-          safeLower(place?.location).includes(term)
-        : safeLower(place?.name).includes(term) ||
+    if (term) {
+      list = list.filter((place) => {
+        return (
+          safeLower(place?.name).includes(term) ||
           safeLower(place?.location).includes(term) ||
-          safeLower(place?.barangayName).includes(term);
+          safeLower(place?.barangayName).includes(term) ||
+          safeLower(place?.remarks).includes(term)
+        );
+      });
+    }
 
-      const matchesStatus =
-        statusFilter === "all" || place?.capacityStatus === statusFilter;
+    if (statusFilter !== "all") {
+      list = list.filter(
+        (place) => safeLower(place?.capacityStatus) === safeLower(statusFilter)
+      );
+    }
 
-      const matchesBarangay =
-        isBarangayRole
-          ? true
-          : barangayFilter === "all" ||
-            safeLower(place?.barangayName) === safeLower(barangayFilter);
+    if (!isBarangayRole && barangayFilter !== "all") {
+      list = list.filter(
+        (place) =>
+          normalizeBarangayKey(place?.barangayName) ===
+          normalizeBarangayKey(barangayFilter)
+      );
+    }
 
-      const matchesSupport =
-        supportFilter === "all" || place?.supportStatus === supportFilter;
+    list.sort((a, b) => {
+      if (sortBy === "capacity") {
+        return Number(b.totalCapacity || 0) - Number(a.totalCapacity || 0);
+      }
 
-      return matchesSearch && matchesStatus && matchesBarangay && matchesSupport;
+      if (sortBy === "status") {
+        const order = { available: 1, limited: 2, full: 3 };
+        return (
+          (order[safeLower(a.capacityStatus)] || 99) -
+          (order[safeLower(b.capacityStatus)] || 99)
+        );
+      }
+
+      if (sortBy === "barangay") {
+        return safeLower(a.barangayName).localeCompare(
+          safeLower(b.barangayName)
+        );
+      }
+
+      return safeLower(a.name).localeCompare(safeLower(b.name));
     });
-  }, [computedPlaces, search, statusFilter, barangayFilter, supportFilter, isBarangayRole]);
+
+    return list;
+  }, [
+    computedPlaces,
+    search,
+    statusFilter,
+    barangayFilter,
+    isBarangayRole,
+    sortBy,
+  ]);
 
   useEffect(() => {
     if (!filteredPlaces.length) {
@@ -414,80 +656,213 @@ export default function EManagement() {
       return;
     }
 
+    if (!selectedId) return;
+
     const stillExists = filteredPlaces.some(
       (place) => String(place._id) === String(selectedId)
     );
 
-    if (!stillExists) {
-      setSelectedId(filteredPlaces[0]._id);
-    }
+    if (!stillExists) setSelectedId(null);
   }, [filteredPlaces, selectedId]);
 
   const selectedPlace = useMemo(() => {
-    return filteredPlaces.find((item) => String(item._id) === String(selectedId)) || null;
+    return (
+      filteredPlaces.find((item) => String(item._id) === String(selectedId)) ||
+      null
+    );
   }, [filteredPlaces, selectedId]);
 
-  const selectedPlaceAllocations = useMemo(() => {
-    return selectedPlace?.placeAllocations || [];
-  }, [selectedPlace]);
+  const selectedPlaceHistory = useMemo(() => {
+    if (!selectedPlace) return [];
 
-  const visibleStocks = useMemo(() => {
-    if (!Array.isArray(stocks)) return [];
-
-    if (!selectedPlace) {
-      return isBarangayRole ? stocks : [];
-    }
-
-    return stocks.filter((stock) => {
-      const sameBarangayId =
-        selectedPlace?.barangayId &&
-        String(stock?.barangayId) === String(selectedPlace.barangayId);
-      const sameBarangayName =
-        safeLower(stock?.barangayName) === safeLower(selectedPlace?.barangayName);
-
-      return sameBarangayId || sameBarangayName;
+    return history.filter((item) => {
+      return (
+        safeLower(item?.placeName) === safeLower(selectedPlace?.name) ||
+        safeLower(item?.barangayName) === safeLower(selectedPlace?.barangayName)
+      );
     });
-  }, [stocks, selectedPlace, isBarangayRole]);
+  }, [history, selectedPlace]);
 
-  const selectedStock = useMemo(() => {
-    return visibleStocks.find((item) => String(item._id) === String(selectedStockId)) || null;
-  }, [visibleStocks, selectedStockId]);
+  const recentSelectedPlaceHistory = useMemo(() => {
+    return selectedPlaceHistory.slice(0, 4);
+  }, [selectedPlaceHistory]);
 
-  const summary = useMemo(() => {
-    const totalPlaces = computedPlaces.length;
-    const availableCount = computedPlaces.filter(
-      (item) => item.capacityStatus === "available"
+  const overallSummary = useMemo(() => {
+    const totalPlaces = allPlaces.length;
+
+    const availableCount = allPlaces.filter(
+      (item) => safeLower(item.capacityStatus) === "available"
     ).length;
-    const limitedCount = computedPlaces.filter(
-      (item) => item.capacityStatus === "limited"
+
+    const limitedCount = allPlaces.filter(
+      (item) => safeLower(item.capacityStatus) === "limited"
     ).length;
-    const fullCount = computedPlaces.filter(
-      (item) => item.capacityStatus === "full"
+
+    const fullCount = allPlaces.filter(
+      (item) => safeLower(item.capacityStatus) === "full"
     ).length;
-    const unsupportedCount = computedPlaces.filter(
-      (item) => item.supportStatus === "none"
-    ).length;
-    const lowSupportCount = computedPlaces.filter(
-      (item) => item.supportStatus === "low"
-    ).length;
+
+    const totalIndividualCapacity = allPlaces.reduce(
+      (sum, item) => sum + Number(item.capacityIndividual || 0),
+      0
+    );
+
+    const totalFamilyCapacity = allPlaces.reduce(
+      (sum, item) => sum + Number(item.capacityFamily || 0),
+      0
+    );
+
+    const totalBedCapacity = allPlaces.reduce(
+      (sum, item) => sum + Number(item.bedCapacity || 0),
+      0
+    );
+
+    const allShownOnLanding =
+      totalPlaces > 0 && allPlaces.every((item) => item.showOnLanding !== false);
 
     return {
       totalPlaces,
       availableCount,
       limitedCount,
       fullCount,
-      unsupportedCount,
-      lowSupportCount,
+      totalIndividualCapacity,
+      totalFamilyCapacity,
+      totalBedCapacity,
+      allShownOnLanding,
     };
-  }, [computedPlaces]);
+  }, [allPlaces]);
 
-  const barangayFilterOptions = useMemo(() => {
-    const set = new Set();
-    computedPlaces.forEach((item) => {
-      if (item?.barangayName) set.add(item.barangayName);
-    });
-    return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [computedPlaces]);
+  const summary = useMemo(() => {
+    const baseList =
+      !isBarangayRole && barangayFilter !== "all"
+        ? computedPlaces.filter(
+            (item) =>
+              normalizeBarangayKey(item.barangayName) ===
+              normalizeBarangayKey(barangayFilter)
+          )
+        : computedPlaces;
+
+    const totalPlaces = baseList.length;
+    const availableCount = baseList.filter(
+      (item) => safeLower(item.capacityStatus) === "available"
+    ).length;
+    const limitedCount = baseList.filter(
+      (item) => safeLower(item.capacityStatus) === "limited"
+    ).length;
+    const fullCount = baseList.filter(
+      (item) => safeLower(item.capacityStatus) === "full"
+    ).length;
+    const permanentCount = baseList.filter((item) => item.isPermanent).length;
+    const covidFacilities = baseList.filter(
+      (item) => item.isCovidFacility
+    ).length;
+
+    const totalIndividualCapacity = baseList.reduce(
+      (sum, item) => sum + Number(item.capacityIndividual || 0),
+      0
+    );
+    const totalFamilyCapacity = baseList.reduce(
+      (sum, item) => sum + Number(item.capacityFamily || 0),
+      0
+    );
+    const totalBedCapacity = baseList.reduce(
+      (sum, item) => sum + Number(item.bedCapacity || 0),
+      0
+    );
+
+    return {
+      totalPlaces,
+      availableCount,
+      limitedCount,
+      fullCount,
+      permanentCount,
+      covidFacilities,
+      totalIndividualCapacity,
+      totalFamilyCapacity,
+      totalBedCapacity,
+    };
+  }, [computedPlaces, isBarangayRole, barangayFilter]);
+
+  const effectiveAnalytics = useMemo(() => {
+    if (!analytics) return summary;
+
+    if (barangayFilter === "all" || isBarangayRole) {
+      return {
+        totalPlaces: analytics.totalPlaces ?? summary.totalPlaces,
+        availableCount:
+          analytics.statusCounts?.available ?? summary.availableCount,
+        limitedCount: analytics.statusCounts?.limited ?? summary.limitedCount,
+        fullCount: analytics.statusCounts?.full ?? summary.fullCount,
+        permanentCount: analytics.permanentCount ?? summary.permanentCount,
+        covidFacilities: analytics.covidFacilities ?? summary.covidFacilities,
+        totalIndividualCapacity:
+          analytics.totalIndividualCapacity ?? summary.totalIndividualCapacity,
+        totalFamilyCapacity:
+          analytics.totalFamilyCapacity ?? summary.totalFamilyCapacity,
+        totalBedCapacity:
+          analytics.totalBedCapacity ?? summary.totalBedCapacity,
+      };
+    }
+
+    const match = analytics.barangayBreakdown?.find(
+      (b) =>
+        normalizeBarangayKey(b.barangayName) ===
+        normalizeBarangayKey(barangayFilter)
+    );
+
+    if (!match) return summary;
+
+    return {
+      totalPlaces: match.totalPlaces,
+      availableCount: match.available,
+      limitedCount: match.limited,
+      fullCount: match.full,
+      permanentCount: summary.permanentCount,
+      covidFacilities: summary.covidFacilities,
+      totalIndividualCapacity: match.totalIndividualCapacity,
+      totalFamilyCapacity: match.totalFamilyCapacity,
+      totalBedCapacity: match.totalBedCapacity,
+    };
+  }, [analytics, summary, barangayFilter, isBarangayRole]);
+
+  const warningInsights = useMemo(() => {
+    const alerts = [];
+
+    if (
+      effectiveAnalytics?.availableCount === 0 &&
+      effectiveAnalytics?.totalPlaces > 0
+    ) {
+      alerts.push({
+        tone: "danger",
+        title: "No available evacuation areas",
+        text: "All tracked evacuation areas are currently limited or full.",
+      });
+    }
+
+    if (effectiveAnalytics?.fullCount > 0) {
+      alerts.push({
+        tone: "warning",
+        title: "Full evacuation areas detected",
+        text: `${formatNumber(
+          effectiveAnalytics.fullCount
+        )} evacuation area(s) are marked full and may need reallocation support.`,
+      });
+    }
+
+    if (
+      effectiveAnalytics?.totalPlaces > 0 &&
+      effectiveAnalytics?.fullCount >=
+        Math.ceil(effectiveAnalytics.totalPlaces / 2)
+    ) {
+      alerts.push({
+        tone: "danger",
+        title: "High occupancy pressure",
+        text: "Half or more of the evacuation areas are already full.",
+      });
+    }
+
+    return alerts;
+  }, [effectiveAnalytics]);
 
   const updateFormField = (name, value) => {
     setFormData((prev) => ({
@@ -534,6 +909,18 @@ export default function EManagement() {
     setFormData(initialFormState);
   }, []);
 
+  const cancelPickMode = useCallback(() => {
+    setPickMode(false);
+    pushNotification("Map selection cancelled.", "info");
+  }, [pushNotification]);
+
+  const handleBarangaySelect = useCallback((name) => {
+    setBarangayFilter(name);
+    setSelectedBarangayName(name === "all" ? "" : name);
+    setSelectedId(null);
+    setPanelView("areas");
+  }, []);
+
   const handleStartPick = () => {
     const baseForm = { ...initialFormState };
 
@@ -546,12 +933,30 @@ export default function EManagement() {
       } else if (localBarangayName) {
         baseForm.barangayName = localBarangayName;
       }
+    } else if (barangayFilter !== "all") {
+      const matchedBarangay =
+        barangays.find(
+          (item) =>
+            normalizeBarangayKey(item.name) ===
+            normalizeBarangayKey(barangayFilter)
+        ) || null;
+
+      if (matchedBarangay) {
+        baseForm.barangayId = matchedBarangay._id;
+        baseForm.barangayName = matchedBarangay.name;
+      } else {
+        baseForm.barangayName = barangayFilter;
+      }
     }
 
     setFormData(baseForm);
     setShowAddForm(false);
     setShowEditForm(false);
     setPickMode(true);
+    pushNotification(
+      "Pick a point on the map or cancel if this was accidental.",
+      "info"
+    );
   };
 
   const openEditModal = () => {
@@ -579,9 +984,12 @@ export default function EManagement() {
       commonCR: Boolean(selectedPlace.commonCR),
       potableWater: Boolean(selectedPlace.potableWater),
       nonPotableWater: Boolean(selectedPlace.nonPotableWater),
-      foodPackCapacity: String(selectedPlace.foodPackCapacity || ""),
       isPermanent: Boolean(selectedPlace.isPermanent),
       isCovidFacility: Boolean(selectedPlace.isCovidFacility),
+      showOnLanding:
+        selectedPlace.showOnLanding === undefined
+          ? true
+          : Boolean(selectedPlace.showOnLanding),
       remarks: selectedPlace.remarks || "",
     });
 
@@ -597,11 +1005,20 @@ export default function EManagement() {
     if (args.length === 1 && args[0]?.latlng) {
       lat = args[0].latlng.lat;
       lng = args[0].latlng.lng;
-      locationLabel = args[0].label || "";
+      locationLabel =
+        args[0].label || args[0].location || args[0].locationLabel || "";
+    } else if (args.length === 1 && typeof args[0] === "object") {
+      lat = Number(args[0]?.lat);
+      lng = Number(args[0]?.lng);
+      locationLabel =
+        args[0]?.label || args[0]?.location || args[0]?.locationLabel || "";
     } else if (args.length >= 3) {
       locationLabel = args[0];
       lat = Number(args[1]);
       lng = Number(args[2]);
+    } else if (args.length >= 2) {
+      lat = Number(args[0]);
+      lng = Number(args[1]);
     }
 
     return {
@@ -612,7 +1029,15 @@ export default function EManagement() {
   };
 
   const flyTo = (lat, lng, zoom = 17) => {
-    if (lat === null || lng === null || lat === undefined || lng === undefined) return;
+    if (
+      lat === null ||
+      lng === null ||
+      lat === undefined ||
+      lng === undefined
+    ) {
+      return;
+    }
+
     window.dispatchEvent(
       new CustomEvent("emap:flyTo", {
         detail: { lat, lng, zoom },
@@ -623,7 +1048,9 @@ export default function EManagement() {
   const handleMapSelectLocation = useCallback(
     (...args) => {
       const { locationLabel, lat, lng } = normalizeMapArgs(...args);
-      if (lat === null || lng === null) return;
+
+      if (lat === null || lng === null || Number.isNaN(lat) || Number.isNaN(lng))
+        return;
 
       if (pickMode) {
         setFormData((prev) => ({
@@ -635,9 +1062,13 @@ export default function EManagement() {
         setPickMode(false);
         setShowAddForm(true);
         flyTo(lat, lng, 18);
+        pushNotification(
+          "Location selected. Complete the form and save the area.",
+          "success"
+        );
       }
     },
-    [pickMode]
+    [pickMode, pushNotification]
   );
 
   useEffect(() => {
@@ -647,37 +1078,37 @@ export default function EManagement() {
     const lng = Number(selectedPlace.longitude);
     if (Number.isNaN(lat) || Number.isNaN(lng)) return;
 
-    flyTo(lat, lng, 16);
-  }, [selectedPlace]);
+    flyTo(lat, lng, 17);
+  }, [selectedId, selectedPlace]);
 
   const validateForm = () => {
     if (!sanitizeText(formData.name)) {
-      alert("Place name is required.");
+      pushNotification("Evacuation area name is required.", "error");
       return false;
     }
 
     if (!sanitizeText(formData.location)) {
-      alert("Location is required.");
+      pushNotification("Location is required.", "error");
       return false;
     }
 
     if (!formData.barangayId && !sanitizeText(formData.barangayName)) {
-      alert("Barangay is required.");
+      pushNotification("Barangay is required.", "error");
       return false;
     }
 
     if (formData.latitude === null || formData.longitude === null) {
-      alert("Latitude and longitude are required.");
+      pushNotification("Latitude and longitude are required.", "error");
       return false;
     }
 
     if (Number(formData.latitude) < -90 || Number(formData.latitude) > 90) {
-      alert("Latitude must be between -90 and 90.");
+      pushNotification("Latitude must be between -90 and 90.", "error");
       return false;
     }
 
     if (Number(formData.longitude) < -180 || Number(formData.longitude) > 180) {
-      alert("Longitude must be between -180 and 180.");
+      pushNotification("Longitude must be between -180 and 180.", "error");
       return false;
     }
 
@@ -689,7 +1120,8 @@ export default function EManagement() {
       barangays.find(
         (item) =>
           String(item._id) === String(formData.barangayId) ||
-          safeLower(item.name) === safeLower(formData.barangayName)
+          normalizeBarangayKey(item.name) ===
+            normalizeBarangayKey(formData.barangayName)
       ) || null;
 
     const finalBarangayId =
@@ -702,7 +1134,6 @@ export default function EManagement() {
       location: sanitizeText(formData.location),
       barangayId: finalBarangayId,
       barangayName: sanitizeText(finalBarangayName),
-      barangay: sanitizeText(finalBarangayName),
       latitude: Number(formData.latitude),
       longitude: Number(formData.longitude),
       capacityIndividual: numberOrZero(formData.capacityIndividual),
@@ -714,31 +1145,34 @@ export default function EManagement() {
       commonCR: Boolean(formData.commonCR),
       potableWater: Boolean(formData.potableWater),
       nonPotableWater: Boolean(formData.nonPotableWater),
-      foodPackCapacity: numberOrZero(formData.foodPackCapacity),
       isPermanent: Boolean(formData.isPermanent),
       isCovidFacility: Boolean(formData.isCovidFacility),
+      showOnLanding: Boolean(formData.showOnLanding),
       remarks: sanitizeText(formData.remarks),
     };
   };
 
   const handleSubmitAdd = async (e) => {
     e.preventDefault();
-
     if (!validateForm()) return;
 
     setLoadingSave(true);
     try {
-      const payload = buildPayload();
-      await axios.post(`${BASE_URL}/evacs/make`, payload, {
+      await axios.post(`${BASE_URL}/evacs/make`, buildPayload(), {
         withCredentials: true,
       });
 
       resetForm();
       setShowAddForm(false);
-      await Promise.all([fetchPlaces(), fetchHistory()]);
+      setPickMode(false);
+      await fetchAllData();
+      pushNotification("Evacuation area added successfully.", "success");
     } catch (error) {
-      console.error("Create place error:", error);
-      alert(error?.response?.data?.message || "Failed to create evacuation place.");
+      console.error("Add place error:", error);
+      pushNotification(
+        error?.response?.data?.message || "Failed to add evacuation area.",
+        "error"
+      );
     } finally {
       setLoadingSave(false);
     }
@@ -746,38 +1180,58 @@ export default function EManagement() {
 
   const handleSubmitEdit = async (e) => {
     e.preventDefault();
-
-    if (!selectedPlace?._id) {
-      alert("Select a place first.");
-      return;
-    }
-
+    if (!selectedPlace) return;
     if (!validateForm()) return;
 
     setLoadingSave(true);
     try {
-      const payload = buildPayload();
-
-      await axios.put(`${BASE_URL}/evacs/${selectedPlace._id}`, payload, {
+      await axios.put(`${BASE_URL}/evacs/${selectedPlace._id}`, buildPayload(), {
         withCredentials: true,
       });
 
       resetForm();
       setShowEditForm(false);
-      await Promise.all([fetchPlaces(), fetchHistory()]);
+      await fetchAllData();
+      pushNotification("Evacuation area updated successfully.", "success");
     } catch (error) {
-      console.error("Update place error:", error);
-      alert(error?.response?.data?.message || "Update failed.");
+      console.error("Edit place error:", error);
+      pushNotification(
+        error?.response?.data?.message || "Failed to update evacuation area.",
+        "error"
+      );
     } finally {
       setLoadingSave(false);
     }
   };
 
-  const handleUpdateStatus = async (status) => {
-    if (!selectedPlace?._id) {
-      alert("Select a place first.");
-      return;
+  const handleArchivePlace = async () => {
+    if (!selectedPlace) return;
+
+    setLoadingSave(true);
+    try {
+      await axios.delete(`${BASE_URL}/evacs/${selectedPlace._id}`, {
+        withCredentials: true,
+      });
+
+      setShowArchiveConfirm(false);
+      setSelectedId(null);
+      setPanelView("areas");
+      await fetchAllData();
+      pushNotification("Evacuation area archived successfully.", "success");
+    } catch (error) {
+      console.error("Archive place error:", error);
+      pushNotification(
+        error?.response?.data?.message || "Failed to archive evacuation area.",
+        "error"
+      );
+    } finally {
+      setLoadingSave(false);
     }
+  };
+
+  const handleStatusChange = async (status) => {
+    if (!selectedPlace) return;
+    if (safeLower(selectedPlace.capacityStatus) === safeLower(status)) return;
 
     try {
       await axios.put(
@@ -785,104 +1239,111 @@ export default function EManagement() {
         { capacityStatus: status },
         { withCredentials: true }
       );
-      await Promise.all([fetchPlaces(), fetchHistory()]);
+
+      await fetchAllData();
+      pushNotification(`Status updated to ${status}.`, "success");
     } catch (error) {
       console.error("Update status error:", error);
-      alert(error?.response?.data?.message || "Failed to update status.");
+      pushNotification(
+        error?.response?.data?.message || "Failed to update status.",
+        "error"
+      );
     }
   };
 
-  const handleDeletePlace = async () => {
-    if (!selectedPlace?._id) {
-      setShowDeleteConfirm(false);
-      return;
-    }
+  const handleLandingVisibilityToggle = async () => {
+    if (!selectedPlace || !isPrivilegedOps) return;
 
+    setLandingToggleLoading(true);
     try {
-      await axios.delete(`${BASE_URL}/evacs/${selectedPlace._id}`, {
-        withCredentials: true,
-      });
-      setShowDeleteConfirm(false);
-      await Promise.all([fetchPlaces(), fetchHistory()]);
-    } catch (error) {
-      console.error("Delete place error:", error);
-      alert(error?.response?.data?.message || "Failed to delete place.");
-    }
-  };
+      const nextValue = !Boolean(selectedPlace.showOnLanding);
 
-  const handleAllocate = async () => {
-    if (!selectedPlace?._id) {
-      alert("Select an evacuation place first.");
-      return;
-    }
-
-    if (!selectedStockId) {
-      alert("Select a stock item.");
-      return;
-    }
-
-    const qty = Number(allocateQty);
-    if (!qty || qty <= 0) {
-      alert("Enter a valid quantity.");
-      return;
-    }
-
-    setLoadingAllocate(true);
-    try {
-      await axios.post(
-        `${BASE_URL}/evacs/${selectedPlace._id}/allocate`,
-        {
-          stockId: selectedStockId,
-          quantity: qty,
-        },
+      await axios.put(
+        `${BASE_URL}/evacs/${selectedPlace._id}/landing-visibility`,
+        { showOnLanding: nextValue },
         { withCredentials: true }
       );
 
-      setSelectedStockId("");
-      setAllocateQty("");
-      await Promise.all([fetchStocks(), fetchTransactions(), fetchHistory(), fetchPlaces()]);
-      alert("Stock allocated successfully.");
+      await fetchAllData();
+      pushNotification(
+        nextValue
+          ? "Selected evacuation area is now visible on the public page."
+          : "Selected evacuation area was hidden from the public page.",
+        "success"
+      );
     } catch (error) {
-      console.error("Allocate stock error:", error);
-      alert(error?.response?.data?.message || "Allocation failed.");
+      console.error("Update landing visibility error:", error);
+      pushNotification(
+        error?.response?.data?.message ||
+          "Failed to update landing page visibility.",
+        "error"
+      );
     } finally {
-      setLoadingAllocate(false);
+      setLandingToggleLoading(false);
     }
   };
 
-  const selectedStatusClass = (status) => {
-    if (status === "available") return "status-available";
-    if (status === "limited") return "status-limited";
-    return "status-full";
+  const handleShowAllOnLanding = async () => {
+    if (!isPrivilegedOps || !allPlaces.length) return;
+
+    const hiddenPlaces = allPlaces.filter((item) => item.showOnLanding === false);
+
+    if (!hiddenPlaces.length) {
+      pushNotification(
+        "All evacuation areas are already shown on the public page.",
+        "info"
+      );
+      return;
+    }
+
+    setBulkLandingLoading(true);
+    try {
+      await Promise.all(
+        hiddenPlaces.map((place) =>
+          axios.put(
+            `${BASE_URL}/evacs/${place._id}/landing-visibility`,
+            { showOnLanding: true },
+            { withCredentials: true }
+          )
+        )
+      );
+
+      await fetchAllData();
+      pushNotification(
+        "All evacuation areas are now shown on the public page.",
+        "success"
+      );
+    } catch (error) {
+      console.error("Bulk landing visibility error:", error);
+      pushNotification(
+        error?.response?.data?.message ||
+          "Failed to show all evacuation areas on the public page.",
+        "error"
+      );
+    } finally {
+      setBulkLandingLoading(false);
+    }
   };
 
-  const supportClass = (status) => {
-    if (status === "none") return "support-none";
-    if (status === "low") return "support-low";
-    return "support-adequate";
-  };
+  const facilityItems = useMemo(() => {
+    if (!selectedPlace) return [];
 
-  const statusCountsForPlaceCard = (place) => ({
-    individual: Number(place?.capacityIndividual || 0),
-    family: Number(place?.capacityFamily || 0),
-    foodPackCapacity: Number(place?.foodPackCapacity || 0),
-  });
+    return [
+      { label: "Female CR", value: !!selectedPlace.femaleCR },
+      { label: "Male CR", value: !!selectedPlace.maleCR },
+      { label: "Common CR", value: !!selectedPlace.commonCR },
+      { label: "Potable Water", value: !!selectedPlace.potableWater },
+      { label: "Non-potable Water", value: !!selectedPlace.nonPotableWater },
+      { label: "Permanent Facility", value: !!selectedPlace.isPermanent },
+      { label: "COVID Facility", value: !!selectedPlace.isCovidFacility },
+    ];
+  }, [selectedPlace]);
 
-  const getHistoryAccentClass = (action) => {
-    const value = String(action || "").toUpperCase();
-    if (value === "ADD") return "history-accent-add";
-    if (value === "UPDATE") return "history-accent-update";
-    if (value === "STATUS_UPDATE") return "history-accent-status";
-    if (value === "ALLOCATE") return "history-accent-allocate";
-    if (value === "DELETE") return "history-accent-delete";
-    return "history-accent-default";
-  };
-
-  const renderPlaceModal = (mode) => {
-    const isEdit = mode === "edit";
+  const renderPlaceModal = (modeType) => {
+    const isEdit = modeType === "edit";
     const onSubmit = isEdit ? handleSubmitEdit : handleSubmitAdd;
     const isOpen = isEdit ? showEditForm : showAddForm;
-    const title = isEdit ? "Edit Evacuation Place" : "Add Evacuation Place";
+    const title = isEdit ? "Edit Evacuation Area" : "Add Evacuation Area";
 
     if (!isOpen) return null;
 
@@ -903,8 +1364,8 @@ export default function EManagement() {
               <h3>{title}</h3>
               <p>
                 {isEdit
-                  ? "Update the selected evacuation place details."
-                  : "Create a new evacuation place and pin it on the map."}
+                  ? "Update the selected evacuation area details."
+                  : "Create a new evacuation area and pin it on the map."}
               </p>
             </div>
             <button
@@ -925,7 +1386,7 @@ export default function EManagement() {
                 <div className="section-title">Basic Information</div>
 
                 <label className="field">
-                  <span>Place Name</span>
+                  <span>Evacuation Area Name</span>
                   <input
                     ref={nameRef}
                     type="text"
@@ -972,7 +1433,7 @@ export default function EManagement() {
 
                         setFormData((prev) => ({
                           ...prev,
-                          barangayId: e.target.value,
+                          barangayId: record?._id || "",
                           barangayName: record?.name || "",
                         }));
                       }}
@@ -987,17 +1448,13 @@ export default function EManagement() {
                   )}
                 </label>
 
-                <div className="field field-row-2">
+                <div className="inline-field-row two">
                   <label className="field">
                     <span>Latitude</span>
                     <input
                       type="number"
-                      step="0.000001"
-                      value={
-                        formData.latitude === null || Number.isNaN(formData.latitude)
-                          ? ""
-                          : String(formData.latitude)
-                      }
+                      step="any"
+                      value={formData.latitude ?? ""}
                       onChange={handleLatitudeChange}
                     />
                   </label>
@@ -1006,41 +1463,22 @@ export default function EManagement() {
                     <span>Longitude</span>
                     <input
                       type="number"
-                      step="0.000001"
-                      value={
-                        formData.longitude === null || Number.isNaN(formData.longitude)
-                          ? ""
-                          : String(formData.longitude)
-                      }
+                      step="any"
+                      value={formData.longitude ?? ""}
                       onChange={handleLongitudeChange}
                     />
                   </label>
                 </div>
-
-                {!isEdit && (
-                  <div className="map-pick-hint">
-                    <button
-                      type="button"
-                      className="btn btn-back"
-                      onClick={() => {
-                        setShowAddForm(false);
-                        setPickMode(true);
-                      }}
-                    >
-                      Pick From Map Again
-                    </button>
-                  </div>
-                )}
               </div>
 
               <div className="evac-form-section">
                 <div className="section-title">Capacity</div>
 
-                <div className="field field-row-2">
+                <div className="inline-field-row three">
                   <label className="field">
-                    <span>Individual Capacity</span>
+                    <span>Individual</span>
                     <input
-                      type="number"
+                      type="text"
                       name="capacityIndividual"
                       value={formData.capacityIndividual}
                       onChange={handleNumericFieldChange}
@@ -1048,44 +1486,32 @@ export default function EManagement() {
                   </label>
 
                   <label className="field">
-                    <span>Family Capacity</span>
+                    <span>Family</span>
                     <input
-                      type="number"
+                      type="text"
                       name="capacityFamily"
                       value={formData.capacityFamily}
                       onChange={handleNumericFieldChange}
                     />
                   </label>
-                </div>
 
-                <div className="field field-row-2">
                   <label className="field">
-                    <span>Bed Capacity</span>
+                    <span>Beds</span>
                     <input
-                      type="number"
+                      type="text"
                       name="bedCapacity"
                       value={formData.bedCapacity}
-                      onChange={handleNumericFieldChange}
-                    />
-                  </label>
-
-                  <label className="field">
-                    <span>Floor Area (sq.m.)</span>
-                    <input
-                      type="number"
-                      name="floorArea"
-                      value={formData.floorArea}
                       onChange={handleNumericFieldChange}
                     />
                   </label>
                 </div>
 
                 <label className="field">
-                  <span>Food Pack Capacity</span>
+                  <span>Floor Area</span>
                   <input
-                    type="number"
-                    name="foodPackCapacity"
-                    value={formData.foodPackCapacity}
+                    type="text"
+                    name="floorArea"
+                    value={formData.floorArea}
                     onChange={handleNumericFieldChange}
                   />
                 </label>
@@ -1094,9 +1520,10 @@ export default function EManagement() {
                   <span>Remarks</span>
                   <textarea
                     name="remarks"
-                    rows={3}
+                    rows={5}
                     value={formData.remarks}
                     onChange={handleTextFieldChange}
+                    placeholder="Add notes about the evacuation area"
                   />
                 </label>
               </div>
@@ -1105,86 +1532,47 @@ export default function EManagement() {
                 <div className="section-title">Facilities</div>
 
                 <div className="checkbox-grid">
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.femaleCR}
-                      onChange={(e) => updateFormField("femaleCR", e.target.checked)}
-                    />
-                    <span>Female CR</span>
-                  </label>
+                  {[
+                    ["femaleCR", "Female CR"],
+                    ["maleCR", "Male CR"],
+                    ["commonCR", "Common CR"],
+                    ["potableWater", "Potable Water"],
+                    ["nonPotableWater", "Non-potable Water"],
+                    ["isPermanent", "Permanent Facility"],
+                    ["isCovidFacility", "COVID Facility"],
+                  ].map(([key, label]) => (
+                    <label key={key} className="check-chip">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(formData[key])}
+                        onChange={(e) =>
+                          updateFormField(key, e.target.checked)
+                        }
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
 
-                  <label className="checkbox-field">
+                {!isBarangayRole && (
+                  <label className="check-chip single-toggle">
                     <input
                       type="checkbox"
-                      checked={formData.maleCR}
-                      onChange={(e) => updateFormField("maleCR", e.target.checked)}
-                    />
-                    <span>Male CR</span>
-                  </label>
-
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.commonCR}
-                      onChange={(e) => updateFormField("commonCR", e.target.checked)}
-                    />
-                    <span>Common CR</span>
-                  </label>
-
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.potableWater}
-                      onChange={(e) => updateFormField("potableWater", e.target.checked)}
-                    />
-                    <span>Potable Water</span>
-                  </label>
-
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.nonPotableWater}
+                      checked={Boolean(formData.showOnLanding)}
                       onChange={(e) =>
-                        updateFormField("nonPotableWater", e.target.checked)
+                        updateFormField("showOnLanding", e.target.checked)
                       }
                     />
-                    <span>Non-potable Water</span>
+                    <span>Show on public page</span>
                   </label>
-                </div>
-              </div>
-
-              <div className="evac-form-section">
-                <div className="section-title">Flags</div>
-
-                <div className="checkbox-grid flags-grid">
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.isPermanent}
-                      onChange={(e) => updateFormField("isPermanent", e.target.checked)}
-                    />
-                    <span>Permanent Facility</span>
-                  </label>
-
-                  <label className="checkbox-field">
-                    <input
-                      type="checkbox"
-                      checked={formData.isCovidFacility}
-                      onChange={(e) =>
-                        updateFormField("isCovidFacility", e.target.checked)
-                      }
-                    />
-                    <span>COVID Facility</span>
-                  </label>
-                </div>
+                )}
               </div>
             </div>
 
             <div className="evac-modal-actions">
               <button
                 type="button"
-                className="btn btn-back"
+                className="ghost-btn"
                 onClick={() => {
                   if (isEdit) setShowEditForm(false);
                   else setShowAddForm(false);
@@ -1193,8 +1581,12 @@ export default function EManagement() {
                 Cancel
               </button>
 
-              <button type="submit" className="btn btn-update" disabled={loadingSave}>
-                {loadingSave ? "Saving..." : isEdit ? "Save Changes" : "Save Place"}
+              <button
+                type="submit"
+                className="primary-btn"
+                disabled={loadingSave}
+              >
+                {loadingSave ? "Saving..." : isEdit ? "Save Changes" : "Save Area"}
               </button>
             </div>
           </form>
@@ -1204,87 +1596,262 @@ export default function EManagement() {
     );
   };
 
-  return (
-    <DashboardShell>
-      <div className={`evac-dashboard-page ${isBarangayRole ? "barangay-mode-page" : ""}`}>
-        <div className="evac-dashboard-header">
-          <div className="evac-dashboard-heading">
-            <div className="eyebrow">
-              {isBarangayRole ? "Barangay Operations" : "Operations Module"}
+  const renderArchiveConfirm = () => {
+    if (!showArchiveConfirm || !selectedPlace) return null;
+
+    return createPortal(
+      <div
+        className="evac-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Archive evacuation area"
+        onClick={() => setShowArchiveConfirm(false)}
+      >
+        <div
+          className="evac-modal-card confirm-card"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="evac-modal-header">
+            <div>
+              <h3>Archive Evacuation Area</h3>
+              <p>
+                This will archive <strong>{selectedPlace.name}</strong>.
+              </p>
             </div>
-            <h1>
-              {isBarangayRole
-                ? "Your Evacuation Management"
-                : "Evacuation Management Dashboard"}
-            </h1>
-            <p>
-              {isBarangayRole
-                ? "Manage your evacuation places, monitor support, and allocate barangay stock to centers."
-                : "Monitor all evacuation places, capacity status, support gaps, and barangay-level readiness."}
-            </p>
+            <button
+              type="button"
+              className="evac-modal-close"
+              onClick={() => setShowArchiveConfirm(false)}
+            >
+              ✕
+            </button>
           </div>
 
-          <div className="evac-dashboard-actions">
-            <button className="btn btn-back" onClick={() => navigate(-1)}>
-              Back
+          <div className="confirm-copy">
+            Archived evacuation areas will no longer appear in the active list.
+          </div>
+
+          <div className="evac-modal-actions">
+            <button
+              type="button"
+              className="ghost-btn"
+              onClick={() => setShowArchiveConfirm(false)}
+            >
+              Cancel
             </button>
-            <button className="btn btn-update add-evac-btn" onClick={handleStartPick}>
-              Add Evac Place
+
+            <button
+              type="button"
+              className="danger-btn"
+              onClick={handleArchivePlace}
+              disabled={loadingSave}
+            >
+              {loadingSave ? "Archiving..." : "Archive"}
             </button>
           </div>
         </div>
+      </div>,
+      document.body
+    );
+  };
 
-        <div className="evac-summary-grid">
-          <div className="summary-card">
-            <div className="summary-label">Total Places</div>
-            <div className="summary-value">{formatNumber(summary.totalPlaces)}</div>
-            <div className="summary-sub">Visible in current scope</div>
+  if (loadingPage) {
+    return (
+      <DashboardShell>
+        <div className="evac-dashboard-page">
+          <div className="empty-state-card">Loading evacuation management...</div>
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  return (
+    <DashboardShell>
+      <div
+        className={`evac-dashboard-page ${
+          isBarangayRole ? "barangay-mode-page" : ""
+        }`}
+      >
+                <div
+          className={`notification-stack ${pickMode ? "pick-mode-offset" : ""}`}
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {visibleNotifications.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              className={`notification-toast ${item.type || "success"}`}
+              onClick={() => dismissNotification(item.id)}
+              title="Dismiss notification"
+            >
+              <span className="notification-icon" aria-hidden="true">
+                {getNotificationIcon(item.type)}
+              </span>
+
+              <span className="notification-text">
+                {item.message}
+              </span>
+            </button>
+          ))}
+        </div>
+
+        <section className="evac-dashboard-header">
+          <div className="evac-dashboard-heading">
+            <div className="eyebrow">Operations</div>
+            <h1>Evacuation Management</h1>
+          </div>
+
+          <div className="evac-dashboard-actions">
+            {!isBarangayRole && (
+              <button
+                type="button"
+                className="ghost-btn public-toggle-header-btn bulk-public-btn"
+                onClick={handleShowAllOnLanding}
+                disabled={bulkLandingLoading || !isPrivilegedOps || !allPlaces.length}
+                title="Show all evacuation areas on public landing page"
+              >
+                {bulkLandingLoading ? "Showing All..." : "Show All Public"}
+              </button>
+            )}
+
+            {!isBarangayRole && (
+              <button
+                type="button"
+                className={`ghost-btn public-toggle-header-btn ${
+                  selectedPlace?.showOnLanding === false ? "is-off" : "is-on"
+                }`}
+                onClick={handleLandingVisibilityToggle}
+                disabled={!selectedPlace || landingToggleLoading || !isPrivilegedOps}
+                title={
+                  !selectedPlace
+                    ? "Select an evacuation area first"
+                    : selectedPlace?.showOnLanding === false
+                    ? "Show selected area on public page"
+                    : "Hide selected area from public page"
+                }
+              >
+                {landingToggleLoading
+                  ? "Saving..."
+                  : !selectedPlace
+                  ? "Selected Public"
+                  : selectedPlace?.showOnLanding === false
+                  ? "Show Selected"
+                  : "Hide Selected"}
+              </button>
+            )}
+
+            {isPrivilegedOps && (
+              <button
+                type="button"
+                className="primary-btn"
+                onClick={handleStartPick}
+                disabled={pickMode}
+              >
+                {pickMode ? "Pick Mode Active" : "Add Area"}
+              </button>
+            )}
+          </div>
+        </section>
+
+        {!!warningInsights.length && (
+          <section className="warning-stack">
+            {warningInsights.map((item, index) => (
+              <div
+                key={`${item.title}-${index}`}
+                className={`warning-banner ${item.tone}`}
+              >
+                <div className="warning-banner-title">{item.title}</div>
+                <div className="warning-banner-text">{item.text}</div>
+              </div>
+            ))}
+          </section>
+        )}
+
+        <section className="evac-summary-grid-six">
+          <div className="summary-card accent">
+            <div className="summary-label">Evacuation Areas</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.totalPlaces
+                  : effectiveAnalytics.totalPlaces
+              )}
+            </div>
+            <div className="summary-sub">Tracked active areas</div>
           </div>
 
           <div className="summary-card success">
             <div className="summary-label">Available</div>
-            <div className="summary-value">{formatNumber(summary.availableCount)}</div>
-            <div className="summary-sub">Ready for occupancy</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.availableCount
+                  : effectiveAnalytics.availableCount
+              )}
+            </div>
+            <div className="summary-sub">Ready for use</div>
           </div>
 
           <div className="summary-card warning">
             <div className="summary-label">Limited</div>
-            <div className="summary-value">{formatNumber(summary.limitedCount)}</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.limitedCount
+                  : effectiveAnalytics.limitedCount
+              )}
+            </div>
             <div className="summary-sub">Needs monitoring</div>
           </div>
 
           <div className="summary-card danger">
             <div className="summary-label">Full</div>
-            <div className="summary-value">{formatNumber(summary.fullCount)}</div>
-            <div className="summary-sub">Capacity reached</div>
-          </div>
-
-          <div className="summary-card accent">
-            <div className="summary-label">No Allocation</div>
-            <div className="summary-value">{formatNumber(summary.unsupportedCount)}</div>
-            <div className="summary-sub">No relief assigned</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.fullCount
+                  : effectiveAnalytics.fullCount
+              )}
+            </div>
+            <div className="summary-sub">At capacity</div>
           </div>
 
           <div className="summary-card muted">
-            <div className="summary-label">Low Support</div>
-            <div className="summary-value">{formatNumber(summary.lowSupportCount)}</div>
-            <div className="summary-sub">Needs reinforcement</div>
+            <div className="summary-label">Family Capacity</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.totalFamilyCapacity
+                  : effectiveAnalytics.totalFamilyCapacity
+              )}
+            </div>
+            <div className="summary-sub">Total family slots</div>
           </div>
-        </div>
 
-        <div className={`evac-top-filters ${isBarangayRole ? "barangay-mode" : ""}`}>
-          <label className="filter-field search-field">
+          <div className="summary-card muted">
+            <div className="summary-label">Beds</div>
+            <div className="summary-value">
+              {formatNumber(
+                barangayFilter === "all" || isBarangayRole
+                  ? overallSummary.totalBedCapacity
+                  : effectiveAnalytics.totalBedCapacity
+              )}
+            </div>
+            <div className="summary-sub">Total bed count</div>
+          </div>
+        </section>
+
+        <section
+          className={`evac-top-filters ${isBarangayRole ? "barangay-mode" : ""}`}
+        >
+          <label className="filter-field">
             <span>Search</span>
             <input
               type="text"
-              placeholder={
-                isBarangayRole
-                  ? "Search place or location"
-                  : "Search place, location, or barangay"
-              }
+              placeholder="Search area, location, barangay, or remarks"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              autoComplete="off"
             />
           </label>
 
@@ -1293,12 +1860,12 @@ export default function EManagement() {
               <span>Barangay</span>
               <select
                 value={barangayFilter}
-                onChange={(e) => setBarangayFilter(e.target.value)}
+                onChange={(e) => handleBarangaySelect(e.target.value)}
               >
-                <option value="all">All barangays</option>
-                {barangayFilterOptions.map((item) => (
-                  <option key={item} value={item}>
-                    {item}
+                <option value="all">All Barangays</option>
+                {barangayCards.map((item) => (
+                  <option key={item.barangayName} value={item.barangayName}>
+                    {item.barangayName}
                   </option>
                 ))}
               </select>
@@ -1309,9 +1876,13 @@ export default function EManagement() {
             <span>Status</span>
             <select
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setSelectedId(null);
+                setPanelView("areas");
+              }}
             >
-              <option value="all">All statuses</option>
+              <option value="all">All Statuses</option>
               <option value="available">Available</option>
               <option value="limited">Limited</option>
               <option value="full">Full</option>
@@ -1319,64 +1890,194 @@ export default function EManagement() {
           </label>
 
           <label className="filter-field">
-            <span>Support</span>
-            <select
-              value={supportFilter}
-              onChange={(e) => setSupportFilter(e.target.value)}
-            >
-              <option value="all">All support levels</option>
-              <option value="none">No relief allocation</option>
-              <option value="low">Low on support</option>
-              <option value="adequate">Adequate support</option>
+            <span>Sort</span>
+            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+              <option value="capacity">Capacity</option>
+              <option value="name">Name</option>
+              <option value="status">Status</option>
+              {!isBarangayRole && <option value="barangay">Barangay</option>}
             </select>
           </label>
-        </div>
+        </section>
 
-        <div className="evac-main-layout">
+        <section
+          className={`evac-main-layout ${isBarangayRole ? "barangay-layout" : ""}`}
+        >
+          {!isBarangayRole && (
+            <aside className="evac-left-panel">
+              <div className="panel-head">
+                <div>
+                  <h2>Barangay Overview</h2>
+                  <p>Select a barangay first, then review its evacuation areas.</p>
+                </div>
+              </div>
+
+              <div className="barangay-list scroll-panel">
+                <button
+                  type="button"
+                  className={`barangay-card ${
+                    barangayFilter === "all" ? "active" : ""
+                  }`}
+                  onClick={() => handleBarangaySelect("all")}
+                >
+                  <div className="barangay-card-top">
+                    <strong>All Barangays</strong>
+                    <span>{formatNumber(overallSummary.totalPlaces)} areas</span>
+                  </div>
+
+                  <div className="barangay-card-statuses barangay-card-statuses-compact">
+                    <span className="mini-status available">
+                      {formatNumber(overallSummary.availableCount)} available
+                    </span>
+                    <span className="mini-status limited">
+                      {formatNumber(overallSummary.limitedCount)} limited
+                    </span>
+                    <span className="mini-status full">
+                      {formatNumber(overallSummary.fullCount)} full
+                    </span>
+                  </div>
+                </button>
+
+                {barangayCards.map((item) => (
+                  <button
+                    type="button"
+                    key={item.barangayName}
+                    className={`barangay-card ${
+                      normalizeBarangayKey(barangayFilter) ===
+                      normalizeBarangayKey(item.barangayName)
+                        ? "active"
+                        : ""
+                    }`}
+                    onClick={() => handleBarangaySelect(item.barangayName)}
+                  >
+                    <div className="barangay-card-top">
+                      <strong>{item.barangayName}</strong>
+                      <span>{formatNumber(item.placesCount)} areas</span>
+                    </div>
+
+                    <div className="barangay-card-statuses barangay-card-statuses-compact">
+                      <span className="mini-status available">
+                        {formatNumber(item.availableCount)} available
+                      </span>
+                      <span className="mini-status limited">
+                        {formatNumber(item.limitedCount)} limited
+                      </span>
+                      <span className="mini-status full">
+                        {formatNumber(item.fullCount)} full
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </aside>
+          )}
+
           <section className="evac-map-panel">
-            <div className="panel-head">
+            <div className="panel-head compact">
               <div>
-                <h2>{isBarangayRole ? "Your Evacuation Map" : "Evacuation Map"}</h2>
+                <h2>Evacuation Map</h2>
                 <p>
                   {pickMode
-                    ? "Click anywhere on the map to set the new evacuation place coordinates."
-                    : isBarangayRole
-                    ? "View and manage your evacuation place coverage."
-                    : "View and inspect evacuation place coverage."}
+                    ? "Pick a location on the map or cancel pick mode."
+                    : selectedPlace
+                    ? "Selected evacuation area is highlighted on the map."
+                    : "Browse and select an evacuation area."}
                 </p>
               </div>
 
               <div className="map-panel-actions">
-                {pickMode && (
-                  <button className="btn btn-back" onClick={() => setPickMode(false)}>
-                    Cancel Pick Mode
+                {isPrivilegedOps && !pickMode && (
+                  <button
+                    type="button"
+                    className="ghost-btn"
+                    onClick={handleStartPick}
+                  >
+                    Pick on Map
+                  </button>
+                )}
+
+                {isPrivilegedOps && pickMode && (
+                  <button
+                    type="button"
+                    className="danger-btn"
+                    onClick={cancelPickMode}
+                  >
+                    Cancel Pick
                   </button>
                 )}
               </div>
             </div>
 
             <div className="map-stage">
-              <Map onSelectLocation={handleMapSelectLocation} places={filteredPlaces} />
-
               {pickMode && (
                 <div className="pick-mode-banner">
-                  <strong>Pick mode active.</strong> Click on the map to set the location
-                  for the new evacuation place.
+                  Pick mode is active. Click anywhere on the map to capture the
+                  evacuation area location.
                 </div>
+              )}
+
+              <EvacMap
+                places={filteredPlaces}
+                selectedPlaceId={selectedId}
+                onSelectLocation={handleMapSelectLocation}
+                onSelectPlace={(place) => {
+                  if (!place?._id) return;
+                  setSelectedId(place._id);
+                  setPanelView("details");
+                }}
+                pickMode={pickMode}
+              />
+
+              <MapLegend />
+
+              {isPrivilegedOps && !pickMode && (
+                <button
+                  type="button"
+                  className="map-add-place-floating"
+                  onClick={handleStartPick}
+                >
+                  <div className="map-add-place-icon">+</div>
+                  <div className="map-add-place-content">
+                    <div className="map-add-place-title">Add Evacuation Area</div>
+                    <div className="map-add-place-sub">
+                      Start by pinning the location on the map.
+                    </div>
+                  </div>
+                </button>
+              )}
+
+              {isPrivilegedOps && pickMode && (
+                <button
+                  type="button"
+                  className="map-cancel-pick-floating"
+                  onClick={cancelPickMode}
+                >
+                  Cancel Pick
+                </button>
               )}
             </div>
           </section>
 
-          <aside className="evac-side-panel">
+          <aside className="evac-right-panel">
             <div className="side-panel-sticky-head">
               <div className="side-panel-tabs">
                 <button
-                  className={`tab-btn ${panelView === "main" ? "active" : ""}`}
-                  onClick={() => setPanelView("main")}
+                  type="button"
+                  className={`tab-btn ${panelView === "areas" ? "active" : ""}`}
+                  onClick={() => setPanelView("areas")}
                 >
-                  List & Details
+                  Areas
                 </button>
                 <button
+                  type="button"
+                  className={`tab-btn ${panelView === "details" ? "active" : ""}`}
+                  onClick={() => setPanelView("details")}
+                  disabled={!selectedPlace}
+                >
+                  Details
+                </button>
+                <button
+                  type="button"
                   className={`tab-btn ${panelView === "history" ? "active" : ""}`}
                   onClick={() => setPanelView("history")}
                 >
@@ -1385,438 +2086,329 @@ export default function EManagement() {
               </div>
             </div>
 
-            {panelView === "main" ? (
-              <div className="side-panel-body">
+            <div className="side-panel-body">
+              {panelView === "areas" && (
                 <div className="side-block">
                   <div className="side-block-header">
                     <h3>
-                      {isBarangayRole ? "Your Evacuation Places" : "Evacuation Places"}
+                      {isBarangayRole
+                        ? "Evacuation Areas"
+                        : barangayFilter === "all"
+                        ? "All Evacuation Areas"
+                        : `${selectedBarangayName || barangayFilter} Areas`}
                     </h3>
-                    <span>{filteredPlaces.length} result(s)</span>
+                    <span>{formatNumber(filteredPlaces.length)} results</span>
                   </div>
 
-                  <div className="place-list">
-                    {loadingPage ? (
-                      <div className="empty-state">Loading evacuation places...</div>
-                    ) : filteredPlaces.length === 0 ? (
-                      <div className="empty-state">
-                        No evacuation places match the current filters.
-                      </div>
-                    ) : (
-                      filteredPlaces.map((place) => {
-                        const capacityStats = statusCountsForPlaceCard(place);
-
-                        return (
-                          <button
-                            type="button"
-                            key={place._id}
-                            className={`place-card ${
-                              String(selectedId) === String(place._id) ? "selected" : ""
-                            }`}
-                            onClick={() => setSelectedId(place._id)}
-                          >
-                            <div className="place-card-top">
-                              <div className="place-card-title-wrap">
-                                <div className="place-card-title">{place.name}</div>
-                                <div className="place-card-subtitle">{place.location}</div>
-                              </div>
-
-                              <div className="place-badge-stack">
-                                <span
-                                  className={`status-pill ${selectedStatusClass(
-                                    place.capacityStatus
-                                  )}`}
-                                >
-                                  {place.capacityStatus || "available"}
-                                </span>
-
-                                <span
-                                  className={`support-pill ${supportClass(
-                                    place.supportStatus
-                                  )}`}
-                                >
-                                  {place.supportLabel}
-                                </span>
-                              </div>
-                            </div>
-
-                            <div className="place-card-meta">
-                              <span>{place.barangayName || "Unknown barangay"}</span>
-                              <span>
-                                Allocations: {formatNumber(place.allocationCount)}
-                              </span>
-                            </div>
-
-                            <div className="place-card-capacity">
-                              <div className="mini-stat">
-                                <strong>{formatNumber(capacityStats.individual)}</strong>
-                                <span>Individuals</span>
-                              </div>
-                              <div className="mini-stat">
-                                <strong>{formatNumber(capacityStats.family)}</strong>
-                                <span>Families</span>
-                              </div>
-                              <div className="mini-stat">
-                                <strong>{formatNumber(capacityStats.foodPackCapacity)}</strong>
-                                <span>Food Packs</span>
-                              </div>
-                            </div>
-                          </button>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                <div className="side-block details-block">
-                  <div className="side-block-header">
-                    <h3>Selected Place Details</h3>
-                    {selectedPlace && (
-                      <div className="detail-actions-inline">
-                        <button type="button" className="text-action" onClick={openEditModal}>
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          className="text-action danger"
-                          onClick={() => setShowDeleteConfirm(true)}
-                        >
-                          Delete
-                        </button>
+                  <div className="place-list expanded">
+                    {!filteredPlaces.length && (
+                      <div className="empty-state-card">
+                        No evacuation areas match the current filters.
                       </div>
                     )}
-                  </div>
 
-                  {!selectedPlace ? (
-                    <div className="empty-state">
-                      Select an evacuation place to view details.
-                    </div>
-                  ) : (
-                    <>
-                      <div className="details-hero">
-                        <div>
-                          <h3>{selectedPlace.name}</h3>
-                          <p>{selectedPlace.location}</p>
-                        </div>
-
-                        <div className="details-hero-badges">
-                          <span
-                            className={`status-pill ${selectedStatusClass(
-                              selectedPlace.capacityStatus
-                            )}`}
-                          >
-                            {selectedPlace.capacityStatus || "available"}
-                          </span>
-                          <span
-                            className={`support-pill ${supportClass(
-                              selectedPlace.supportStatus
-                            )}`}
-                          >
-                            {selectedPlace.supportLabel}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="details-grid">
-                        <div className="detail-kv">
-                          <span>Barangay</span>
-                          <strong>{selectedPlace.barangayName || "-"}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Coordinates</span>
-                          <strong>
-                            {selectedPlace.latitude}, {selectedPlace.longitude}
-                          </strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Individual Capacity</span>
-                          <strong>{formatNumber(selectedPlace.capacityIndividual)}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Family Capacity</span>
-                          <strong>{formatNumber(selectedPlace.capacityFamily)}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Bed Capacity</span>
-                          <strong>{formatNumber(selectedPlace.bedCapacity)}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Floor Area</span>
-                          <strong>{formatNumber(selectedPlace.floorArea)}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Food Pack Capacity</span>
-                          <strong>{formatNumber(selectedPlace.foodPackCapacity)}</strong>
-                        </div>
-                        <div className="detail-kv">
-                          <span>Total Allocated</span>
-                          <strong>{formatNumber(selectedPlace.totalAllocated)}</strong>
-                        </div>
-                      </div>
-
-                      <div className="facility-group">
-                        <div className="subsection-title">Facilities & Flags</div>
-                        <div className="chip-grid">
-                          <span className={`chip ${selectedPlace.femaleCR ? "on" : ""}`}>
-                            Female CR
-                          </span>
-                          <span className={`chip ${selectedPlace.maleCR ? "on" : ""}`}>
-                            Male CR
-                          </span>
-                          <span className={`chip ${selectedPlace.commonCR ? "on" : ""}`}>
-                            Common CR
-                          </span>
-                          <span
-                            className={`chip ${selectedPlace.potableWater ? "on" : ""}`}
-                          >
-                            Potable Water
-                          </span>
-                          <span
-                            className={`chip ${selectedPlace.nonPotableWater ? "on" : ""}`}
-                          >
-                            Non-Potable Water
-                          </span>
-                          <span
-                            className={`chip ${selectedPlace.isPermanent ? "on" : ""}`}
-                          >
-                            Permanent
-                          </span>
-                          <span
-                            className={`chip ${selectedPlace.isCovidFacility ? "on" : ""}`}
-                          >
-                            COVID Facility
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="status-update-block">
-                        <div className="subsection-title">Update Capacity Status</div>
-                        <div className="status-actions">
-                          <button
-                            type="button"
-                            className={`status-btn ${
-                              selectedPlace.capacityStatus === "available" ? "active" : ""
-                            }`}
-                            onClick={() => handleUpdateStatus("available")}
-                          >
-                            Available
-                          </button>
-                          <button
-                            type="button"
-                            className={`status-btn ${
-                              selectedPlace.capacityStatus === "limited" ? "active" : ""
-                            }`}
-                            onClick={() => handleUpdateStatus("limited")}
-                          >
-                            Limited
-                          </button>
-                          <button
-                            type="button"
-                            className={`status-btn ${
-                              selectedPlace.capacityStatus === "full" ? "active" : ""
-                            }`}
-                            onClick={() => handleUpdateStatus("full")}
-                          >
-                            Full
-                          </button>
-                        </div>
-                      </div>
-
-                      {canAllocate ? (
-                        <div className="allocation-block">
-                          <div className="subsection-title">Allocate Barangay Stock</div>
-                          <div className="allocation-note">
-                            Allocate goods from barangay storage to this evacuation place.
+                    {filteredPlaces.map((place) => (
+                      <button
+                        type="button"
+                        key={place._id}
+                        className={`place-card ${
+                          String(selectedId) === String(place._id) ? "selected" : ""
+                        }`}
+                        onClick={() => {
+                          setSelectedId(place._id);
+                          setPanelView("details");
+                        }}
+                      >
+                        <div className="place-card-top">
+                          <div>
+                            <div className="place-card-title">{place.name}</div>
+                            <div className="place-card-subtitle">
+                              {place.location || "-"}
+                            </div>
                           </div>
 
-                          <label className="field">
-                            <span>Available Stock Item</span>
-                            <select
-                              value={selectedStockId}
-                              onChange={(e) => setSelectedStockId(e.target.value)}
+                          <div className="place-badge-stack">
+                            <span className={`status-pill ${getStatusClass(place.capacityStatus)}`}>
+                              {place.capacityStatus || "Full"}
+                            </span>
+                            {!isBarangayRole && (
+                              <span className="mini-neutral-badge">
+                                {place.barangayName || "-"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="place-card-meta">
+                          <span>
+                            Families: {formatNumber(place.capacityFamily || 0)}
+                          </span>
+                          <span>
+                            Beds: {formatNumber(place.bedCapacity || 0)}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {panelView === "details" && (
+                <>
+                  {!selectedPlace ? (
+                    <div className="empty-state-card">
+                      Select an evacuation area first to view its details.
+                    </div>
+                  ) : (
+                    <div className="details-stack">
+                      <div className="side-block details-overview-block">
+                        <div className="details-hero refined">
+                          <div className="details-hero-main">
+                            <div className="details-hero-eyebrow">
+                              Evacuation Area
+                            </div>
+                            <h3>{selectedPlace.name}</h3>
+                            <div className="place-card-subtitle">
+                              {selectedPlace.location || "-"}
+                            </div>
+                          </div>
+
+                          <div className="details-hero-badges">
+                            <span
+                              className={`status-pill ${getStatusClass(
+                                selectedPlace.capacityStatus
+                              )}`}
                             >
-                              <option value="">Select stock</option>
-                              {visibleStocks.map((stock) => (
-                                <option key={stock._id} value={stock._id}>
-                                  {stock.itemName} • {stock.category} • Available:{" "}
-                                  {stock.quantityAvailable} {stock.unit || ""}
-                                </option>
+                              {selectedPlace.capacityStatus || "Full"}
+                            </span>
+
+                            {!isBarangayRole && (
+                              <span
+                                className={`landing-visibility-badge ${
+                                  selectedPlace.showOnLanding === false
+                                    ? "hidden"
+                                    : "visible"
+                                }`}
+                              >
+                                {selectedPlace.showOnLanding === false
+                                  ? "Hidden from Public"
+                                  : "Shown on Public"}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="side-panel-body">
+                          <div className="details-kpi-grid">
+                            <div className="detail-kpi-card">
+                              <span>Individual</span>
+                              <strong>
+                                {formatNumber(selectedPlace.capacityIndividual || 0)}
+                              </strong>
+                            </div>
+                            <div className="detail-kpi-card">
+                              <span>Family</span>
+                              <strong>
+                                {formatNumber(selectedPlace.capacityFamily || 0)}
+                              </strong>
+                            </div>
+                            <div className="detail-kpi-card">
+                              <span>Beds</span>
+                              <strong>
+                                {formatNumber(selectedPlace.bedCapacity || 0)}
+                              </strong>
+                            </div>
+                            <div className="detail-kpi-card">
+                              <span>Floor Area</span>
+                              <strong>
+                                {formatNumber(selectedPlace.floorArea || 0)}
+                              </strong>
+                            </div>
+                          </div>
+
+                          <div className="details-ops-grid">
+                            <div className="ops-card">
+                              <div className="ops-card-title">Status</div>
+                              <div className="status-action-grid">
+                                {["available", "limited", "full"].map((status) => (
+                                  <button
+                                    key={status}
+                                    type="button"
+                                    className={`status-action-btn ${status} ${
+                                      safeLower(selectedPlace.capacityStatus) === status
+                                        ? "active"
+                                        : ""
+                                    }`}
+                                    onClick={() => handleStatusChange(status)}
+                                  >
+                                    {status.charAt(0).toUpperCase() + status.slice(1)}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            {!isBarangayRole && (
+                              <div className="ops-card">
+                                <div className="ops-card-title">Public Page</div>
+                                <div className="landing-toggle-row">
+                                  <div className="landing-toggle-copy">
+                                    <strong>Selected area visibility</strong>
+                                    <span>
+                                      Keep this manual control even when all areas are
+                                      shown on the public page.
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    className={`landing-toggle-btn ${
+                                      selectedPlace.showOnLanding === false
+                                        ? "off"
+                                        : "on"
+                                    }`}
+                                    onClick={handleLandingVisibilityToggle}
+                                    disabled={landingToggleLoading}
+                                  >
+                                    {landingToggleLoading
+                                      ? "Saving..."
+                                      : selectedPlace.showOnLanding === false
+                                      ? "Show"
+                                      : "Hide"}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="side-block">
+                            <div className="side-block-header">
+                              <h3>Facilities</h3>
+                            </div>
+
+                            <div className="facility-chip-group">
+                              {facilityItems.map((item) => (
+                                <span
+                                  key={item.label}
+                                  className={`facility-chip ${
+                                    item.value ? "active" : "inactive"
+                                  }`}
+                                >
+                                  {item.label}
+                                </span>
                               ))}
-                            </select>
-                          </label>
+                            </div>
+                          </div>
 
-                          <label className="field">
-                            <span>Quantity</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={allocateQty}
-                              onChange={(e) => setAllocateQty(e.target.value)}
-                              placeholder="Enter quantity to allocate"
-                            />
-                          </label>
+                          <div className="details-two-grid refined-two-grid">
+                            <div className="meta-card">
+                              <div className="side-block-header">
+                                <h3>Information</h3>
+                              </div>
 
-                          {selectedStock && (
-                            <div className="stock-preview">
-                              <div>
-                                <strong>{selectedStock.itemName}</strong>
-                                <span>{selectedStock.category}</span>
+                              <div className="meta-list">
+                                <div className="meta-row">
+                                  <span>Barangay</span>
+                                  <strong>{selectedPlace.barangayName || "-"}</strong>
+                                </div>
+                                <div className="meta-row">
+                                  <span>Latitude</span>
+                                  <strong>{selectedPlace.latitude ?? "-"}</strong>
+                                </div>
+                                <div className="meta-row">
+                                  <span>Longitude</span>
+                                  <strong>{selectedPlace.longitude ?? "-"}</strong>
+                                </div>
                               </div>
-                              <div>
-                                Available: {selectedStock.quantityAvailable}{" "}
-                                {selectedStock.unit || ""}
+                            </div>
+
+                            <div className="meta-card">
+                              <div className="side-block-header">
+                                <h3>Remarks</h3>
                               </div>
+
+                              <div className="remarks-box">
+                                {selectedPlace.remarks ? (
+                                  <p>{selectedPlace.remarks}</p>
+                                ) : (
+                                  <span className="remarks-empty">
+                                    No remarks provided.
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+
+                          {isPrivilegedOps && (
+                            <div className="details-actions refined-actions">
+                              <button
+                                type="button"
+                                className="ghost-btn"
+                                onClick={openEditModal}
+                              >
+                                Edit Area
+                              </button>
+                              <button
+                                type="button"
+                                className="danger-btn"
+                                onClick={() => setShowArchiveConfirm(true)}
+                              >
+                                Archive
+                              </button>
                             </div>
                           )}
-
-                          <button
-                            type="button"
-                            className="btn btn-update full-width"
-                            onClick={handleAllocate}
-                            disabled={loadingAllocate}
-                          >
-                            {loadingAllocate ? "Allocating..." : "Allocate to Evac Place"}
-                          </button>
                         </div>
-                      ) : (
-                        <div className="monitoring-note-block">
-                          <div className="subsection-title">Monitoring Only</div>
-                          <div className="monitoring-note-text">
-                            DRRMO and admin can monitor allocation status here, but stock
-                            allocation must be done by the barangay from their own storage.
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="recent-allocations-block">
-                        <div className="subsection-title">Recent Allocation Logs</div>
-
-                        {selectedPlaceAllocations.length === 0 ? (
-                          <div className="empty-inline">
-                            No allocation has been recorded for this evacuation place yet.
-                          </div>
-                        ) : (
-                          <div className="allocation-log-list">
-                            {selectedPlaceAllocations.slice(0, 6).map((log) => (
-                              <div key={log._id} className="allocation-log-item">
-                                <div className="allocation-log-main">
-                                  <strong>{log.itemName || "Stock item"}</strong>
-                                  <span>
-                                    {log.quantity} {log.unit || ""}
-                                  </span>
-                                </div>
-                                <div className="allocation-log-sub">
-                                  <span>{log.category || "-"}</span>
-                                  <span>{formatDateTime(log.createdAt)}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
                       </div>
-                    </>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="side-panel-body">
-                <div className="side-block history-block">
-                  <div className="side-block-header">
-                    <h3>{isBarangayRole ? "Your Evacuation History" : "Evacuation History"}</h3>
-                    <button type="button" className="text-action" onClick={fetchHistory}>
-                      Refresh
-                    </button>
-                  </div>
-
-                  {history.length === 0 ? (
-                    <div className="empty-state">No history records yet.</div>
-                  ) : (
-                    <div className="history-timeline">
-                      {history.map((item) => (
-                        <div
-                          key={item._id}
-                          className={`history-entry ${getHistoryAccentClass(item.action)}`}
-                        >
-                          <div className="history-entry-top">
-                            <div className="history-entry-action">
-                              {item.action || "ACTION"}
-                            </div>
-                            <div className="history-entry-date">
-                              {formatDateTime(item.createdAt)}
-                            </div>
-                          </div>
-
-                          <div className="history-entry-place">
-                            {item.placeName || "Unknown place"}
-                          </div>
-
-                          <div className="history-entry-details">
-                            {item.details || "-"}
-                          </div>
-
-                          <div className="history-entry-meta">
-                            <span>{item.barangayName || "—"}</span>
-                            <span>
-                              {item.performedBy
-                                ? `${item.performedByRole || "user"} • ${item.performedBy}`
-                                : "—"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
                     </div>
                   )}
+                </>
+              )}
+
+              {panelView === "history" && (
+                <div className="side-block">
+                  <div className="side-block-header">
+                    <h3>{selectedPlace ? `${selectedPlace.name} History` : "Activity History"}</h3>
+                    <span>
+                      {formatNumber(
+                        selectedPlace ? selectedPlaceHistory.length : history.length
+                      )}{" "}
+                      logs
+                    </span>
+                  </div>
+
+                  <div className="history-list">
+                    {(selectedPlace ? recentSelectedPlaceHistory : history).length === 0 && (
+                      <div className="empty-state-card">No history available.</div>
+                    )}
+
+                    {(selectedPlace ? recentSelectedPlaceHistory : history).map(
+                      (item, index) => (
+                        <div
+                          key={`${item._id || item.createdAt || index}`}
+                          className={`history-card ${getHistoryAccentClass(
+                            item.action
+                          )}`}
+                        >
+                          <div className="history-card-top">
+                            <strong>{item.action || "Activity"}</strong>
+                            <span>{formatDateTime(item.createdAt)}</span>
+                          </div>
+                          <div className="history-card-body">
+                            <div>{item.placeName || selectedPlace?.name || "-"}</div>
+                            {item.details && <p>{item.details}</p>}
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </aside>
-        </div>
+        </section>
 
         {renderPlaceModal("add")}
         {renderPlaceModal("edit")}
-
-        {showDeleteConfirm &&
-          createPortal(
-            <div
-              className="evac-modal"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Delete evacuation place"
-              onClick={() => setShowDeleteConfirm(false)}
-            >
-              <div className="delete-dialog" onClick={(e) => e.stopPropagation()}>
-                <div className="delete-dialog-head">
-                  <h3>Delete Evacuation Place</h3>
-                  <button
-                    type="button"
-                    className="evac-modal-close"
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                <p>
-                  Are you sure you want to delete{" "}
-                  <strong>{selectedPlace?.name || "this place"}</strong>?
-                </p>
-
-                <div className="delete-dialog-actions">
-                  <button
-                    type="button"
-                    className="btn btn-back"
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="button" className="btn btn-danger" onClick={handleDeletePlace}>
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>,
-            document.body
-          )}
+        {renderArchiveConfirm()}
       </div>
     </DashboardShell>
   );

@@ -38,12 +38,36 @@
   padding-bottom: 48px;
 }
 
+.rtk-loading-card,
 .rtk-header-card,
 .rtk-card {
   background: var(--rtk-surface);
   border: 1px solid var(--rtk-border);
   box-shadow: var(--rtk-shadow);
   border-radius: var(--rtk-radius-xl);
+}
+
+.rtk-loading-card {
+  max-width: 420px;
+  margin: 60px auto 0;
+  padding: 30px;
+  text-align: center;
+}
+
+.rtk-spinner {
+  width: 34px;
+  height: 34px;
+  margin: 0 auto 14px;
+  border: 4px solid #dbe8dc;
+  border-top-color: var(--rtk-primary);
+  border-radius: 50%;
+  animation: rtk-spin 0.9s linear infinite;
+}
+
+@keyframes rtk-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .rtk-header-card {
@@ -83,6 +107,49 @@
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
+}
+
+.rtk-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.rtk-stat-card {
+  background: var(--rtk-surface);
+  border: 1px solid var(--rtk-border);
+  box-shadow: var(--rtk-shadow);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.rtk-stat-card span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 12px;
+  color: var(--rtk-text-soft);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.rtk-stat-card strong {
+  display: block;
+  font-size: 28px;
+  color: var(--rtk-primary);
+  line-height: 1.1;
+}
+
+.rtk-stat-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--rtk-text-soft);
+  font-size: 12px;
+}
+
+.rtk-stat-card.emphasis {
+  background: linear-gradient(180deg, #eef8ef 0%, #e6f4e8 100%);
+  border-color: #b7d1bb;
 }
 
 .rtk-top-grid {
@@ -193,6 +260,18 @@
   font-weight: 800;
   color: var(--rtk-primary-3);
   border-top: 2px solid #cfe0d1;
+}
+
+.rtk-clickable-row td {
+  transition: background 0.18s ease;
+}
+
+.rtk-clickable-row td:not(:last-child) {
+  cursor: pointer;
+}
+
+.rtk-clickable-row.active td {
+  background: #f5fbf6;
 }
 
 .rtk-left-cell {
@@ -539,6 +618,10 @@
 }
 
 @media (max-width: 1240px) {
+  .rtk-stats-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .rtk-detail-layout {
     grid-template-columns: 1fr;
   }
@@ -564,7 +647,8 @@
   }
 
   .rtk-header-card,
-  .rtk-card {
+  .rtk-card,
+  .rtk-loading-card {
     padding: 18px;
     border-radius: 20px;
   }
@@ -580,7 +664,8 @@
   }
 
   .rtk-info-grid,
-  .rtk-toolbar {
+  .rtk-toolbar,
+  .rtk-stats-grid {
     grid-template-columns: 1fr;
   }
 }

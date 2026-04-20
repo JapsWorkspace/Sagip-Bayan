@@ -13,49 +13,113 @@ import logoutgreen from "../../assets/images/logoutgreen.png";
 import sunwhite from "../../assets/images/sunwhite.png";
 import nightgreen from "../../assets/images/nightgreen.png";
 
-export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
+export default function SidebarBarangay({
+  collapsed,
+  onToggle,
+  onLogout,
+  onNavigateMobile,
+  username,
+  roleLabel,
+}) {
   const { theme, toggleTheme } = useTheme();
   const dark = theme === "dark";
 
   const links = [
-    { to: "/barangay/relief-request",  label: "Relief Request",             icon: dark ? reliefwhite   : reliefgreen },
-    { to: "/barangay/relief-status",   label: "Relief Status", icon: dark ? analyticswhite: analyticsgreen },
-    { to: "/barangay/inventory",        label: "Stock",             icon: dark ? analyticswhite : analyticsgreen },
-    { to: "/barangay/evacuation-centers",  label: "Evacuation Management", icon: dark ? evacuationwhite: evacuationgreen },
+    {
+      section: "Relief",
+      items: [
+        {
+          to: "/barangay/relief-request",
+          label: "Relief Request",
+          icon: dark ? reliefwhite : reliefgreen,
+        },
+      ],
+    },
+    {
+      section: "Monitoring",
+      items: [
+        {
+          to: "/barangay/evacuation-centers",
+          label: "Evacuation Centers",
+          icon: dark ? evacuationwhite : evacuationgreen,
+        },
+      ],
+    },
   ];
 
-  const themeIcon  = dark ? sunwhite    : nightgreen;
-  const themeLabel = dark ? "Light mode": "Dark mode";
+  const themeIcon = dark ? sunwhite : nightgreen;
+  const themeLabel = dark ? "Light mode" : "Dark mode";
   const logoutIcon = dark ? logoutwhite : logoutgreen;
 
   return (
-    <aside className={`sidebar sidebar--barangay ${collapsed ? "collapsed" : ""}`} aria-label="Barangay navigation">
+    <aside
+      className={`sidebar sidebar--barangay ${collapsed ? "collapsed" : ""}`}
+      aria-label="Barangay navigation"
+    >
       <div className="sidebar-header">
-        <img src={logo} className="sidebar-logo" alt="" />
-        {!collapsed && <h1 className="sidebar-title">BARANGAY</h1>}
-        <button onClick={onToggle} className="toggle-btn" aria-label="Collapse/Expand sidebar">
+        <img src={logo} className="sidebar-logo" alt="Sagip Bayan logo" />
+
+        {!collapsed && (
+          <div className="sidebar-brand">
+            <h1 className="sidebar-title">BARANGAY</h1>
+            <p className="sidebar-subtitle">Local Panel</p>
+          </div>
+        )}
+
+        <button
+          onClick={onToggle}
+          className="toggle-btn"
+          aria-label="Collapse or expand sidebar"
+          type="button"
+        >
           {collapsed ? "▶" : "◀"}
         </button>
       </div>
 
+      {!collapsed && (
+  <div className="sidebar-role-card">
+    <div className="sidebar-role-avatar">
+      {(username || roleLabel || "U").charAt(0).toUpperCase()}
+    </div>
+    <div className="sidebar-role-meta">
+      <span className="sidebar-role-kicker">Signed in as</span>
+      <strong className="sidebar-role-name">
+        {username || "Unknown User"}
+      </strong>
+      <span className="sidebar-role-subtext">{roleLabel}</span>
+    </div>
+  </div>
+)}
+
       <nav className="sidebar-nav" role="navigation">
-        <div className="sidebar-group">
-          {links.map((l) => (
-            <NavLink
-              key={l.to}
-              to={l.to}
-              end
-              className={({ isActive }) => "sidebar-link" + (isActive ? " active" : "")}
-            >
-              <img src={l.icon} className="sidebar-icon" alt="" />
-              {!collapsed && <span>{l.label}</span>}
-            </NavLink>
-          ))}
-        </div>
+        {links.map((group) => (
+          <div className="sidebar-group" key={group.section}>
+            {!collapsed && (
+              <div className="sidebar-group-label">{group.section}</div>
+            )}
+
+            {group.items.map((l) => (
+              <NavLink
+                key={l.to}
+                to={l.to}
+                end
+                onClick={onNavigateMobile}
+                className={({ isActive }) =>
+                  "sidebar-link" + (isActive ? " active" : "")
+                }
+              >
+                <img src={l.icon} className="sidebar-icon" alt="" />
+                {!collapsed && <span>{l.label}</span>}
+              </NavLink>
+            ))}
+          </div>
+        ))}
 
         <div className="sidebar-spacer" />
 
         <div className="sidebar-footer">
+          {!collapsed && <div className="sidebar-group-label">Preferences</div>}
+
           <button
             type="button"
             className="sidebar-link is-button"
@@ -68,7 +132,7 @@ export default function SidebarBarangay({ collapsed, onToggle, onLogout }) {
 
           <button
             type="button"
-            className="sidebar-link is-button"
+            className="sidebar-link is-button sidebar-link-danger"
             onClick={onLogout}
             title="Log out"
           >
