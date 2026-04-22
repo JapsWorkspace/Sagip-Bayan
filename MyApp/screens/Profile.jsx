@@ -63,8 +63,6 @@ export default function Profile({ navigation }) {
     type: `image/${ext}`,
   });
 
-  console.log("📤 Uploading avatar...");
-  console.log("👉 userId:", user._id);
 
   const res = await api.put(
   `/user/avatar/${user._id}`,

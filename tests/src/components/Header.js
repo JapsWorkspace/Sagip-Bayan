@@ -64,7 +64,7 @@ const Header = () => {
           aria-expanded={open}
         >
           Welcome, <strong>{role}</strong>
-          <span className="triangle" aria-hidden>▾</span>
+          <span className="triaSngle" aria-hidden>▾</span>
         </div>
 
         {open && (

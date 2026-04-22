@@ -32,7 +32,7 @@ const proofFileFilter = (req, file, cb) => {
 // =======================
 const uploadGuideline = multer({
   storage: multer.memoryStorage(), // ✅ REQUIRED for Cloudinary
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2MB limit
+  limits: { fileSize: 10 * 1024 * 1024 }, // 2MB limit
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith("image")) {
       return cb(new Error("Only image files are allowed"), false);
@@ -66,7 +66,7 @@ uploadProof.debugMiddleware = (req, res, next) => {
 
 const uploadAvatar = multer({
   storage: multer.memoryStorage(), // ✅ same as guidelines
-  limits: { fileSize: 2 * 1024 * 1024 },
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (!file.mimetype.startsWith("image")) {
       return cb(new Error("Only image files allowed"), false);

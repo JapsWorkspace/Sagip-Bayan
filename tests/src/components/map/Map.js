@@ -13,6 +13,7 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import BarangayLayer from "./BarangayLayer"
 
 const PASIG_CENTER = [15.3382, 120.9056];
 
@@ -513,7 +514,13 @@ const Map = ({
   currentCoords = {},
   evacCoords = {},
   routeCoords = [],
+<<<<<<< Updated upstream
 <<<<<<< HEAD
+=======
+  selectedBarangay,
+  setSelectedBarangay,
+  barangayData
+>>>>>>> Stashed changes
 }) => {
   const [position, setPosition] = useState(PASIG_CENTER);
   const [zoom, setZoom] = useState(13);
@@ -587,6 +594,7 @@ const Map = ({
     setZoom(publicMode ? 12 : 13);
   }, [publicMode]);
 >>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
+
 
   return (
     <MapContainer
@@ -692,6 +700,14 @@ const Map = ({
           <Popup>Evacuation Location</Popup>
         </Marker>
       )}
+
+      {/* Barangay Polygons Layer */}
+        {barangayData && (
+          <BarangayLayer
+            geojson={barangayData}
+            selectedBarangay={selectedBarangay}
+          />
+        )}
 
       {/* OSRM Route Polyline */}
       {routeCoords.length > 0 && <Polyline positions={routeCoords} color="blue" />}

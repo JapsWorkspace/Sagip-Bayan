@@ -10,8 +10,15 @@ import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import DashboardShell from "./layout/DashboardShell";
+<<<<<<< Updated upstream
 import EvacMap from "./map/Map";
 import "../components/css/EManagement.css";
+=======
+import Map from "./map/Map";
+import "./map/MapIcon";
+import "./css/EManagement.css";
+import useBarangays from "../components/hooks/useBarangays";
+>>>>>>> Stashed changes
 
 const BASE_URL =
   process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
@@ -116,6 +123,8 @@ function MapLegend() {
 }
 
 export default function EManagement() {
+  const [selectedBarangay, setSelectedBarangay] = useState(null);
+  const barangay = useBarangays(selectedBarangay);
   const navigate = useNavigate();
   const location = useLocation();
   const nameRef = useRef(null);
@@ -2012,6 +2021,11 @@ export default function EManagement() {
             </div>
 
             <div className="map-stage">
+<<<<<<< Updated upstream
+=======
+              <Map onSelectLocation={handleMapSelectLocation} places={filteredPlaces} selectedBarangay={selectedBarangay} setSelectedBarangay={setSelectedBarangay}  barangayData={barangay} />
+
+>>>>>>> Stashed changes
               {pickMode && (
                 <div className="pick-mode-banner">
                   Pick mode is active. Click anywhere on the map to capture the
