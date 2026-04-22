@@ -53,22 +53,32 @@ export default function Profile({ navigation }) {
     try {
       setUploading(true);
 
-      const ext = picked.uri.split(".").pop()?.toLowerCase() || "jpg";
-      const formData = new FormData();
-      formData.append("avatar", {
-        uri: picked.uri,
-        name: `avatar.${ext}`,
-        type: `image/${ext}`,
-      });
-      console.log(user._id);
+  const ext = picked.uri.split(".").pop()?.toLowerCase() || "jpg";
 
-      const res = await api.put(
-        `/user/avatar/${user._id}`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+  const formData = new FormData();
+  formData.append("avatar", {
+    uri: picked.uri,
+    name: `avatar.${ext}`,
+    type: `image/${ext}`,
+  });
 
-      setUser(res.data.user);
+  console.log("📤 Uploading avatar...");
+  console.log("👉 userId:", user._id);
+
+  const res = await api.put(
+  `/user/avatar/${user._id}`,
+  formData,
+  {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  }
+);
+
+  console.log("✅ Upload success:", res.data);
+
+  setAvatarUri(res.data.avatar); // 🔥 IMPORTANT FIX
+  setUser(res.data.user);
     } catch (err) {
       Alert.alert("Upload failed", "Please try again.");
       setAvatarUri(user.avatar || null);

@@ -404,45 +404,52 @@ const getUserById = async (req, res) => {
 
 const uploadAvatar = async (req, res) => {
   try {
+
     if (!req.file) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    // ✅ STEP 1: get current user FIRST
     const existingUser = await UserModel.findById(req.params.id);
 
-    // ✅ STEP 2: delete old avatar from Cloudinary
     if (existingUser?.avatarPublicId) {
-      await cloudinary.uploader.destroy(existingUser.avatarPublicId);
+
+      const destroyRes = await cloudinary.uploader.destroy(existingUser.avatarPublicId);
+
+  
     }
 
-    // ✅ STEP 3: upload new image
     const result = await new Promise((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         { folder: "evacuation_app/avatars" },
         (err, result) => {
-          if (err) return reject(err);
+          if (err) {
+            return reject(err);
+          }
+
           resolve(result);
         }
       ).end(req.file.buffer);
     });
 
-    // ✅ STEP 4: save BOTH url + public_id
+
     const user = await UserModel.findByIdAndUpdate(
       req.params.id,
       {
         avatar: result.secure_url,
-        avatarPublicId: result.public_id, // 🔥 IMPORTANT
+        avatarPublicId: result.public_id,
       },
-      { new: true }
+      {
+        returnDocument: "after",
+      }
     );
+
 
     res.json({
       avatar: result.secure_url,
       user,
     });
+
   } catch (err) {
-    console.error("AVATAR UPLOAD ERROR:", err);
     res.status(500).json({ message: "Avatar upload failed" });
   }
 };

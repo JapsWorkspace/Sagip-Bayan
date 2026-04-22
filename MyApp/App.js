@@ -55,14 +55,9 @@ function AppStack() {
 
 /* ================= ROOT SWITCH ================= */
 function RootNavigator() {
-  return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen
-        name="DonationScreen"
-        component={DonationScreen}
-      />
-    </Stack.Navigator>
-  );
+  const {user, loading} = useContext(UserContext);
+  if (loading) return null;
+  return user ? <AppStack /> : <AuthStack />;
 }
 
 export default function App() {
