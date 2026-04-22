@@ -16,7 +16,6 @@ const UserSchema = new mongoose.Schema({
   hotline: String,
   address: { type: String, required: true },
 
-
   archived: { type: Boolean, default: false },
   archivedAt: { type: Date }
 });

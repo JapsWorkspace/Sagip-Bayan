@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import "../css/InventoryAdd.css";
+<<<<<<< HEAD
 import DashboardShell from '../layout/DashboardShell';
+=======
+import DashboardShell from "../layout/DashboardShell";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
 const BASE_URL =
   process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
@@ -30,6 +34,10 @@ const InventoryAdd = () => {
     quantity: "",
     unit: "",
     amount: "",
+<<<<<<< HEAD
+=======
+    expirationDate: "",
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     description: "",
     sourceType: "external",
     sourceName: ""
@@ -118,6 +126,10 @@ const InventoryAdd = () => {
       quantity: "",
       unit: "",
       amount: "",
+<<<<<<< HEAD
+=======
+      expirationDate: "",
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       description: "",
       sourceType: "external",
       sourceName: ""
@@ -138,6 +150,10 @@ const InventoryAdd = () => {
       quantity: "",
       unit: "",
       amount: "",
+<<<<<<< HEAD
+=======
+      expirationDate: "",
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       description: "",
       sourceType: "external",
       sourceName: ""
@@ -163,6 +179,14 @@ const InventoryAdd = () => {
     return new Date(date).toLocaleDateString();
   };
 
+<<<<<<< HEAD
+=======
+  const formatExpiryDate = (date) => {
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString();
+  };
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const normalizeType = (type) => (type || "goods").toLowerCase();
 
   const normalizeCategoryValue = (value) => {
@@ -185,6 +209,27 @@ const InventoryAdd = () => {
     return diffInDays <= 7;
   };
 
+<<<<<<< HEAD
+=======
+  const getExpiryStatus = (item) => {
+    if (!item?.expirationDate) return "none";
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const expiry = new Date(item.expirationDate);
+    expiry.setHours(0, 0, 0, 0);
+
+    const diffDays = Math.ceil(
+      (expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (diffDays < 0) return "expired";
+    if (diffDays <= 30) return "soon";
+    return "ok";
+  };
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const getFormTitle = () => {
     return donationType === "goods"
       ? "Add Goods Donation"
@@ -252,7 +297,17 @@ const InventoryAdd = () => {
       setForm((prev) => ({ ...prev, [name]: value }));
     }
 
+<<<<<<< HEAD
     setFormErrors((prev) => ({ ...prev, [name]: "", category: "", customCategory: "" }));
+=======
+    setFormErrors((prev) => ({
+      ...prev,
+      [name]: "",
+      category: "",
+      customCategory: "",
+      expirationDate: ""
+    }));
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   };
 
   const handleFileChange = (e) => {
@@ -291,6 +346,16 @@ const InventoryAdd = () => {
       if (!form.unit.trim()) {
         errors.unit = "Unit is required for goods donations.";
       }
+<<<<<<< HEAD
+=======
+
+      if (form.expirationDate) {
+        const parsed = new Date(form.expirationDate);
+        if (Number.isNaN(parsed.getTime())) {
+          errors.expirationDate = "Expiration date is invalid.";
+        }
+      }
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     }
 
     if (donationType === "monetary") {
@@ -329,6 +394,13 @@ const InventoryAdd = () => {
           formData.append("quantity", form.quantity);
         }
         formData.append("unit", form.unit.trim());
+<<<<<<< HEAD
+=======
+
+        if (form.expirationDate) {
+          formData.append("expirationDate", form.expirationDate);
+        }
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       } else {
         if (form.amount !== "") {
           formData.append("amount", form.amount);
@@ -356,7 +428,11 @@ const InventoryAdd = () => {
       fetchInventoryCategories();
     } catch (err) {
       console.error("Error adding inventory:", err);
+<<<<<<< HEAD
       alert("Failed to add inventory item.");
+=======
+      alert(err?.response?.data?.message || "Failed to add inventory item.");
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     } finally {
       setLoading(false);
     }
@@ -384,6 +460,7 @@ const InventoryAdd = () => {
   };
 
   const handleUnarchive = async (id, name) => {
+<<<<<<< HEAD
   const confirmUnarchive = window.confirm(
     `Are you sure you want to unarchive "${name || "this item"}"?`
   );
@@ -427,6 +504,51 @@ const handlePermanentDelete = async (id, name) => {
     alert("Failed to permanently delete item.");
   }
 };
+=======
+    const confirmUnarchive = window.confirm(
+      `Are you sure you want to unarchive "${name || "this item"}"?`
+    );
+
+    if (!confirmUnarchive) return;
+
+    try {
+      await axios.put(
+        `${BASE_URL}/api/inventory/archived/${id}/restore`,
+        {},
+        { withCredentials: true }
+      );
+
+      alert("Inventory item unarchived successfully!");
+      fetchArchivedInventory();
+      fetchInventory();
+      fetchInventoryCategories();
+    } catch (err) {
+      console.error("Error unarchiving item:", err);
+      alert("Failed to unarchive item.");
+    }
+  };
+
+  const handlePermanentDelete = async (id, name) => {
+    const confirmDelete = window.confirm(
+      `Permanently delete "${name || "this item"}"? This cannot be undone.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      await axios.delete(`${BASE_URL}/api/inventory/archived/${id}/permanent`, {
+        withCredentials: true
+      });
+
+      alert("Inventory item deleted permanently!");
+      fetchArchivedInventory();
+      fetchInventoryCategories();
+    } catch (err) {
+      console.error("Error deleting archived item:", err);
+      alert("Failed to permanently delete item.");
+    }
+  };
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -537,7 +659,12 @@ const handlePermanentDelete = async (id, name) => {
           item.addedBy,
           item.unit,
           item.sourceType,
+<<<<<<< HEAD
           item.sourceName
+=======
+          item.sourceName,
+          item.expirationDate
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
         ]
           .join(" ")
           .toLowerCase()
@@ -582,9 +709,15 @@ const handlePermanentDelete = async (id, name) => {
         bValue = normalizeType(b.type);
       }
 
+<<<<<<< HEAD
       if (sortConfig.key === "createdAt") {
         aValue = a.createdAt ? new Date(a.createdAt).getTime() : 0;
         bValue = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+=======
+      if (sortConfig.key === "createdAt" || sortConfig.key === "expirationDate") {
+        aValue = a[sortConfig.key] ? new Date(a[sortConfig.key]).getTime() : 0;
+        bValue = b[sortConfig.key] ? new Date(b[sortConfig.key]).getTime() : 0;
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       }
 
       if (sortConfig.key === "quantity") {
@@ -636,7 +769,11 @@ const handlePermanentDelete = async (id, name) => {
     return sortConfig.direction === "asc" ? "↑" : "↓";
   };
 
+<<<<<<< HEAD
   const tableColSpan = donationType === "goods" ? 10 : 8;
+=======
+  const tableColSpan = donationType === "goods" ? 11 : 8;
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   return (
     <DashboardShell>
@@ -836,11 +973,15 @@ const handlePermanentDelete = async (id, name) => {
                               )}
                             </div>
                           )}
+<<<<<<< HEAD
                         </>
                       )}
 
                       {donationType === "goods" ? (
                         <>
+=======
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                           <div className="donation-form-group">
                             <label htmlFor="quantity">
                               Quantity <span>*</span>
@@ -882,8 +1023,34 @@ const handlePermanentDelete = async (id, name) => {
                               <span className="error-text">{formErrors.unit}</span>
                             )}
                           </div>
+<<<<<<< HEAD
                         </>
                       ) : (
+=======
+
+                          <div className="donation-form-group">
+                            <label htmlFor="expirationDate">Expiration Date</label>
+                            <input
+                              id="expirationDate"
+                              type="date"
+                              name="expirationDate"
+                              value={form.expirationDate}
+                              onChange={handleChange}
+                              className={`input ${
+                                formErrors.expirationDate ? "input-error" : ""
+                              }`}
+                            />
+                            {formErrors.expirationDate && (
+                              <span className="error-text">
+                                {formErrors.expirationDate}
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      )}
+
+                      {donationType === "monetary" && (
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                         <div className="donation-form-group">
                           <label htmlFor="amount">
                             Amount <span>*</span>
@@ -1233,6 +1400,18 @@ const handlePermanentDelete = async (id, name) => {
 
                         {donationType === "goods" && <th>Unit</th>}
 
+<<<<<<< HEAD
+=======
+                        {donationType === "goods" && (
+                          <th
+                            onClick={() => handleSort("expirationDate")}
+                            className="sortable"
+                          >
+                            Expiration <span>{sortArrow("expirationDate")}</span>
+                          </th>
+                        )}
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                         <th>Source</th>
                         <th>Description</th>
                         <th>Files</th>
@@ -1278,6 +1457,7 @@ const handlePermanentDelete = async (id, name) => {
                           </td>
                         </tr>
                       ) : (
+<<<<<<< HEAD
                         paginatedItems.map((item) => (
                           <tr key={item._id}>
                             <td>
@@ -1375,6 +1555,126 @@ const handlePermanentDelete = async (id, name) => {
                             </td>
                           </tr>
                         ))
+=======
+                        paginatedItems.map((item) => {
+                          const expiryStatus = getExpiryStatus(item);
+
+                          return (
+                            <tr key={item._id}>
+                              <td>
+                                <span className={`badge badge-type ${normalizeType(item.type)}`}>
+                                  {normalizeType(item.type)}
+                                </span>
+                              </td>
+
+                              <td>
+                                <div className="cell-main">{item.name || "-"}</div>
+                              </td>
+
+                              {donationType === "goods" && (
+                                <td>
+                                  <span className="badge badge-category">
+                                    {formatCategory(item.category)}
+                                  </span>
+                                </td>
+                              )}
+
+                              <td className="quantity-cell">
+                                {donationType === "monetary"
+                                  ? `₱${Number(item.amount || 0).toLocaleString()}`
+                                  : Number(item.quantity || 0).toLocaleString()}
+                              </td>
+
+                              {donationType === "goods" && <td>{item.unit || "-"}</td>}
+
+                              {donationType === "goods" && (
+                                <td>
+                                  <div className="date-cell">
+                                    <span>{formatExpiryDate(item.expirationDate)}</span>
+                                    <small>
+                                      {expiryStatus === "expired"
+                                        ? "Expired"
+                                        : expiryStatus === "soon"
+                                        ? "Expiring soon"
+                                        : expiryStatus === "ok"
+                                        ? "Valid"
+                                        : "No expiry"}
+                                    </small>
+                                  </div>
+                                </td>
+                              )}
+
+                              <td>
+                                <div className="source-cell">
+                                  <strong>{item.sourceType || "-"}</strong>
+                                  <small>{item.sourceName || "No source name"}</small>
+                                </div>
+                              </td>
+
+                              <td>
+                                <div className="description-cell" title={item.description || ""}>
+                                  {item.description || "-"}
+                                </div>
+                              </td>
+
+                              <td>
+                                {item.proofFiles && item.proofFiles.length > 0 ? (
+                                  <div className="proof-list">
+                                    {item.proofFiles.map((file, idx) => (
+                                      <a
+                                        key={idx}
+                                        href={`${BASE_URL}/uploads/proofs/${file}`}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="file-link"
+                                      >
+                                        View File {idx + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="muted-text">No files</span>
+                                )}
+                              </td>
+
+                              <td>{item.addedBy || "-"}</td>
+
+                              <td>
+                                <div className="date-cell">
+                                  <span>{formatShortDate(item.createdAt)}</span>
+                                  <small>{formatDate(item.createdAt)}</small>
+                                </div>
+                              </td>
+
+                              <td>
+                                {showArchived ? (
+                                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                    <button
+                                      className="btn btn-secondary btn-sm"
+                                      onClick={() => handleUnarchive(item._id, item.name)}
+                                    >
+                                      Unarchive
+                                    </button>
+                                    <button
+                                      className="btn btn-danger btn-sm"
+                                      onClick={() => handlePermanentDelete(item._id, item.name)}
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    className="btn btn-danger btn-sm"
+                                    onClick={() => handleArchive(item._id, item.name)}
+                                  >
+                                    Archive
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                       )}
                     </tbody>
                   </table>

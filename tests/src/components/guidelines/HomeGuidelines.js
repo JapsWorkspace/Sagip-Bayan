@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-export default function GuidelinesScreen() {
+export default function HomeGuidelines() {
   const [guidelines, setGuidelines] = useState([]);
   const [loading, setLoading] = useState(true);
   const [files, setFiles] = useState([]);
@@ -23,29 +23,48 @@ export default function GuidelinesScreen() {
   const [showArchived, setShowArchived] = useState(false);
 
   const [removeImages, setRemoveImages] = useState([]);
+<<<<<<< HEAD
+=======
 
-  const BASE_URL = "http://localhost:8000/api/guidelines/";
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
+
+<<<<<<< HEAD
   useEffect(() => {
     fetchGuidelines();
   }, [showArchived]); // Re-fetch whenever archived toggle changes
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   const fetchGuidelines = async () => {
     try {
       let url = BASE_URL;
       if (showArchived) url += "?status=archived";
       const response = await axios.get(url);
+<<<<<<< HEAD
       const sorted = response.data.sort((a, b) => {
         const order = { critical: 4, high: 3, medium: 2, low: 1 };
         return order[b.priorityLevel] - order[a.priorityLevel];
       });
       setGuidelines(sorted);
+=======
+      // const sorted = response.data.sort((a, b) => {
+      //   const order = { critical: 4, high: 3, medium: 2, low: 1 };
+      //   return order[b.priorityLevel] - order[a.priorityLevel];
+      // });
+      // setGuidelines(sorted);
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     } catch (error) {
       console.error(error.message);
     } finally {
       setLoading(false);
     }
   };
+
+    useEffect(() => {
+    fetchGuidelines();
+  }, [showArchived]); // Re-fetch whenever archived toggle changes
 
   const pickFile = (event) => {
     const selectedFiles = Array.from(event.target.files);

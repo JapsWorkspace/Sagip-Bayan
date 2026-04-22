@@ -27,10 +27,10 @@ import TimeInOut from './components/admin/timeInOut';
 import AdminLogs from './components/admin/AdminLogs';
 import EvacuationMap from './components/map/EvacuationMap';
 import AdminAccounts from './components/group/AdminAccounts';
+import AdminAnalytics from './components/admin/AdminAnalytics';
+
 import Inventory from './components/Donations/Inventory';
-import PublicGuide from './components/guidelines/PublicGuide';
 import InventoryAdd from './components/Donations/InventoryAdd';
-import Admins from './components/Admin';
 
 function App() {
   return (
@@ -39,9 +39,7 @@ function App() {
         <Router>
           <Routes>
 
-            <Route path="/Incident-Report" element={<IncidentReport />} />
             <Route path="/auditTrails" element={<AuditTrails/>} />
-            <Route path="/shet" element={<Admins/>} />
 
             {/* Evacuation Center Management */}
             {/* Keep existing generic route for backward compatibility */}
@@ -58,7 +56,6 @@ function App() {
             <Route path="/barangay/relief-request" element={<ReliefRequestForm />} />
             <Route path="/barangay/relief-status" element={<ReliefTracking />} />
             <Route path="/barangay/evacuation-centers" element={<EManagement />} />
-            <Route path="/barangay/inventory" element={<Inventory />} />
 
             {/* DRRMO */}
             <Route path="/drrmo/dashboard" element={<DRRMODashboard />} />
@@ -67,6 +64,9 @@ function App() {
             <Route path="/drrmo/audit-trail" element={<AuditTrail />} />
             <Route path="/drrmo/guidelines" element={<HomeGuidelines />} />
             <Route path="/drrmo/inventory" element={<Inventory />} />
+            <Route path="/drrmo/inventory/add" element={<InventoryAdd />} />
+            <Route path="/drrmo/incident-report" element={<IncidentReport />} />
+            <Route path="/drrmo/analytics" element={<AdminAnalytics />} />
 
             {/* Admin */}
             <Route path="/admin/dashboard" element={<AdminDashboard />} />
@@ -80,11 +80,11 @@ function App() {
             <Route path="/admin/time-in-time-out" element={<TimeInOut />} />
             <Route path="/admin/logs" element={<AdminLogs />} />
             <Route path="/admin/accounts" element={<AdminAccounts />} />
+            <Route path="/admin/analytics" element={<AdminAnalytics />} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />
 
-            <Route path="/guidelines" element={<PublicGuide />} />
             <Route path="/idk" element={<HomeGuidelines/>}/>
             <Route path="/update/:id" element={<UpdateGuideline/>}/>
             <Route path="/map" element={<EvacuationMap/>}/>

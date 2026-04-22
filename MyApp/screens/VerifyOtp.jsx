@@ -1,12 +1,22 @@
+<<<<<<< HEAD
 // screens/VerifyOtp.jsx
 import React, { useState, useRef, useContext, useEffect } from "react";
 import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
 import api from "../lib/api";
+=======
+import React, { useState, useRef, useContext, useEffect } from "react";
+import { View, Text, TextInput, Button, StyleSheet, Alert } from "react-native";
+import axios from "axios";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 import { UserContext } from "./UserContext";
 
 export default function VerifyOtp({ route, navigation }) {
   const [otp, setOtp] = useState(new Array(6).fill("")); // array of 6 digits
+<<<<<<< HEAD
   const { email, userId } = route.params;
+=======
+  const { email } = route.params; // use email to identify user
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const { setUser } = useContext(UserContext);
 
   const inputsRef = useRef([]); // store refs to TextInputs
@@ -51,6 +61,7 @@ export default function VerifyOtp({ route, navigation }) {
     }
   };
 
+<<<<<<< HEAD
  const handleSubmit = () => {
   const enteredOtp = otp.join("");
 
@@ -78,6 +89,42 @@ export default function VerifyOtp({ route, navigation }) {
       );
     });
 };
+=======
+  const handleSubmit = () => {
+    const enteredOtp = otp.join("");
+    if (enteredOtp.length < 6) {
+      Alert.alert("Error", "Please enter all 6 digits");
+      return;
+    }
+
+    axios
+      .post("http://localhost:8000/user/verify-otp", { email, otp: enteredOtp })
+      .then(() => {
+        Alert.alert("Success", "OTP verified!");
+
+        // Fetch user by email and set context
+        axios
+          .get("http://localhost:8000/user/users")
+          .then((res) => {
+            const user = res.data.find((u) => u.email === email);
+            if (user) {
+              setUser(user);
+              navigation.navigate("Profile");
+            } else {
+              Alert.alert("Error", "User not found after OTP verification");
+            }
+          })
+          .catch((err) => {
+            console.error("Error fetching users:", err);
+            Alert.alert("Error", "Could not log in. Try again.");
+          });
+      })
+      .catch((err) => {
+        console.error(err);
+        Alert.alert("Error", err.response?.data?.message || "Invalid OTP");
+      });
+  };
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   return (
     <View style={styles.container}>
@@ -118,14 +165,20 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginBottom: 20,
   },
+<<<<<<< HEAD
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   otpContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     width: "80%",
     marginBottom: 20,
   },
+<<<<<<< HEAD
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   otpBox: {
     width: 40,
     height: 50,

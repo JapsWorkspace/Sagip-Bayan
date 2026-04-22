@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { UserContext } from "./UserContext";
@@ -59,3 +60,17 @@ export const UserProvider = ({ children }) => {
   );
 };
 ``
+=======
+import { useState } from "react";
+import { UserContext } from "./UserContext";
+
+export const UserProvider = ({ children }) => {
+  const [user, setUser] = useState(null); // no user logged in initially
+
+  return (
+    <UserContext.Provider value={{ user, setUser }}>
+      {children}
+    </UserContext.Provider>
+  );
+};
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a

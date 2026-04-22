@@ -10,7 +10,11 @@ export default function PublicGuide() {
   const [searchText, setSearchText] = useState("");
   const [suggestions, setSuggestions] = useState([]);
   const [selectedGuideline, setSelectedGuideline] = useState(null);
+<<<<<<< HEAD
   const BASE_URL = "http://localhost:8000/api/guidelines/";
+=======
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const categories = ["all", "earthquake", "flood", "typhoon", "general"];
 
   useEffect(() => {

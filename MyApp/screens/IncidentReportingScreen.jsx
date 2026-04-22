@@ -1,7 +1,11 @@
 // screens/IncidentReportingScreen.jsx
+<<<<<<< HEAD
 import React, { useState, useRef, useEffect, useContext } from "react";
 import * as Location from "expo-location";
 import { Alert } from "react-native";
+=======
+import React, { useState, useRef, useEffect } from "react";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 import {
   View,
   Text,
@@ -17,6 +21,7 @@ import {
   ScrollView,
 } from "react-native";
 import { Picker } from "@react-native-picker/picker";
+<<<<<<< HEAD
 import api from "../lib/api";
 import { UserContext } from "./UserContext";
 import AppLayout from './AppLayout';
@@ -32,6 +37,20 @@ import AppShell from "./AppShell";
 export default function IncidentReportScreen({ navigation }) {
 
   const { user } = useContext(UserContext);
+=======
+import axios from "axios";
+import NewBottomNav from "./NewBottomNav";
+
+// ✅ import the separated design file
+import styles, { METRICS } from "../Designs/IncidentReporting";
+
+let WebMap = null;
+if (Platform.OS === "web") {
+  WebMap = require("../screens/WebMap").default;
+}
+
+export default function IncidentReportScreen({ navigation }) {
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const [incidentReports, setIncidentReports] = useState({
     type: "",
     level: "",
@@ -39,6 +58,7 @@ export default function IncidentReportScreen({ navigation }) {
     latitude: null,
     longitude: null,
     description: "",
+<<<<<<< HEAD
     usernames: user.username || "",
     phone: user.phone || "",
   });
@@ -165,6 +185,10 @@ export default function IncidentReportScreen({ navigation }) {
       socket.disconnect();
     };
   }, []);
+=======
+  });
+  const [image, setImage] = useState(null); // single image
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   // ------------------- IMAGE PICKER -------------------
   const pickImage = async (event) => {
@@ -200,7 +224,11 @@ export default function IncidentReportScreen({ navigation }) {
 
   // ------------------- SUBMIT REPORT -------------------
   const submitReport = async () => {
+<<<<<<< HEAD
     const { type, level, location, latitude, longitude, description, usernames, phone } =
+=======
+    const { type, level, location, latitude, longitude, description } =
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       incidentReports;
 
     if (!latitude || !longitude) {
@@ -208,6 +236,7 @@ export default function IncidentReportScreen({ navigation }) {
       return;
     }
 
+<<<<<<< HEAD
     const userLat = userLocation?.lat;
     const userLng = userLocation?.lng;
 
@@ -236,6 +265,8 @@ export default function IncidentReportScreen({ navigation }) {
       }
     }
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     try {
       const formData = new FormData();
       formData.append("type", type);
@@ -244,6 +275,7 @@ export default function IncidentReportScreen({ navigation }) {
       formData.append("location", location);
       formData.append("latitude", latitude);
       formData.append("longitude", longitude);
+<<<<<<< HEAD
       formData.append("usernames", usernames || "");
       formData.append("phone", phone || "");
 
@@ -256,6 +288,22 @@ export default function IncidentReportScreen({ navigation }) {
       }
 
       await api.post("/incident/register", formData, {
+=======
+
+      if (image) {
+        if (Platform.OS === "web") {
+          formData.append("image", image.file);
+        } else {
+          formData.append("image", {
+            uri: image.uri,
+            name: image.name,
+            type: image.type,
+          });
+        }
+      }
+
+      await axios.post("http://localhost:8000/incident/register", formData, {
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -268,8 +316,11 @@ export default function IncidentReportScreen({ navigation }) {
         latitude: null,
         longitude: null,
         description: "",
+<<<<<<< HEAD
         usernames: "",
         phone: "",
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       });
       setImage(null);
     } catch (error) {
@@ -278,6 +329,7 @@ export default function IncidentReportScreen({ navigation }) {
     }
   };
 
+<<<<<<< HEAD
   /* ------------------- DRAGGABLE CARD (full-height sheet) ------------------- */
   const panelTop = styles.centerWrapper.top || METRICS.panelTop;
 
@@ -293,10 +345,38 @@ export default function IncidentReportScreen({ navigation }) {
   const FULL_OPEN_TOP = panelTop + MAX_UP; // ≈ TOP_MARGIN
   const SHEET_MIN_HEIGHT = WIN_H - FULL_OPEN_TOP;
   const EXTRA_BOTTOM_PAD = Platform.OS === "ios" ? 16 : 12;
+=======
+  // ------------------- DRAGGABLE CARD (dynamic MAX_UP + full-height sheet) -------------------
+  // Collapsed anchor from design (centerWrapper.top points at METRICS.panelTop)
+  const panelTop = styles.centerWrapper.top || METRICS.panelTop;
+
+  // Device height & status bar (Android). For iOS, we keep a small margin at the very top.
+  const { height: WIN_H } = Dimensions.get("window");
+  const ANDROID_SB = StatusBar?.currentHeight || 0;
+
+  // Margin to leave under the system bar when fully open
+  const TOP_MARGIN = Platform.OS === "ios" ? 12 : 8;
+
+  // How far up (negative translateY) to get near the top for ANY phone
+  const MAX_UP = -Math.max(0, (panelTop - ANDROID_SB - TOP_MARGIN));
+  const MAX_DOWN = 0;
+  const START_Y = 0;
+
+  // 👉 Make the white sheet tall enough to cover the screen at full open:
+  // When fully open, the sheet's Visual top becomes (panelTop + MAX_UP) ≈ TOP_MARGIN.
+  // So we need minHeight ≈ WIN_H - (panelTop + MAX_UP).
+  const FULL_OPEN_TOP = panelTop + MAX_UP;                      // ≈ TOP_MARGIN
+  const SHEET_MIN_HEIGHT = WIN_H - FULL_OPEN_TOP;               // fills to bottom
+  const EXTRA_BOTTOM_PAD = Platform.OS === "ios" ? 16 : 12;     // breathing room above bottom nav
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   const pan = useRef(new Animated.ValueXY({ x: 0, y: START_Y })).current;
   const startY = useRef(START_Y);
 
+<<<<<<< HEAD
+=======
+  // Optional: snap feel
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const SNAP_THRESHOLD = 80;
 
   const panResponder = useRef(
@@ -327,6 +407,7 @@ export default function IncidentReportScreen({ navigation }) {
   ).current;
 
   return (
+<<<<<<< HEAD
 <AppLayout
   onSearch={search}
   suggestions={suggestions}
@@ -384,6 +465,26 @@ export default function IncidentReportScreen({ navigation }) {
               }
             }}
             />
+=======
+    <View style={styles.webFrame}>
+      <View style={styles.phone}>
+        {/* Map behind */}
+        <View style={styles.mapContainer}>
+          {Platform.OS === "web" && WebMap ? (
+            <WebMap
+              onSelect={(obj) => {
+                setIncidentReports((prev) => ({
+                  ...prev,
+                  location: obj.text,
+                  latitude: obj.lat,
+                  longitude: obj.lng,
+                }));
+              }}
+            />
+          ) : (
+            <View />
+          )}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
         </View>
 
         {/* ▶️ Draggable panel with full-height sheet */}
@@ -392,6 +493,10 @@ export default function IncidentReportScreen({ navigation }) {
             behavior={Platform.OS === "ios" ? "padding" : undefined}
             keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
           >
+<<<<<<< HEAD
+=======
+            {/* Make the sheet tall enough even when content is short */}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
             <View style={[styles.card, { minHeight: SHEET_MIN_HEIGHT, paddingBottom: EXTRA_BOTTOM_PAD }]}>
               {/* Drag handle INSIDE the sheet */}
               <View {...panResponder.panHandlers} style={styles.dragHandle} />
@@ -403,6 +508,15 @@ export default function IncidentReportScreen({ navigation }) {
                 bounces
                 showsVerticalScrollIndicator={false}
               >
+<<<<<<< HEAD
+=======
+                <Image
+                  source={require("../assets/sagipbayanlogo.png")}
+                  style={styles.logo}
+                  resizeMode="contain"
+                />
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                 <Text style={styles.title}>Incident Tagging</Text>
 
                 <Text style={styles.label}>Incident Type</Text>
@@ -476,6 +590,7 @@ export default function IncidentReportScreen({ navigation }) {
                 )}
 
                 {/* Image preview */}
+<<<<<<< HEAD
                 {image?.uri ? (
                   <Image
                     source={{ uri: image.uri }}
@@ -483,10 +598,19 @@ export default function IncidentReportScreen({ navigation }) {
                     resizeMode="cover"
                   />
                 ) : null}
+=======
+                {image && (
+                  <Image
+                    source={{ uri: image.uri }}
+                    style={{ width: 60, height: 60, marginTop: 6, borderRadius: 6 }}
+                  />
+                )}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
                 <TouchableOpacity style={styles.button} onPress={submitReport}>
                   <Text style={styles.buttonText}>SUBMIT</Text>
                 </TouchableOpacity>
+<<<<<<< HEAD
                 <TouchableOpacity
                   onPress={() => setDebuger(prev => !prev)}
                   style={{ marginBottom: 8 }}
@@ -495,13 +619,21 @@ export default function IncidentReportScreen({ navigation }) {
                     {debuger ? "Geo Check: OFF (Debug)" : "Geo Check: ON"}
                   </Text>
                 </TouchableOpacity>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
               </ScrollView>
             </View>
           </KeyboardAvoidingView>
         </Animated.View>
 
+<<<<<<< HEAD
       </View>
     </View>
   </AppLayout>
+=======
+        <NewBottomNav navigation={navigation} />
+      </View>
+    </View>
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   );
 }

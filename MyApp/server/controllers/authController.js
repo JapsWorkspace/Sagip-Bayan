@@ -203,6 +203,10 @@ const register = async (req, res) => {
 
 /* LOGIN */
 const login = async (req, res) => {
+<<<<<<< HEAD
+=======
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   try {
 
     const { email, password } = req.body;
@@ -211,6 +215,7 @@ const login = async (req, res) => {
     let role = account ? account.role : null;
     let barangayName = null;
 
+<<<<<<< HEAD
     if (account.role === 'admin'){
       role = 'admin';
 
@@ -239,6 +244,19 @@ const login = async (req, res) => {
     // }
     console.log("after barangay", account)
 
+=======
+    if (!account) {
+
+      account = await Barangay.findOne({ email });
+
+      if (account) {
+        role = 'barangay';
+        barangayName = account.barangayName;
+      }
+
+    }
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     if (!account)
       return res.status(401).json({ message: 'Invalid email or password' });
 

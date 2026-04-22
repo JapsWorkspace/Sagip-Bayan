@@ -10,61 +10,115 @@ export default function ReliefTracking() {
   const navigate = useNavigate();
 
   const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
   const [submittingAction, setSubmittingAction] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sessionChecked, setSessionChecked] = useState(false);
 
   useEffect(() => {
-  const checkSession = async () => {
-    try {
-      const res = await fetch(`${BASE_URL}/api/barangays/me`, {
-        credentials: 'include'
-      });
+    let active = true;
 
-      if (!res.ok) {
-        navigate('/');
+    const checkSession = async () => {
+      try {
+        const res = await fetch(`${BASE_URL}/api/debug-session`, {
+          credentials: 'include'
+        });
+
+        if (!active) return;
+
+        if (!res.ok) {
+          navigate('/');
+          return;
+        }
+
+        const data = await res.json();
+        const role = String(data?.role || '').toLowerCase();
+        const userId = String(data?.userId || '');
+
+        if (!role || role !== 'barangay' || !userId) {
+          navigate('/');
+          return;
+        }
+
+        setSessionChecked(true);
+      } catch (err) {
+        console.error(err);
+        if (active) navigate('/');
       }
-    } catch (err) {
-      console.error(err);
-      navigate('/');
-    }
-  };
+    };
 
-  checkSession();
-}, [navigate]);
+    checkSession();
 
-  const fetchRequests = useCallback(async () => {
-    try {
-      setLoading(true);
+    return () => {
+      active = false;
+    };
+  }, [navigate]);
 
-      const res = await fetch(`${BASE_URL}/api/relief-requests/mine`, {
-        credentials: 'include'
-      });
+  const fetchRequests = useCallback(
+    async ({ silent = false } = {}) => {
+      try {
+        if (!silent) {
+          setInitialLoading(true);
+        } else {
+          setRefreshing(true);
+        }
 
-      if (!res.ok) {
-        throw new Error('Failed to fetch relief requests');
+        const res = await fetch(`${BASE_URL}/api/relief-requests/mine`, {
+          credentials: 'include'
+        });
+
+        if (!res.ok) {
+          throw new Error('Failed to fetch relief requests');
+        }
+
+        const data = await res.json();
+        const list = Array.isArray(data) ? data : [];
+
+        list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        setRows(list);
+
+        setSelectedRequest((prev) => {
+  if (!prev?._id) return prev;
+
+  const updated = list.find((item) => item._id === prev._id);
+
+  // 🧠 only update if status actually changed
+  if (!updated) return prev;
+
+  if (updated.status === prev.status) {
+    return prev; // 🚀 prevents re-render + scroll jump
+  }
+
+  return updated;
+});
+      } catch (err) {
+        console.error(err);
+        if (!silent) {
+          setRows([]);
+        }
+      } finally {
+        setInitialLoading(false);
+        setRefreshing(false);
       }
-
-      const data = await res.json();
-      const list = Array.isArray(data) ? data : [];
-
-      list.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-      setRows(list);
-    } catch (err) {
-      console.error(err);
-      setRows([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+    },
+    []
+  );
 
   useEffect(() => {
+    if (!sessionChecked) return;
+
     fetchRequests();
-    const interval = setInterval(fetchRequests, 5000);
+
+    const interval = setInterval(() => {
+      fetchRequests({ silent: true });
+    }, 5000);
+
     return () => clearInterval(interval);
-  }, [fetchRequests]);
+  }, [fetchRequests, sessionChecked]);
 
   const filteredRows = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -88,6 +142,24 @@ export default function ReliefTracking() {
       return matchesSearch && matchesStatus;
     });
   }, [rows, search, statusFilter]);
+
+  const stats = useMemo(() => {
+    return {
+      totalRequests: rows.length,
+      filteredResults: filteredRows.length,
+      pending: rows.filter((row) => row.status === 'pending').length,
+      approved: rows.filter((row) => row.status === 'approved').length,
+      forRelease: rows.filter(
+        (row) =>
+          row.status === 'released' || row.status === 'partially_released'
+      ).length,
+      received: rows.filter((row) => row.status === 'received').length,
+      totalRequestedFoodPacks: filteredRows.reduce(
+        (sum, row) => sum + Number(row?.totals?.requestedFoodPacks || 0),
+        0
+      )
+    };
+  }, [rows, filteredRows]);
 
   const getTotalIndividuals = (request) => {
     const totals = request?.totals || {};
@@ -164,7 +236,7 @@ export default function ReliefTracking() {
 
       alert(data.message || 'Relief request cancelled successfully.');
       setSelectedRequest(null);
-      fetchRequests();
+      await fetchRequests({ silent: true });
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -194,8 +266,13 @@ export default function ReliefTracking() {
       }
 
       alert(data.message || 'Relief request marked as received.');
-      setSelectedRequest(null);
-      fetchRequests();
+      await fetchRequests({ silent: true });
+
+      setSelectedRequest((prev) => {
+        if (!prev?._id) return null;
+        const updated = rows.find((row) => row._id === prev._id);
+        return updated || prev;
+      });
     } catch (err) {
       console.error(err);
       alert(err.message);
@@ -213,6 +290,21 @@ export default function ReliefTracking() {
     });
   };
 
+  if (!sessionChecked || initialLoading) {
+    return (
+      <DashboardShell>
+        <div className="rtk-page">
+          <div className="rtk-shell">
+            <div className="rtk-loading-card">
+              <div className="rtk-spinner" />
+              <p>Loading relief tracking...</p>
+            </div>
+          </div>
+        </div>
+      </DashboardShell>
+    );
+  }
+
   return (
     <DashboardShell>
       <div className="rtk-page">
@@ -228,12 +320,49 @@ export default function ReliefTracking() {
             </div>
 
             <div className="rtk-header-actions">
+              {refreshing && (
+                <span className="rtk-refresh-indicator">Refreshing...</span>
+              )}
+
               <button
                 className="rtk-btn rtk-btn-secondary"
                 onClick={() => navigate('/barangay/dashboard')}
               >
                 ← Back to Dashboard
               </button>
+            </div>
+          </div>
+
+          <div className="rtk-stats-grid">
+            <div className="rtk-stat-card">
+              <span>Total Requests</span>
+              <strong>{stats.totalRequests}</strong>
+              <small>All submitted requests</small>
+            </div>
+            <div className="rtk-stat-card">
+              <span>Pending</span>
+              <strong>{stats.pending}</strong>
+              <small>Waiting for DRRMO review</small>
+            </div>
+            <div className="rtk-stat-card">
+              <span>Approved</span>
+              <strong>{stats.approved}</strong>
+              <small>Validated by DRRMO</small>
+            </div>
+            <div className="rtk-stat-card">
+              <span>For Release / Released</span>
+              <strong>{stats.forRelease}</strong>
+              <small>In release or delivery stage</small>
+            </div>
+            <div className="rtk-stat-card">
+              <span>Received</span>
+              <strong>{stats.received}</strong>
+              <small>Completed request cycle</small>
+            </div>
+            <div className="rtk-stat-card emphasis">
+              <span>Food Packs (Filtered)</span>
+              <strong>{stats.totalRequestedFoodPacks}</strong>
+              <small>Current filtered total</small>
             </div>
           </div>
 
@@ -287,13 +416,7 @@ export default function ReliefTracking() {
                   </thead>
 
                   <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="7" className="rtk-empty-cell">
-                          Loading relief requests...
-                        </td>
-                      </tr>
-                    ) : filteredRows.length === 0 ? (
+                    {filteredRows.length === 0 ? (
                       <tr>
                         <td colSpan="7" className="rtk-empty-cell">
                           No requests found.
@@ -301,13 +424,28 @@ export default function ReliefTracking() {
                       </tr>
                     ) : (
                       filteredRows.map((row) => (
-                        <tr key={row._id}>
-                          <td>{row.requestNo || '-'}</td>
-                          <td>{row.disaster || '-'}</td>
-                          <td>{formatDate(row.requestDate)}</td>
-                          <td>{row.rows?.length || 0}</td>
-                          <td>{row.totals?.requestedFoodPacks || 0}</td>
-                          <td>
+                        <tr
+                          key={row._id}
+                          className={`rtk-clickable-row ${
+                            selectedRequest?._id === row._id ? 'active' : ''
+                          }`}
+                        >
+                          <td onClick={() => setSelectedRequest(row)}>
+                            {row.requestNo || '-'}
+                          </td>
+                          <td onClick={() => setSelectedRequest(row)}>
+                            {row.disaster || '-'}
+                          </td>
+                          <td onClick={() => setSelectedRequest(row)}>
+                            {formatDate(row.requestDate)}
+                          </td>
+                          <td onClick={() => setSelectedRequest(row)}>
+                            {row.rows?.length || 0}
+                          </td>
+                          <td onClick={() => setSelectedRequest(row)}>
+                            {row.totals?.requestedFoodPacks || 0}
+                          </td>
+                          <td onClick={() => setSelectedRequest(row)}>
                             <span className={`rtk-status-pill ${getStatusClass(row.status)}`}>
                               {String(row.status || 'pending').replace(/_/g, ' ')}
                             </span>
@@ -345,30 +483,19 @@ export default function ReliefTracking() {
                 </div>
                 <div className="rtk-summary-item">
                   <span>Pending</span>
-                  <strong>
-                    {rows.filter((row) => row.status === 'pending').length}
-                  </strong>
+                  <strong>{stats.pending}</strong>
                 </div>
                 <div className="rtk-summary-item">
-                  <span>Released</span>
-                  <strong>
-                    {
-                      rows.filter(
-                        (row) =>
-                          row.status === 'released' ||
-                          row.status === 'partially_released'
-                      ).length
-                    }
-                  </strong>
+                  <span>Approved</span>
+                  <strong>{stats.approved}</strong>
+                </div>
+                <div className="rtk-summary-item">
+                  <span>Released / Partial</span>
+                  <strong>{stats.forRelease}</strong>
                 </div>
                 <div className="rtk-summary-item emphasis">
                   <span>Total Requested Food Packs</span>
-                  <strong>
-                    {filteredRows.reduce(
-                      (sum, row) => sum + Number(row?.totals?.requestedFoodPacks || 0),
-                      0
-                    )}
-                  </strong>
+                  <strong>{stats.totalRequestedFoodPacks}</strong>
                 </div>
               </div>
             </aside>
@@ -412,14 +539,14 @@ export default function ReliefTracking() {
                 </div>
               </div>
 
-              <div className="rtk-top-grid rtk-top-grid-detail">
-                <div className="rtk-table-block">
+              <div className="rtk-detail-layout">
+                <div className="rtk-detail-main">
                   <div className="rtk-subhead">
                     <h3>Submitted Request Table</h3>
                     <p>Evacuation center rows and requested food packs submitted to DRRMO.</p>
                   </div>
 
-                  <div className="rtk-table-wrapper">
+                  <div className="rtk-table-wrapper rtk-detail-table-wrapper">
                     <table className="rtk-table rtk-detail-table">
                       <thead>
                         <tr>
@@ -441,7 +568,7 @@ export default function ReliefTracking() {
                         {(selectedRequest.rows || []).map((row, index) => (
                           <tr key={index}>
                             <td>{index + 1}</td>
-                            <td>{row.evacuationCenterName || '-'}</td>
+                            <td className="rtk-left-cell">{row.evacuationCenterName || '-'}</td>
                             <td>{row.households || 0}</td>
                             <td>{row.families || 0}</td>
                             <td>{row.male || 0}</td>
@@ -475,102 +602,108 @@ export default function ReliefTracking() {
                   </div>
                 </div>
 
-                <aside className="rtk-summary-card-panel">
-                  <div className="rtk-subhead">
-                    <h3>Request Summary</h3>
-                    <p>Track the submitted figures and available barangay actions.</p>
-                  </div>
-
-                  <div className="rtk-summary-list">
-                    <div className="rtk-summary-item">
-                      <span>Evacuation Centers</span>
-                      <strong>{selectedRequest.rows?.length || 0}</strong>
+                <div className="rtk-detail-side">
+                  <div className="rtk-side-panel">
+                    <div className="rtk-subhead">
+                      <h3>Request Summary</h3>
+                      <p>Track the submitted figures and available barangay actions.</p>
                     </div>
-                    <div className="rtk-summary-item">
-                      <span>Total Households</span>
-                      <strong>{selectedRequest.totals?.households || 0}</strong>
-                    </div>
-                    <div className="rtk-summary-item">
-                      <span>Total Families</span>
-                      <strong>{selectedRequest.totals?.families || 0}</strong>
-                    </div>
-                    <div className="rtk-summary-item">
-                      <span>Total Individuals</span>
-                      <strong>{getTotalIndividuals(selectedRequest)}</strong>
-                    </div>
-                    <div className="rtk-summary-item emphasis">
-                      <span>Requested Food Packs</span>
-                      <strong>{selectedRequest.totals?.requestedFoodPacks || 0}</strong>
-                    </div>
-                  </div>
 
-                  <div className="rtk-meta-box">
-                    <span>Date Submitted</span>
-                    <p>{formatDateTime(selectedRequest.requestDate)}</p>
-                  </div>
-
-                  <div className="rtk-meta-box">
-                    <span>Remarks</span>
-                    <p>{selectedRequest.remarks?.trim() || 'No remarks provided.'}</p>
-                  </div>
-
-                  <div className="rtk-actions">
-                    {selectedRequest.status === 'pending' && (
-                      <>
-                        <button
-                          className="rtk-btn rtk-btn-secondary"
-                          disabled={submittingAction}
-                          onClick={() => handleEditRequest(selectedRequest)}
-                        >
-                          Edit Request
-                        </button>
-
-                        <button
-                          className="rtk-btn rtk-btn-danger"
-                          disabled={submittingAction}
-                          onClick={() => handleCancelRequest(selectedRequest._id)}
-                        >
-                          {submittingAction ? 'Processing...' : 'Cancel Request'}
-                        </button>
-                      </>
-                    )}
-
-                    {(selectedRequest.status === 'released' ||
-                      selectedRequest.status === 'partially_released') && (
-                      <button
-                        className="rtk-btn rtk-btn-primary"
-                        disabled={submittingAction}
-                        onClick={() => handleMarkReceived(selectedRequest._id)}
-                      >
-                        {submittingAction ? 'Processing...' : 'Mark as Received'}
-                      </button>
-                    )}
-
-                    {selectedRequest.status === 'approved' && (
-                      <div className="rtk-status-note approved">
-                        Your request has been approved and is awaiting release processing by DRRMO.
+                    <div className="rtk-summary-list">
+                      <div className="rtk-summary-item">
+                        <span>Evacuation Centers</span>
+                        <strong>{selectedRequest.rows?.length || 0}</strong>
                       </div>
-                    )}
-
-                    {selectedRequest.status === 'received' && (
-                      <div className="rtk-status-note success">
-                        This request has already been marked as received.
+                      <div className="rtk-summary-item">
+                        <span>Total Households</span>
+                        <strong>{selectedRequest.totals?.households || 0}</strong>
                       </div>
-                    )}
-
-                    {selectedRequest.status === 'rejected' && (
-                      <div className="rtk-status-note danger">
-                        This request was rejected by DRRMO.
+                      <div className="rtk-summary-item">
+                        <span>Total Families</span>
+                        <strong>{selectedRequest.totals?.families || 0}</strong>
                       </div>
-                    )}
-
-                    {selectedRequest.status === 'cancelled' && (
-                      <div className="rtk-status-note neutral">
-                        This request has already been cancelled.
+                      <div className="rtk-summary-item">
+                        <span>Total Individuals</span>
+                        <strong>{getTotalIndividuals(selectedRequest)}</strong>
                       </div>
-                    )}
+                      <div className="rtk-summary-item emphasis">
+                        <span>Requested Food Packs</span>
+                        <strong>{selectedRequest.totals?.requestedFoodPacks || 0}</strong>
+                      </div>
+                    </div>
+
+                    <div className="rtk-meta-box">
+                      <span>Date Submitted</span>
+                      <p>{formatDateTime(selectedRequest.requestDate)}</p>
+                    </div>
+
+                    <div className="rtk-meta-box">
+                      <span>Remarks</span>
+                      <p>{selectedRequest.remarks?.trim() || 'No remarks provided.'}</p>
+                    </div>
+
+                    <div className="rtk-actions-card">
+                      <div className="rtk-actions-title">Available Actions</div>
+
+                      <div className="rtk-actions">
+                        {selectedRequest.status === 'pending' && (
+                          <>
+                            <button
+                              className="rtk-btn rtk-btn-secondary"
+                              disabled={submittingAction}
+                              onClick={() => handleEditRequest(selectedRequest)}
+                            >
+                              Edit Request
+                            </button>
+
+                            <button
+                              className="rtk-btn rtk-btn-danger"
+                              disabled={submittingAction}
+                              onClick={() => handleCancelRequest(selectedRequest._id)}
+                            >
+                              {submittingAction ? 'Processing...' : 'Cancel Request'}
+                            </button>
+                          </>
+                        )}
+
+                        {(selectedRequest.status === 'released' ||
+                          selectedRequest.status === 'partially_released') && (
+                          <button
+                            className="rtk-btn rtk-btn-primary"
+                            disabled={submittingAction}
+                            onClick={() => handleMarkReceived(selectedRequest._id)}
+                          >
+                            {submittingAction ? 'Processing...' : 'Mark as Received'}
+                          </button>
+                        )}
+
+                        {selectedRequest.status === 'approved' && (
+                          <div className="rtk-status-note approved">
+                            Your request has been approved and is awaiting release processing by DRRMO.
+                          </div>
+                        )}
+
+                        {selectedRequest.status === 'received' && (
+                          <div className="rtk-status-note success">
+                            This request has already been marked as received.
+                          </div>
+                        )}
+
+                        {selectedRequest.status === 'rejected' && (
+                          <div className="rtk-status-note danger">
+                            This request was rejected by DRRMO.
+                          </div>
+                        )}
+
+                        {selectedRequest.status === 'cancelled' && (
+                          <div className="rtk-status-note neutral">
+                            This request has already been cancelled.
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </aside>
+                </div>
               </div>
             </section>
           )}

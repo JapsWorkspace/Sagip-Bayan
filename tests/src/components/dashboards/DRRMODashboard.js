@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import DashboardShell from '../layout/DashboardShell';
@@ -102,3 +103,10 @@ const logoutBtn = {
 };
 
 export default DRRMODashboard;
+=======
+import AdminAnalytics from '../admin/AdminAnalytics';
+
+export default function DRRMODashboard() {
+  return <AdminAnalytics pageMode="drrmo" />;
+}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a

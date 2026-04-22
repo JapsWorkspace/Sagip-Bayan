@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // src/components/admin/AdminDashboard.js
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -254,3 +255,10 @@ export default function AdminDashboard() {
     </DashboardShell>
   );
 }
+=======
+import AdminAnalytics from '../admin/AdminAnalytics';
+
+export default function AdminDashboard() {
+  return <AdminAnalytics pageMode="dashboard" />;
+}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a

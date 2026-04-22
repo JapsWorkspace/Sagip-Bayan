@@ -21,7 +21,7 @@ const BARANGAY_OPTIONS = [
   "San Roque",
   "Santo Tomas Norte",
   "Santo Tomas Sur",
-  "Sapang Putik",
+  "Sapang",
   "Ulanin-Pitak"
 ];
 

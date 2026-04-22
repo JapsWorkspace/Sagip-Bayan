@@ -60,7 +60,7 @@ const registerUser = async (req, res) => {
     const user = await newUser.save();
 
     const verificationLink =
-      `http://192.168.1.8:8000/user/verify/${verificationToken}`;
+      `http://localhost:8000/user/verify/${verificationToken}`;
 
     await sendVerificationEmail(user.email, verificationLink);
 
@@ -333,7 +333,6 @@ const archiveUser = (req, res) => {
       res.status(500).json({ message: "Server error" });
     });
 };
-
 const restoreUser = (req, res) => {
   const userId = req.params.id;
 
@@ -356,9 +355,22 @@ const restoreUser = (req, res) => {
     });
 };
 
+const permanentlyDeleteArchivedUsers = () => {
+  ArchivedUserModel.deleteMany({
+    isArchived: true,
+    deleteAfter: { $lte: new Date() },
+  })
+    .then(result => {
+      console.log(`Permanently deleted ${result.deletedCount} archived users`);
+    })
+    .catch(err => {
+      console.error("Permanent delete error:", err);
+    });
+};
+
 const toggleTwoFactor = (req, res) => {
   const { id } = req.params;
-  const { enabled } = req.body;
+  const { enabled } = req.body; // expected true/false
 
   if (typeof enabled !== "boolean") {
     return res.status(400).json({ message: "enabled must be true or false" });
@@ -491,4 +503,5 @@ module.exports = {
   getUserById,
   uploadAvatar,
   verifyEmailByEmail,
+  permanentlyDeleteArchivedUsers
 };

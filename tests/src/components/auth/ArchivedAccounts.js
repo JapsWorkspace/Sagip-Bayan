@@ -121,6 +121,7 @@ export default function ArchivedAccounts() {
 
   const canPrev = safePage > 1;
   const canNext = safePage < totalPages;
+<<<<<<< HEAD
 
   return (
       <div className="archived-page">
@@ -288,5 +289,207 @@ export default function ArchivedAccounts() {
           </section>
         </div>
       </div>
+=======
+
+  const hasActiveFilters = Boolean(search.trim() || roleFilter);
+
+  const statItems = [
+    {
+      label: 'Archived',
+      value: loading ? '—' : archived.length,
+      tone: 'green'
+    },
+    {
+      label: 'Barangay',
+      value: loading ? '—' : roleCounts.barangay,
+      tone: 'emerald'
+    },
+    {
+      label: 'DRRMO',
+      value: loading ? '—' : roleCounts.drrmo,
+      tone: 'blue'
+    }
+  ];
+
+  return (
+    <div className="archived-page">
+      <div className="archived-shell">
+        <div className="archived-hero">
+          <div className="archived-hero-copy">
+            <div className="archived-kicker-row">
+              <span className="archived-kicker">Administration Module</span>
+              {hasActiveFilters && (
+                <span className="archived-mini-badge">Filtered View</span>
+              )}
+            </div>
+
+            <h1 className="archived-title">Archived Accounts</h1>
+
+            <div className="archived-stats">
+              {statItems.map((item) => (
+                <div
+                  key={item.label}
+                  className={`archived-stat-card archived-stat-card--${item.tone}`}
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <section className="archived-panel">
+          <div className="archived-toolbar">
+            <div className="archived-search-wrap">
+              <input
+                className="archived-search"
+                type="text"
+                placeholder="Search username, email, phone, address, or role"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            <select
+              className="archived-filter"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="">All Roles</option>
+              <option value="barangay">Barangay</option>
+              <option value="drrmo">DRRMO</option>
+            </select>
+          </div>
+
+          <div className="archived-toolbar-meta">
+            <span className="archived-results-text">
+              {loading
+                ? 'Loading records...'
+                : `${filteredArchived.length} result${filteredArchived.length === 1 ? '' : 's'}`}
+            </span>
+
+            {hasActiveFilters && !loading && (
+              <button
+                type="button"
+                className="archived-clear-btn"
+                onClick={() => {
+                  setSearch('');
+                  setRoleFilter('');
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
+
+          <div className="archived-table-wrap">
+            <table className="archived-table">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Email</th>
+                  <th>Phone</th>
+                  <th>Address</th>
+                  <th>Role</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="6" className="archived-empty-cell">
+                      <div className="archived-empty-state">
+                        <div className="archived-empty-inner">
+                          <strong>Loading archived accounts...</strong>
+                          <span>Please wait while records are fetched.</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : archived.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="archived-empty-cell">
+                      <div className="archived-empty-state">
+                        <div className="archived-empty-inner">
+                          <strong>No archived accounts</strong>
+                          <span>Archived users will appear here.</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : paginatedArchived.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="archived-empty-cell">
+                      <div className="archived-empty-state">
+                        <div className="archived-empty-inner">
+                          <strong>No matching results</strong>
+                          <span>Try a different search or role filter.</span>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedArchived.map((acc) => (
+                    <tr key={acc._id}>
+                      <td title={acc.username || ''}>{acc.username || '-'}</td>
+                      <td className="archived-email" title={acc.email || ''}>
+                        {acc.email || '-'}
+                      </td>
+                      <td title={acc.phoneNumber || ''}>{acc.phoneNumber || '-'}</td>
+                      <td title={acc.address || ''}>{acc.address || '-'}</td>
+                      <td>
+                        <span
+                          className={`archived-role-pill ${
+                            String(acc.role || '').toLowerCase() === 'barangay'
+                              ? 'barangay'
+                              : 'drrmo'
+                          }`}
+                        >
+                          {formatRole(acc.role)}
+                        </span>
+                      </td>
+                      <td>
+                        <button
+                          className="archived-restore-btn"
+                          onClick={() => restoreAccount(acc._id)}
+                          disabled={restoringId === acc._id}
+                        >
+                          {restoringId === acc._id ? 'Restoring...' : 'Restore'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="archived-pagination">
+            <button
+              className="archived-page-btn"
+              disabled={!canPrev}
+              onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+            >
+              ← Prev
+            </button>
+
+            <span className="archived-page-label">
+              Page {safePage} of {totalPages}
+            </span>
+
+            <button
+              className="archived-page-btn"
+              disabled={!canNext}
+              onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}
+            >
+              Next →
+            </button>
+          </div>
+        </section>
+      </div>
+    </div>
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   );
 }

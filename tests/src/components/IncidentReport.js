@@ -29,12 +29,19 @@ const JAEN_BOUNDS = {
 };
 
 export default function IncidentReport() {
+<<<<<<< HEAD
   const BASE_URL = process.env.REACT_APP_API_URL;
+=======
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const navigate = useNavigate();
   const [selectedIncident, setSelectedIncident] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [statusMap, setStatusMap] = useState({});
+<<<<<<< HEAD
   const [filter, setFilter] = useState("all");
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   useEffect(() => {
     const storedRole = localStorage.getItem('role');
@@ -55,6 +62,7 @@ export default function IncidentReport() {
     return () => clearInterval(interval);
   }, [BASE_URL]);
 
+<<<<<<< HEAD
   const filteredIncidents = useMemo(() => {
     if (filter === "all") return incidents;
     return incidents.filter(
@@ -96,6 +104,8 @@ export default function IncidentReport() {
     }
   };
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const handleChange = async (id, value) => {
     try {
       const incident = incidents.find(i => i._id === id);
@@ -157,6 +167,7 @@ export default function IncidentReport() {
     };
   }, [incidents]);
 
+<<<<<<< HEAD
   const interpretAIResult = (verification = {}) => {
     const labels = verification.labels || [];
     const confidence = verification.confidence || 0;
@@ -223,6 +234,8 @@ export default function IncidentReport() {
     };
   };
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const getStatusLabel = (status) => {
     if (!status || status === 'reported') return 'Reported';
     if (status === 'onProcess') return 'On Process';
@@ -230,7 +243,10 @@ export default function IncidentReport() {
     return status;
   };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const getStatusBadgeStyle = (status) => {
     if (!status || status === 'reported') {
       return {
@@ -297,6 +313,7 @@ export default function IncidentReport() {
     };
   };
 
+<<<<<<< HEAD
   const getAIDecisionExplanation = (verification) => {
       if (!verification) return "No AI verification available.";
 
@@ -398,6 +415,10 @@ export default function IncidentReport() {
 
   return (
     <DashboardShell>
+=======
+  return (
+    <DashboardShell variant="drrmo">
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     <div style={styles.page}>
       <div style={styles.shell}>
         <div style={styles.hero}>
@@ -456,6 +477,7 @@ export default function IncidentReport() {
 
           <div style={styles.mapFrame}>
             <MapContainer
+<<<<<<< HEAD
               center={[JAEN_CENTER.lat, JAEN_CENTER.lng]}
               zoom={14}
               style={{ height: '100%', width: '100%' }}
@@ -465,6 +487,17 @@ export default function IncidentReport() {
               ]}
               maxBoundsViscosity={1.0}
             >
+=======
+  center={[JAEN_CENTER.lat, JAEN_CENTER.lng]}
+  zoom={14}
+  style={{ height: '100%', width: '100%' }}
+  maxBounds={[
+    [JAEN_BOUNDS.south, JAEN_BOUNDS.west],
+    [JAEN_BOUNDS.north, JAEN_BOUNDS.east],
+  ]}
+  maxBoundsViscosity={1.0}
+>
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
               <TileLayer
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 attribution="&copy; OpenStreetMap contributors"
@@ -508,12 +541,15 @@ export default function IncidentReport() {
               </p>
             </div>
           </div>
+<<<<<<< HEAD
           <div style={{ marginBottom: 12 }}>
             <button onClick={() => setFilter("all")}>All</button>
             <button onClick={() => setFilter("pending")}>Pending</button>
             <button onClick={() => setFilter("approved")}>Approved</button>
             <button onClick={() => setFilter("rejected")}>Rejected</button>
           </div>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
           <div style={styles.tableWrap}>
             <table style={styles.table}>
@@ -524,14 +560,22 @@ export default function IncidentReport() {
                   <th style={styles.th}>Description</th>
                   <th style={styles.th}>Location</th>
                   <th style={styles.th}>Status</th>
+<<<<<<< HEAD
                   <th style={styles.th}>Image</th>
                   <th style={styles.th}>AI</th>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                   <th style={styles.th}>Delete</th>
                 </tr>
               </thead>
               <tbody>
+<<<<<<< HEAD
                 {filteredIncidents.length > 0 ? (
                   filteredIncidents.map((inc) => (
+=======
+                {incidents.length > 0 ? (
+                  incidents.map((inc) => (
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                     <tr key={inc._id} style={styles.tr}>
                       <td style={styles.td}>
                         <span style={styles.typeBadge}>
@@ -577,6 +621,7 @@ export default function IncidentReport() {
                           </select>
                         </div>
                       </td>
+<<<<<<< HEAD
                       <td style={styles.td}>
                         {inc.image?.fileUrl && (
                           <img
@@ -649,6 +694,8 @@ export default function IncidentReport() {
                             );
                           })()}
                         </td>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
                       <td style={styles.td}>
                         <button
@@ -658,7 +705,10 @@ export default function IncidentReport() {
                           Delete
                         </button>
                       </td>
+<<<<<<< HEAD
                       
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                     </tr>
                   ))
                 ) : (
@@ -725,6 +775,7 @@ export default function IncidentReport() {
                 <div style={styles.detailSection}>
                   <div style={styles.detailLabel}>Location</div>
                   <div style={styles.detailValue}>{selectedIncident.location || '-'}</div>
+<<<<<<< HEAD
 
                   <p>
                     <strong>GPS:</strong>{" "}
@@ -752,6 +803,8 @@ export default function IncidentReport() {
                       ? "Recent Image"
                       : "Old Image (⚠ suspicious)"}
                   </p>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                 </div>
 
                 <div style={styles.detailSection}>
@@ -769,6 +822,7 @@ export default function IncidentReport() {
                     <div style={styles.detailLabel}>Phone</div>
                     <div style={styles.detailValue}>{selectedIncident.phone || '-'}</div>
                   </div>
+<<<<<<< HEAD
                   {selectedIncident.image?.fileUrl && (
                     <img
                       src={selectedIncident.image.fileUrl}
@@ -829,11 +883,14 @@ export default function IncidentReport() {
                       );
                     })()}
                   </div>
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                 </div>
               </div>
 
               <div style={styles.modalFooter}>
                 <button
+<<<<<<< HEAD
                   onClick={() => handleVerifyOverride(selectedIncident._id, "approved")}
                   style={{ ...styles.closeBtn, background: "#166534" }}
                 >
@@ -855,6 +912,8 @@ export default function IncidentReport() {
                 </button>
 
                 <button
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                   onClick={() => setSelectedIncident(null)}
                   style={styles.closeBtn}
                 >

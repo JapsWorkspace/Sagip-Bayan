@@ -17,6 +17,7 @@ export default function EditAccount() {
   const [open, setOpen] = useState(null);
   const [forms, setForms] = useState({});
   const [q, setQ] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
   const [savingId, setSavingId] = useState(null);
   const [archivingId, setArchivingId] = useState(null);
 
@@ -74,6 +75,95 @@ export default function EditAccount() {
   const validPassword = (pass) =>
     /[A-Z]/.test(pass) && /[0-9]/.test(pass) && pass.length >= 8;
   const validEmail = (email) => email.includes('@') && email.includes('.com');
+
+  const visibleAccounts = useMemo(
+    () => accounts.filter((acc) => acc.role !== 'admin'),
+    [accounts]
+  );
+
+  const filteredAccounts = useMemo(() => {
+    const term = q.toLowerCase().trim();
+
+    return visibleAccounts.filter((a) => {
+      const matchesSearch = `${a.username} ${a.email} ${a.phoneNumber} ${a.address} ${a.role}`
+        .toLowerCase()
+        .includes(term);
+
+      const matchesRole =
+        !roleFilter || String(a.role || '').toLowerCase() === roleFilter;
+
+      return matchesSearch && matchesRole;
+    });
+  }, [visibleAccounts, q, roleFilter]);
+
+  const selected = useMemo(
+    () => visibleAccounts.find((a) => a._id === open) || null,
+    [visibleAccounts, open]
+  );
+
+  const selectedForm = selected ? forms[selected._id] : null;
+
+  const totalBarangay = useMemo(
+    () => visibleAccounts.filter((a) => a.role === 'barangay').length,
+    [visibleAccounts]
+  );
+
+  const totalDrrmo = useMemo(
+    () => visibleAccounts.filter((a) => a.role === 'drrmo').length,
+    [visibleAccounts]
+  );
+
+  const totalFiltered = filteredAccounts.length;
+
+  const getInitials = (value = '') => {
+    const text = String(value || '').trim();
+    if (!text) return '?';
+    return text.slice(0, 1).toUpperCase();
+  };
+
+  const hasUnsavedChanges = useMemo(() => {
+    if (!selected || !selectedForm) return false;
+
+    return (
+      (selectedForm.username || '') !== (selected.username || '') ||
+      (selectedForm.email || '') !== (selected.email || '') ||
+      (selectedForm.phoneNumber || '') !== (selected.phoneNumber || '') ||
+      (selectedForm.hotline || '') !== (selected.hotline || '') ||
+      (selectedForm.address || '') !== (selected.address || '') ||
+      !!selectedForm.password ||
+      !!selectedForm.confirmPassword
+    );
+  }, [selected, selectedForm]);
+
+  const handleSelectAccount = (id) => {
+    if (id === open) return;
+
+    if (hasUnsavedChanges) {
+      const proceed = window.confirm(
+        'You have unsaved changes. Switch accounts anyway?'
+      );
+      if (!proceed) return;
+    }
+
+    setOpen(id);
+  };
+
+  const resetSelectedForm = () => {
+    if (!selected) return;
+
+    setForms((prev) => ({
+      ...prev,
+      [selected._id]: {
+        username: selected.username || '',
+        email: selected.email || '',
+        phoneNumber: selected.phoneNumber || '',
+        hotline: selected.hotline || '',
+        address: selected.address || '',
+        password: '',
+        confirmPassword: ''
+      }
+    }));
+  };
 
   const updateAccount = async (id) => {
     const data = forms[id];
@@ -167,281 +257,269 @@ export default function EditAccount() {
     }
   };
 
-  const visibleAccounts = useMemo(
-    () => accounts.filter((acc) => acc.role !== 'admin'),
-    [accounts]
-  );
-
-  const filteredAccounts = useMemo(() => {
-    const term = q.toLowerCase();
-    return visibleAccounts.filter((a) =>
-      `${a.username} ${a.email} ${a.phoneNumber} ${a.address} ${a.role}`
-        .toLowerCase()
-        .includes(term)
-    );
-  }, [visibleAccounts, q]);
-
-  const selected = useMemo(
-    () => visibleAccounts.find((a) => a._id === open) || null,
-    [visibleAccounts, open]
-  );
-
-  const selectedForm = selected ? forms[selected._id] : null;
-
-  const totalBarangay = useMemo(
-    () => visibleAccounts.filter((a) => a.role === 'barangay').length,
-    [visibleAccounts]
-  );
-
-  const totalDrrmo = useMemo(
-    () => visibleAccounts.filter((a) => a.role === 'drrmo').length,
-    [visibleAccounts]
-  );
-
-  const totalFiltered = filteredAccounts.length;
-
-  const getInitials = (value = '') => {
-    const text = String(value || '').trim();
-    if (!text) return '?';
-    return text.slice(0, 1).toUpperCase();
-  };
+  const stats = [
+    { label: 'Accounts', value: visibleAccounts.length, tone: 'green' },
+    { label: 'DRRMO', value: totalDrrmo, tone: 'blue' },
+    { label: 'Barangay', value: totalBarangay, tone: 'emerald' }
+  ];
 
   return (
-      <div className="edit-account">
-        <div className="ea-page-shell">
-          <section className="ea-hero-card">
-            <div className="ea-hero-copy">
+    <div className="edit-account">
+      <div className="ea-page-shell">
+        <section className="ea-hero-card">
+          <div className="ea-hero-copy">
+            <div className="ea-kicker-row">
               <span className="ea-kicker">Administration Module</span>
-              <h1 className="ea-page-title">Edit Accounts</h1>
-              <p className="ea-page-subtitle">
-                Review DRRMO and barangay accounts, update user details, and
-                archive accounts through a cleaner management workspace.
-              </p>
+              {hasUnsavedChanges && (
+                <span className="ea-live-pill ea-live-pill--warning">
+                  Unsaved Changes
+                </span>
+              )}
             </div>
+
+            <h1 className="ea-page-title">Edit Accounts</h1>
 
             <div className="ea-hero-stats">
-              <div className="ea-stat-card">
-                <span>Total Accounts</span>
-                <strong>{visibleAccounts.length}</strong>
-              </div>
-              <div className="ea-stat-card">
-                <span>DRRMO</span>
-                <strong>{totalDrrmo}</strong>
-              </div>
-              <div className="ea-stat-card">
-                <span>Barangay</span>
-                <strong>{totalBarangay}</strong>
-              </div>
-              <div className="ea-stat-card emphasis">
-                <span>Filtered</span>
-                <strong>{totalFiltered}</strong>
-              </div>
-            </div>
-          </section>
-
-          <section className="ea-workspace">
-            <aside className="ea-sidebar-card">
-              <div className="ea-sidebar-head">
-                <div>
-                  <h2>Account List</h2>
-                  <p>Select an account to view and edit details.</p>
+              {stats.map((item) => (
+                <div
+                  key={item.label}
+                  className={`ea-stat-card ea-stat-card--${item.tone}`}
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
                 </div>
-              </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
+        <section className="ea-workspace">
+          <aside className="ea-sidebar-card">
+            <div className="ea-sidebar-top">
               <div className="ea-listbar">
                 <input
                   className="ea-list-search"
                   type="search"
-                  placeholder="Search username, email, role..."
+                  placeholder="Search account"
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
                 />
               </div>
 
-              <div className="ea-list">
-                {filteredAccounts.length === 0 ? (
-                  <div className="ea-list-empty">
-                    <strong>No accounts found</strong>
-                    <span>Try another search term.</span>
-                  </div>
-                ) : (
-                  filteredAccounts.map((acc) => (
-                    <div key={acc._id} className="ea-item">
-                      <button
-                        type="button"
-                        className={`ea-head ${open === acc._id ? 'is-active' : ''}`}
-                        onClick={() => setOpen(acc._id)}
-                      >
-                        <div className="ea-head-main">
-                          <div className="ea-head-avatar">
-                            {getInitials(acc.username)}
-                          </div>
-
-                          <div className="ea-head-copy">
-                            <strong className="ea-username">{acc.username}</strong>
-                            <small className="ea-email">{acc.email || 'No email'}</small>
-                          </div>
-                        </div>
-
-                        <span className={`ea-role ea-role-${acc.role}`}>
-                          {acc.role}
-                        </span>
-                      </button>
-                    </div>
-                  ))
-                )}
+              <div className="ea-filter-row">
+                <select
+                  className="ea-role-filter"
+                  value={roleFilter}
+                  onChange={(e) => setRoleFilter(e.target.value)}
+                >
+                  <option value="">All Roles</option>
+                  <option value="drrmo">DRRMO</option>
+                  <option value="barangay">Barangay</option>
+                </select>
               </div>
-            </aside>
+            </div>
 
-            <section className="ea-editor-card">
-              <div className="ea-countbar">
-                <span>{filteredAccounts.length} accounts</span>
-              </div>
-
-              {!selected || !selectedForm ? (
-                <div className="ea-placeholder ea-placeholder--centered">
-                  <div className="ea-empty-illustration">👤</div>
-                  <div className="ea-empty-title">Select an account</div>
-                  <div className="ea-empty-sub">
-                    Choose a user from the list on the left to edit details.
-                  </div>
+            <div className="ea-list">
+              {filteredAccounts.length === 0 ? (
+                <div className="ea-list-empty">
+                  <strong>No accounts found</strong>
                 </div>
               ) : (
-                <div className="ea-editor-scroll">
-                  <div className="ea-profile-card">
+                filteredAccounts.map((acc) => (
+                  <div key={acc._id} className="ea-item">
+                    <button
+                      type="button"
+                      className={`ea-head ${open === acc._id ? 'is-active' : ''}`}
+                      onClick={() => handleSelectAccount(acc._id)}
+                    >
+                      <div className="ea-head-main">
+                        <div className="ea-head-avatar">
+                          {getInitials(acc.username)}
+                        </div>
+
+                        <div className="ea-head-copy">
+                          <strong className="ea-username">{acc.username}</strong>
+                          <small className="ea-email">{acc.email || 'No email'}</small>
+                        </div>
+                      </div>
+
+                      <span className={`ea-role ea-role-${acc.role}`}>
+                        {acc.role}
+                      </span>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </aside>
+
+          <section className="ea-editor-card">
+            {!selected || !selectedForm ? (
+              <div className="ea-placeholder ea-placeholder--centered">
+                <div className="ea-empty-illustration">👤</div>
+                <div className="ea-empty-title">Select an account</div>
+              </div>
+            ) : (
+              <div className="ea-editor-scroll">
+                <div className="ea-profile-card">
+                  <div className="ea-profile-main">
                     <div className="ea-profile-avatar">
                       {getInitials(selected.username)}
                     </div>
 
                     <div className="ea-profile-copy">
-                      <h3>{selected.username}</h3>
+                      <div className="ea-profile-topline">
+                        <h3>{selected.username}</h3>
+                        <div className={`ea-role-badge ea-role-${selected.role}`}>
+                          {selected.role}
+                        </div>
+                      </div>
                       <p>{selected.email || 'No email address'}</p>
                     </div>
-
-                    <div className={`ea-role-badge ea-role-${selected.role}`}>
-                      {selected.role}
-                    </div>
                   </div>
 
-                  <div className="ea-section-block">
-                    <div className="ea-section-header">
-                      <h3>Account Information</h3>
-                      <p>Update the main contact and account details below.</p>
+                  <div className="ea-profile-meta">
+                    <div className="ea-meta-card">
+                      <span>Phone</span>
+                      <strong>{selected.phoneNumber || '-'}</strong>
                     </div>
-
-                    <div className="ea-form-grid">
-                      <div className="ea-field">
-                        <label>Username</label>
-                        <input
-                          value={selectedForm.username || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'username', e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="ea-field">
-                        <label>Email</label>
-                        <input
-                          value={selectedForm.email || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'email', e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="ea-field">
-                        <label>Phone Number</label>
-                        <input
-                          value={selectedForm.phoneNumber || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'phoneNumber', e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="ea-field">
-                        <label>Hotline</label>
-                        <input
-                          value={selectedForm.hotline || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'hotline', e.target.value)
-                          }
-                        />
-                      </div>
-
-                      <div className="ea-field ea-field-full">
-                        <label>Address</label>
-                        <input
-                          value={selectedForm.address || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'address', e.target.value)
-                          }
-                        />
-                      </div>
+                    <div className="ea-meta-card">
+                      <span>Hotline</span>
+                      <strong>{selected.hotline || '-'}</strong>
                     </div>
-                  </div>
-
-                  <div className="ea-section-block">
-                    <div className="ea-section-header">
-                      <h3>Security</h3>
-                      <p>
-                        Leave password fields blank if you do not want to change the
-                        current password.
-                      </p>
-                    </div>
-
-                    <div className="ea-form-grid">
-                      <div className="ea-field">
-                        <label>New Password</label>
-                        <input
-                          type="password"
-                          value={selectedForm.password || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'password', e.target.value)
-                          }
-                          placeholder="Leave blank to keep current password"
-                        />
-                      </div>
-
-                      <div className="ea-field">
-                        <label>Confirm Password</label>
-                        <input
-                          type="password"
-                          value={selectedForm.confirmPassword || ''}
-                          onChange={(e) =>
-                            handleChange(selected._id, 'confirmPassword', e.target.value)
-                          }
-                          placeholder="Re-enter password"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="ea-actions">
-                    <button
-                      className="ea-btn ea-btn-primary"
-                      onClick={() => updateAccount(selected._id)}
-                      disabled={savingId === selected._id}
-                    >
-                      {savingId === selected._id ? 'Updating...' : 'Update Account'}
-                    </button>
-
-                    <button
-                      className="ea-btn ea-btn-danger"
-                      onClick={() => archiveAccount(selected._id)}
-                      disabled={archivingId === selected._id}
-                    >
-                      {archivingId === selected._id
-                        ? 'Archiving...'
-                        : 'Archive Account'}
-                    </button>
                   </div>
                 </div>
-              )}
-            </section>
+
+                <div className="ea-section-block">
+                  <div className="ea-section-title-row">
+                    <h3>Account Information</h3>
+                  </div>
+
+                  <div className="ea-form-grid">
+                    <div className="ea-field">
+                      <label>Username</label>
+                      <input
+                        value={selectedForm.username || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'username', e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="ea-field">
+                      <label>Email</label>
+                      <input
+                        value={selectedForm.email || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'email', e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="ea-field">
+                      <label>Phone Number</label>
+                      <input
+                        value={selectedForm.phoneNumber || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'phoneNumber', e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="ea-field">
+                      <label>Hotline</label>
+                      <input
+                        value={selectedForm.hotline || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'hotline', e.target.value)
+                        }
+                      />
+                    </div>
+
+                    <div className="ea-field ea-field-full">
+                      <label>Address</label>
+                      <input
+                        value={selectedForm.address || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'address', e.target.value)
+                        }
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ea-section-block">
+                  <div className="ea-section-title-row">
+                    <h3>Security</h3>
+                  </div>
+
+                  <div className="ea-form-grid">
+                    <div className="ea-field">
+                      <label>New Password</label>
+                      <input
+                        type="password"
+                        value={selectedForm.password || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'password', e.target.value)
+                        }
+                        placeholder="Leave blank to keep current password"
+                      />
+                    </div>
+
+                    <div className="ea-field">
+                      <label>Confirm Password</label>
+                      <input
+                        type="password"
+                        value={selectedForm.confirmPassword || ''}
+                        onChange={(e) =>
+                          handleChange(selected._id, 'confirmPassword', e.target.value)
+                        }
+                        placeholder="Re-enter password"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ea-actions">
+                  <button
+                    className="ea-btn ea-btn-secondary"
+                    type="button"
+                    onClick={resetSelectedForm}
+                    disabled={!hasUnsavedChanges}
+                  >
+                    Reset Changes
+                  </button>
+
+                  <button
+                    className="ea-btn ea-btn-primary"
+                    onClick={() => updateAccount(selected._id)}
+                    disabled={savingId === selected._id}
+                  >
+                    {savingId === selected._id ? 'Updating...' : 'Update Account'}
+                  </button>
+                </div>
+
+                <div className="ea-danger-zone">
+                  <div className="ea-danger-zone-copy">
+                    <h4>Danger Zone</h4>
+                    <p>Archive this account if it should no longer remain active.</p>
+                  </div>
+
+                  <button
+                    className="ea-btn ea-btn-danger"
+                    onClick={() => archiveAccount(selected._id)}
+                    disabled={archivingId === selected._id}
+                  >
+                    {archivingId === selected._id
+                      ? 'Archiving...'
+                      : 'Archive Account'}
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
-        </div>
+        </section>
       </div>
+    </div>
   );
 }

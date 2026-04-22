@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
+<<<<<<< HEAD
 import { useNavigate } from 'react-router-dom';
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 import '../css/AdminLogs.css';
 import axios from 'axios';
 
 export default function AdminLogs() {
   const BASE_URL =
     process.env.REACT_APP_API_URL || 'https://gaganadapat.onrender.com';
+<<<<<<< HEAD
   const navigate = useNavigate();
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const PAGE_SIZE = 10;
 
   const [allLogs, setAllLogs] = useState([]);
@@ -15,9 +21,17 @@ export default function AdminLogs() {
 
   const [search, setSearch] = useState('');
   const [actionFilter, setActionFilter] = useState('');
+<<<<<<< HEAD
 
   const actionClass = (action) => {
     switch (action) {
+=======
+  const [dateFilter, setDateFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState('newest');
+
+  const actionClass = (action) => {
+    switch (String(action || '').toLowerCase()) {
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       case 'create':
         return 'admin-create';
       case 'update':
@@ -54,7 +68,11 @@ export default function AdminLogs() {
 
   useEffect(() => {
     setPage(1);
+<<<<<<< HEAD
   }, [search, actionFilter]);
+=======
+  }, [search, actionFilter, dateFilter, sortOrder]);
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   const formatTime = (date) => {
     if (!date) return '-';
@@ -71,10 +89,45 @@ export default function AdminLogs() {
     }
   };
 
+<<<<<<< HEAD
   const filteredLogs = useMemo(() => {
     const term = search.trim().toLowerCase();
 
     return allLogs.filter((log) => {
+=======
+  const isWithinDateFilter = (timestamp, filterValue) => {
+    if (!filterValue || !timestamp) return true;
+
+    const logDate = new Date(timestamp);
+    if (Number.isNaN(logDate.getTime())) return false;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (filterValue === 'today') {
+      return logDate >= startOfToday;
+    }
+
+    if (filterValue === '7days') {
+      const sevenDaysAgo = new Date(startOfToday);
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      return logDate >= sevenDaysAgo;
+    }
+
+    if (filterValue === '30days') {
+      const thirtyDaysAgo = new Date(startOfToday);
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 29);
+      return logDate >= thirtyDaysAgo;
+    }
+
+    return true;
+  };
+
+  const filteredLogs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+
+    const filtered = allLogs.filter((log) => {
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       const adminUsername = String(log.adminUsername || '').toLowerCase();
       const targetUsername = String(log.targetUsername || '').toLowerCase();
       const action = String(log.action || '').toLowerCase();
@@ -90,9 +143,27 @@ export default function AdminLogs() {
       const matchesAction =
         !actionFilter || String(log.action || '').toLowerCase() === actionFilter;
 
+<<<<<<< HEAD
       return matchesSearch && matchesAction;
     });
   }, [allLogs, search, actionFilter]);
+=======
+      const matchesDate = isWithinDateFilter(log.timestamp, dateFilter);
+
+      return matchesSearch && matchesAction && matchesDate;
+    });
+
+    filtered.sort((a, b) => {
+      const aTime = new Date(a.timestamp || 0).getTime();
+      const bTime = new Date(b.timestamp || 0).getTime();
+
+      if (sortOrder === 'oldest') return aTime - bTime;
+      return bTime - aTime;
+    });
+
+    return filtered;
+  }, [allLogs, search, actionFilter, dateFilter, sortOrder]);
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   const totalPages = Math.max(1, Math.ceil(filteredLogs.length / PAGE_SIZE));
   const safePage = Math.min(page, totalPages);
@@ -119,12 +190,27 @@ export default function AdminLogs() {
 
   const canPrev = safePage > 1;
   const canNext = safePage < totalPages;
+<<<<<<< HEAD
+=======
+  const hasActiveFilters = Boolean(
+    search.trim() || actionFilter || dateFilter || sortOrder !== 'newest'
+  );
+
+  const statCards = [
+    { label: 'Total Logs', value: loading ? '—' : stats.total, tone: 'green', lead: true },
+    { label: 'Created', value: loading ? '—' : stats.create, tone: 'create' },
+    { label: 'Updated', value: loading ? '—' : stats.update, tone: 'update' },
+    { label: 'Archived', value: loading ? '—' : stats.archive, tone: 'archive' },
+    { label: 'Restored', value: loading ? '—' : stats.restore, tone: 'restore' }
+  ];
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
   return (
     <div className="admin-logs-page">
       <div className="admin-logs-shell">
         <section className="admin-logs-hero">
           <div className="admin-logs-hero-copy">
+<<<<<<< HEAD
             <span className="admin-logs-kicker">Administration Module</span>
             <h1 className="admin-logs-title">Admin Activity Logs</h1>
             <p className="admin-logs-subtitle">
@@ -154,11 +240,33 @@ export default function AdminLogs() {
             <div className="admin-stat-card emphasis">
               <span>Restored</span>
               <strong>{loading ? '—' : stats.restore}</strong>
+=======
+            <div className="admin-logs-kicker-row">
+              <span className="admin-logs-kicker">Administration Module</span>
+              {hasActiveFilters && (
+                <span className="admin-logs-mini-badge">Filtered View</span>
+              )}
+            </div>
+
+            <h1 className="admin-logs-title">Admin Activity Logs</h1>
+
+            <div className="admin-logs-stats">
+              {statCards.map((item) => (
+                <div
+                  key={item.label}
+                  className={`admin-stat-card admin-stat-card--${item.tone} ${item.lead ? 'is-lead' : ''}`}
+                >
+                  <span>{item.label}</span>
+                  <strong>{item.value}</strong>
+                </div>
+              ))}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
             </div>
           </div>
         </section>
 
         <section className="admin-logs-panel">
+<<<<<<< HEAD
           <div className="admin-logs-panel-head">
             <div>
               <h2>Activity Records</h2>
@@ -178,6 +286,13 @@ export default function AdminLogs() {
               className="admin-logs-search"
               type="text"
               placeholder="Search admin, target user, barangay, or action..."
+=======
+          <div className="admin-logs-toolbar admin-logs-toolbar--top">
+            <input
+              className="admin-logs-search"
+              type="text"
+              placeholder="Search admin, target user, barangay, or action"
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -195,6 +310,65 @@ export default function AdminLogs() {
             </select>
           </div>
 
+<<<<<<< HEAD
+=======
+          <div className="admin-logs-toolbar admin-logs-toolbar--bottom">
+            <select
+              className="admin-logs-filter"
+              value={dateFilter}
+              onChange={(e) => setDateFilter(e.target.value)}
+            >
+              <option value="">All Dates</option>
+              <option value="today">Today</option>
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+            </select>
+
+            <select
+              className="admin-logs-filter"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+            >
+              <option value="newest">Newest First</option>
+              <option value="oldest">Oldest First</option>
+            </select>
+          </div>
+
+          <div className="admin-logs-toolbar-meta">
+            <span className="admin-results-text">
+              {loading
+                ? 'Loading records...'
+                : `${filteredLogs.length} result${filteredLogs.length === 1 ? '' : 's'}`}
+            </span>
+
+            <div className="admin-toolbar-actions">
+              {hasActiveFilters && !loading && (
+                <button
+                  type="button"
+                  className="admin-btn admin-btn-clear"
+                  onClick={() => {
+                    setSearch('');
+                    setActionFilter('');
+                    setDateFilter('');
+                    setSortOrder('newest');
+                  }}
+                >
+                  Clear Filters
+                </button>
+              )}
+
+              <button
+                type="button"
+                className="admin-btn admin-btn-refresh"
+                onClick={fetchLogs}
+                disabled={loading}
+              >
+                {loading ? 'Refreshing...' : 'Refresh'}
+              </button>
+            </div>
+          </div>
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
           <div className="admin-logs-table-region">
             <div className="admin-logs-table-wrap">
               <table className="admin-logs-table">
@@ -223,15 +397,39 @@ export default function AdminLogs() {
                         </div>
                       </td>
                     </tr>
+<<<<<<< HEAD
                   ) : paginatedLogs.length === 0 ? (
+=======
+                  ) : allLogs.length === 0 ? (
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                     <tr className="admin-empty-row">
                       <td colSpan={5}>
                         <div className="admin-empty-inline">
                           <div className="admin-empty-emoji">📝</div>
                           <div className="admin-empty-text">
+<<<<<<< HEAD
                             <strong>No logs found</strong>
                             <span className="admin-muted">
                               Try adjusting the search or action filter.
+=======
+                            <strong>No activity records yet</strong>
+                            <span className="admin-muted">
+                              Logs will appear here after admin actions are recorded.
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : paginatedLogs.length === 0 ? (
+                    <tr className="admin-empty-row">
+                      <td colSpan={5}>
+                        <div className="admin-empty-inline">
+                          <div className="admin-empty-emoji">🔎</div>
+                          <div className="admin-empty-text">
+                            <strong>No matching logs</strong>
+                            <span className="admin-muted">
+                              Try adjusting the search, action, or date filter.
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
                             </span>
                           </div>
                         </div>
@@ -264,6 +462,54 @@ export default function AdminLogs() {
               </table>
             </div>
 
+<<<<<<< HEAD
+=======
+            <div className="admin-logs-mobile-list">
+              {loading ? (
+                <div className="admin-mobile-empty">
+                  <strong>Loading admin logs...</strong>
+                  <span>Please wait while records are being fetched.</span>
+                </div>
+              ) : allLogs.length === 0 ? (
+                <div className="admin-mobile-empty">
+                  <strong>No activity records yet</strong>
+                  <span>Logs will appear here after admin actions are recorded.</span>
+                </div>
+              ) : paginatedLogs.length === 0 ? (
+                <div className="admin-mobile-empty">
+                  <strong>No matching logs</strong>
+                  <span>Try adjusting the search, action, or date filter.</span>
+                </div>
+              ) : (
+                paginatedLogs.map((log) => (
+                  <div className="admin-mobile-card" key={`mobile-${log._id}`}>
+                    <div className="admin-mobile-card-top">
+                      <strong>{log.adminUsername || '-'}</strong>
+                      <span className={`admin-action-pill ${actionClass(log.action)}`}>
+                        {log.action || '-'}
+                      </span>
+                    </div>
+
+                    <div className="admin-mobile-meta">
+                      <div className="admin-mobile-row">
+                        <span>Target</span>
+                        <strong>{log.targetUsername || '-'}</strong>
+                      </div>
+                      <div className="admin-mobile-row">
+                        <span>Barangay</span>
+                        <strong>{log.barangay || '—'}</strong>
+                      </div>
+                      <div className="admin-mobile-row">
+                        <span>Date</span>
+                        <strong>{formatTime(log.timestamp)}</strong>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
             <div className="admin-pagination">
               <button
                 className="admin-btn"

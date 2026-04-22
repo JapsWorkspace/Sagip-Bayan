@@ -1,7 +1,13 @@
+<<<<<<< HEAD
 // screens/SendOtp.jsx
 import { useState } from "react";
 import { TextInput, View, Text, Button } from "react-native";
 import api from "../lib/api";
+=======
+import { useState } from "react";
+import { TextInput, View, Text, Button } from "react-native";
+import axios from "axios";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 
 export default function SendOtp({ navigation }) {
   const [email, setEmail] = useState("");
@@ -33,15 +39,26 @@ export default function SendOtp({ navigation }) {
     setLoading(true);
     setMessage("");
 
+<<<<<<< HEAD
     api
       .post("/user/send-otp", { email })
+=======
+    axios
+      .post("http://localhost:8000/user/send-otp", { email })
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       .then((response) => {
         setMessage(response.data.message);
         console.log("OTP sent to:", email);
         navigation.navigate("VerifyOtp", { email });
       })
       .catch((error) => {
+<<<<<<< HEAD
         setMessage(error.response?.data?.message || "Server error");
+=======
+        setMessage(
+          error.response?.data?.message || "Server error"
+        );
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       })
       .finally(() => {
         setLoading(false);
@@ -83,4 +100,8 @@ export default function SendOtp({ navigation }) {
       ) : null}
     </View>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a

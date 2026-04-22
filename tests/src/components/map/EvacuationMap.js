@@ -23,10 +23,19 @@ const EvacuationMap = () => {
   // Transport mode
   const [transportMode, setTransportMode] = useState("driving");
 
+<<<<<<< HEAD
   /* ---------------- Fetch Evac Centers ---------------- */
   const fetchPlaces = () => {
     axios
       .get("http://localhost:8000/evacs")
+=======
+  const BASE_URL = process.env.REACT_APP_API_URL || "https://gaganadapat.onrender.com";
+
+  /* ---------------- Fetch Evac Centers ---------------- */
+  const fetchPlaces = () => {
+    axios
+      .get(`${BASE_URL}/evacs`)
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       .then((res) => {
       setPlaces(res.data);
 
@@ -410,4 +419,7 @@ const EvacuationMap = () => {
 };
 
 export default EvacuationMap;
+<<<<<<< HEAD
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a

@@ -17,6 +17,7 @@
     "@react-native-picker/picker": "2.11.1",
     "@react-navigation/native": "^7.1.26",
     "@react-navigation/native-stack": "^7.9.0",
+<<<<<<< HEAD
     "@turf/turf": "^7.3.5",
     "axios": "^1.15.0",
     "expo": "~54.0.33",
@@ -28,6 +29,16 @@
     "leaflet": "^1.9.4",
     "leaflet.heat": "^0.2.0",
     "pdfkit": "^0.18.0",
+=======
+    "axios": "^1.13.5",
+    "expo": "~54.0.32",
+    "expo-document-picker": "~14.0.8",
+    "expo-file-system": "~19.0.21",
+    "expo-image-picker": "^17.0.10",
+    "expo-status-bar": "~3.0.9",
+    "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-hook-form": "^7.71.1",
@@ -40,10 +51,15 @@
     "react-native-paper-dates": "^0.22.57",
     "react-native-safe-area-context": "~5.6.0",
     "react-native-screens": "~4.16.0",
+<<<<<<< HEAD
     "react-native-svg": "15.12.1",
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "^0.21.0",
     "socket.io-client": "^4.8.3",
+=======
+    "react-native-vector-icons": "^10.3.0",
+    "react-native-web": "^0.21.0",
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     "zod": "^4.3.5"
   },
   "private": true

@@ -8,7 +8,11 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from "react-native";
+<<<<<<< HEAD
 import api from "../lib/api";
+=======
+import axios from "axios";
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
 import { UserContext } from "./UserContext";
 import NewBottomNav from "./NewBottomNav";
 
@@ -18,20 +22,27 @@ import styles, { COLORS } from "../Designs/PersonalDetails";
 export default function PersonalDetails({ navigation }) {
   const { user, setUser } = useContext(UserContext);
   const [username, setUsername] = useState(user?.username || "");
+<<<<<<< HEAD
   const [phone, setPhone] = useState(user?.phone || "");
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
   const [error, setError] = useState("");
 
   if (!user) return <Text>No user logged in</Text>;
 
   // --- keep your function unchanged (only UI moved to new styles) ---
   const saveUsername = () => {
+<<<<<<< HEAD
     console.log(user);
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
     setError(""); // reset previous error
     if (!username.trim()) {
       setError("Username cannot be empty.");
       return;
     }
 
+<<<<<<< HEAD
     if (!phone.trim()) {
       setError("Phone number cannot be empty.");
       return;
@@ -54,6 +65,17 @@ export default function PersonalDetails({ navigation }) {
         console.log(user.id);
         console.error(error);
         setError("Failed to update username or phone number.");
+=======
+    axios
+      .put(`http://localhost:8000/user/update/${user._id}`, { username })
+      .then(() => {
+        setUser({ ...user, username });
+        console.log("Username updated successfully");
+      })
+      .catch((error) => {
+        console.error(error);
+        setError("Failed to update username.");
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
       });
   };
 
@@ -128,6 +150,7 @@ export default function PersonalDetails({ navigation }) {
             placeholderTextColor={COLORS.placeholder}
           />
 
+<<<<<<< HEAD
           <Text style={styles.label}>Phone Number</Text>
           <Text style={styles.helper}>This is the phone number linked to your account.</Text>
           <TextInput
@@ -142,6 +165,8 @@ export default function PersonalDetails({ navigation }) {
             placeholderTextColor={COLORS.placeholder}
           />
 
+=======
+>>>>>>> 19fb3d6f3a5d17da00ac816e7d78291a6bd6694a
           {/* Save button */}
           <TouchableOpacity style={styles.button} onPress={saveUsername}>
             <Text style={styles.buttonText}>Save Changes</Text>
